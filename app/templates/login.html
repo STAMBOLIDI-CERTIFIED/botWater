@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaterPrize Admin — Вход</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { --bg: #05050A; --surface: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.06); --text: #E8F4FD; --dim: #5B8DAE; --aqua: #0EA5E9; --teal: #14B8A6; --red: #EF4444; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+        .login-card { background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 24px; padding: 40px; width: 100%; max-width: 400px; }
+        .login-card h1 { font-size: 24px; font-weight: 800; text-align: center; margin-bottom: 8px; }
+        .login-card .sub { text-align: center; color: var(--dim); font-size: 13px; margin-bottom: 28px; }
+        .login-card .logo { text-align: center; font-size: 48px; margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 6px; }
+        .form-input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); font-size: 14px; font-family: inherit; outline: none; }
+        .form-input:focus { border-color: rgba(14,165,233,0.4); }
+        .btn { width: 100%; padding: 14px; border-radius: 12px; border: none; font-family: inherit; font-size: 15px; font-weight: 600; cursor: pointer; background: linear-gradient(135deg, var(--aqua), var(--teal)); color: #fff; transition: all .15s; }
+        .btn:active { transform: scale(0.97); }
+        .error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--red); padding: 12px; border-radius: 12px; font-size: 13px; text-align: center; margin-bottom: 16px; }
+        .hint { text-align: center; color: var(--dim); font-size: 12px; margin-top: 16px; }
+        .loading { text-align: center; padding: 20px; color: var(--dim); font-size: 14px; }
+    </style>
+</head>
+<body>
+<div class="login-card">
+    <div class="logo">💧</div>
+    <h1>WaterPrize</h1>
+    <p class="sub">Панель управления</p>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form id="loginForm" method="POST" action="/admin/login">
+        <div class="form-group">
+            <label>Telegram ID</label>
+            <input type="number" name="telegram_id" id="telegramIdInput" class="form-input" placeholder="Ваш Telegram ID" required>
+        </div>
+        <button type="submit" class="btn">Войти</button>
+    </form>
+    <div class="hint">Введите ваш Telegram ID, указанный при регистрации</div>
+    <div id="autoStatus" class="loading" style="display:none;">⏳ Автоматический вход...</div>
+</div>
+<script>
+(async function() {
+    try {
+        const tg = window.Telegram?.WebApp;
+        if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            const userId = tg.initDataUnsafe.user.id;
+            document.getElementById('autoStatus').style.display = 'block';
+            document.querySelector('button').disabled = true;
+            const resp = await fetch('/admin/auto-login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({telegram_id: userId})
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                sessionStorage.setItem('admin_token', data.token);
+                window.location.href = '/admin?page=dashboard&token=' + data.token;
+            } else {
+                document.getElementById('autoStatus').textContent = '❌ Доступ запрещён';
+                document.querySelector('button').disabled = false;
+            }
+        }
+    } catch(e) {
+        console.log('Auto-login error:', e);
+    }
+})();
+</script>
+</body>
+</html>

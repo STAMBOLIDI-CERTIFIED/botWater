@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QR Scanner</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: var(--tg-theme-bg-color, #fff);
+            color: var(--tg-theme-text-color, #000);
+            font-family: -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            gap: 24px;
+            padding: 32px 20px;
+        }
+        .icon { font-size: 72px; }
+        h1 { font-size: 20px; font-weight: 600; text-align: center; }
+        p { font-size: 14px; color: var(--tg-theme-hint-color, #888); text-align: center; }
+        button {
+            width: 100%;
+            max-width: 280px;
+            padding: 16px;
+            border-radius: 14px;
+            border: none;
+            background: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #fff);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #result {
+            display: none;
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            max-width: 320px;
+            word-break: break-all;
+            font-size: 14px;
+        }
+        #reader {
+            width: 100%;
+            max-width: 320px;
+            display: none;
+        }
+        #reader video {
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="icon">📷</div>
+<h1>Сканер QR-кодов</h1>
+<p>Нажмите кнопку, наведите камеру на QR-код</p>
+<button id="scanBtn" onclick="startScan()">Открыть сканер</button>
+<div id="reader"></div>
+<div id="result"></div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => {
+        stopScanner();
+        tg.close();
+    });
+
+    let html5QrCode = null;
+
+    function handleResult(data) {
+        const resultDiv = document.getElementById('result');
+        const scanBtn = document.getElementById('scanBtn');
+        resultDiv.style.display = 'block';
+        resultDiv.textContent = '✅ ' + data;
+        scanBtn.textContent = 'Открыть сканер';
+        scanBtn.disabled = false;
+        stopScanner();
+
+        if (tg.initDataUnsafe) {
+            tg.sendData(data);
+        }
+    }
+
+    function stopScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().catch(() => {});
+        }
+        document.getElementById('reader').style.display = 'none';
+    }
+
+    function startScan() {
+        if (tg.initDataUnsafe && typeof tg.showScanQrPopup === 'function') {
+            tg.showScanQrPopup(
+                { text: 'Наведите камеру на QR-код' },
+                function(data) {
+                    if (data) {
+                        handleResult(data);
+                        tg.closeScanQrPopup();
+                        return true;
+                    }
+                    return false;
+                }
+            );
+            return;
+        }
+
+        const scanBtn = document.getElementById('scanBtn');
+        const readerDiv = document.getElementById('reader');
+        scanBtn.textContent = 'Идёт сканирование...';
+        scanBtn.disabled = true;
+        readerDiv.style.display = 'block';
+
+        html5QrCode = new Html5Qrcode('reader');
+        html5QrCode.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => handleResult(decodedText),
+            () => {}
+        ).catch(() => {
+            scanBtn.textContent = '⚠️ Камера недоступна';
+            scanBtn.disabled = false;
+            readerDiv.style.display = 'none';
+        });
+    }
+</script>
+</body>
+</html>

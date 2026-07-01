@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaterPrize Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #05050A; --surface: rgba(255,255,255,0.04); --border: rgba(255,255,255,0.06);
+            --text: #E8F4FD; --dim: #5B8DAE; --muted: #2A3A4A;
+            --aqua: #0EA5E9; --teal: #14B8A6; --gold: #F59E0B; --green: #10B981; --red: #EF4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; min-height: 100vh; }
+        .sidebar { width: 240px; background: #0A0E18; border-right: 1px solid var(--border); padding: 24px 0; flex-shrink: 0; display: flex; flex-direction: column; transition: transform .25s ease; }
+        .sidebar-logo { padding: 0 20px 24px; display: flex; align-items: center; gap: 10px; }
+        .sidebar-logo .ico { font-size: 24px; }
+        .sidebar-logo .txt { font-size: 16px; font-weight: 800; }
+        .sidebar-logo .txt span { background: linear-gradient(135deg, var(--aqua), var(--teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sidebar nav { flex: 1; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 12px 20px; font-size: 14px; font-weight: 500; color: var(--dim); cursor: pointer; text-decoration: none; transition: all .15s; border-left: 3px solid transparent; }
+        .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.02); }
+        .nav-item.active { color: var(--aqua); border-left-color: var(--aqua); background: rgba(14,165,233,0.05); }
+        .nav-item .icon { font-size: 18px; width: 24px; text-align: center; }
+        .sidebar-footer { padding: 16px 20px; border-top: 1px solid var(--border); }
+        .sidebar-footer a { color: var(--red); font-size: 13px; text-decoration: none; }
+        .hamburger { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; width: 42px; height: 42px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.15); background: #0F1420; color: var(--text); font-size: 22px; cursor: pointer; align-items: center; justify-content: center; box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+        .hamburger:hover { background: #1A1F30; }
+        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; }
+        .main { flex: 1; padding: 32px; overflow-y: auto; min-width: 0; }
+        .main h2 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+        .main .sub { font-size: 13px; color: var(--dim); margin-bottom: 24px; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; position: relative; overflow: hidden; }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .stat-card.aqua::before { background: linear-gradient(90deg, var(--aqua), var(--teal)); }
+        .stat-card.teal::before { background: linear-gradient(90deg, var(--teal), var(--green)); }
+        .stat-card.gold::before { background: linear-gradient(90deg, var(--gold), #D97706); }
+        .stat-card.red::before { background: linear-gradient(90deg, var(--red), #DC2626); }
+        .stat-card.purple::before { background: linear-gradient(90deg, #8B5CF6, #6D28D9); }
+        .stat-card.pink::before { background: linear-gradient(90deg, #EC4899, #BE185D); }
+        .stat-card .label { font-size: 12px; color: var(--dim); margin-bottom: 8px; }
+        .stat-card .val { font-size: 28px; font-weight: 800; word-break: break-word; }
+        .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; margin-bottom: 24px; }
+        .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .table-header h3 { font-size: 16px; font-weight: 700; white-space: nowrap; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 12px 16px; font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        td { padding: 12px 16px; font-size: 13px; border-bottom: 1px solid var(--border); word-break: break-word; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: rgba(255,255,255,0.01); }
+        td code { font-size: 11px; word-break: break-all; }
+        .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .badge-active { background: rgba(16,185,129,0.1); color: var(--green); }
+        .badge-pending { background: rgba(245,158,11,0.1); color: var(--gold); }
+        .badge-used { background: rgba(239,68,68,0.1); color: var(--red); }
+        .badge-won { background: rgba(14,165,233,0.1); color: var(--aqua); }
+        .btn { padding: 10px 20px; border-radius: 10px; border: none; font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; justify-content: center; gap: 4px; text-decoration: none; white-space: nowrap; }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: linear-gradient(135deg, var(--aqua), var(--teal)); color: #fff; }
+        .btn-danger { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+        .btn-success { background: rgba(16,185,129,0.15); color: var(--green); border: 1px solid rgba(16,185,129,0.2); }
+        .btn-sm { padding: 6px 14px; font-size: 12px; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--dim); margin-bottom: 6px; }
+        .form-input { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: rgba(255,255,255,0.03); color: var(--text); font-size: 14px; font-family: inherit; outline: none; }
+        .form-input:focus { border-color: rgba(14,165,233,0.4); }
+        .form-input-sm { padding: 8px 12px; font-size: 13px; }
+        textarea.form-input { min-height: 120px; resize: vertical; }
+        .form-inline { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+        .form-inline .form-group { margin-bottom: 0; }
+        .form-inline .form-input { width: auto; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; padding: 12px; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #0F1420; border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; }
+        .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+        .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; }
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .search-bar input { flex: 1; min-width: 160px; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; font-family: inherit; outline: none; }
+        .search-bar input:focus { border-color: rgba(14,165,233,0.4); }
+        .empty { text-align: center; padding: 48px; color: var(--dim); }
+        .success-msg { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.2); color: var(--green); padding: 12px 16px; border-radius: 12px; margin-bottom: 20px; font-size: 14px; word-break: break-word; }
+        .actions-cell { white-space: nowrap; }
+        .actions-cell .btn + .btn { margin-left: 6px; }
+        .table-scroll { overflow-x: auto; }
+        @media (max-width: 1024px) { .stats { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); } .main { padding: 24px 20px; } }
+        @media (max-width: 768px) {
+            .hamburger { display: flex; }
+            .sidebar { position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; transform: translateX(-100%); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            body { flex-direction: column; }
+            .main { padding: 60px 14px 20px; }
+            .stats { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 480px) { .stats { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+        <span class="ico">💧</span>
+        <span class="txt"><span>WP</span></span>
+    </div>
+    <nav>
+        <a class="nav-item {{ 'active' if page == 'dashboard' else '' }}" href="/admin?page=dashboard" onclick="closeSidebar()"><span class="icon">📊</span><span>Дашборд</span></a>
+        <a class="nav-item {{ 'active' if page == 'users' else '' }}" href="/admin?page=users" onclick="closeSidebar()"><span class="icon">👥</span><span>Пользователи</span></a>
+        <a class="nav-item {{ 'active' if page == 'codes' else '' }}" href="/admin?page=codes" onclick="closeSidebar()"><span class="icon">📱</span><span>QR-коды</span></a>
+        <a class="nav-item {{ 'active' if page == 'raffles' else '' }}" href="/admin?page=raffles" onclick="closeSidebar()"><span class="icon">🎰</span><span>Розыгрыши</span></a>
+        <a class="nav-item {{ 'active' if page == 'payouts' else '' }}" href="/admin?page=payouts" onclick="closeSidebar()"><span class="icon">💸</span><span>Выплаты</span></a>
+        <a class="nav-item {{ 'active' if page == 'points' else '' }}" href="/admin?page=points" onclick="closeSidebar()"><span class="icon">💰</span><span>Баллы</span></a>
+        <a class="nav-item {{ 'active' if page == 'prizes' else '' }}" href="/admin?page=prizes" onclick="closeSidebar()"><span class="icon">🎁</span><span>Призы</span></a>
+        <a class="nav-item {{ 'active' if page == 'orders' else '' }}" href="/admin?page=orders" onclick="closeSidebar()"><span class="icon">📦</span><span>Заказы</span></a>
+        <a class="nav-item {{ 'active' if page == 'bottles' else '' }}" href="/admin?page=bottles" onclick="closeSidebar()"><span class="icon">🍾</span><span>Бутылки</span></a>
+        <a class="nav-item {{ 'active' if page == 'admins' else '' }}" href="/admin?page=admins" onclick="closeSidebar()"><span class="icon">🔐</span><span>Админы</span></a>
+    </nav>
+    <div class="sidebar-footer">
+        <a href="/admin/logout">↪ Выйти</a>
+    </div>
+</aside>
+<main class="main">
+{% if success_msg %}
+<div class="success-msg">{{ success_msg }}</div>
+{% endif %}
+{% block content %}{% endblock %}
+</main>
+<script>
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('open');
+}
+(function() {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+        sessionStorage.setItem('admin_token', token);
+    }
+    const stored = sessionStorage.getItem('admin_token');
+    if (stored) {
+        document.querySelectorAll('a[href^="/admin"]').forEach(function(a) {
+            var url = new URL(a.href, window.location.origin);
+            if (!url.searchParams.has('token')) {
+                url.searchParams.set('token', stored);
+                a.href = url.toString();
+            }
+        });
+    }
+})();
+</script>
+</body>
+</html>

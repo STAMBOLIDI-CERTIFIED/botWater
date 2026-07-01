@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>📊 Дашборд</h2>
+<p class="sub">Общая статистика системы</p>
+<div class="stats">
+    <div class="stat-card aqua"><div class="label">Пользователи</div><div class="val">{{ stats.total_users }}</div></div>
+    <div class="stat-card teal"><div class="label">Активные QR-коды</div><div class="val">{{ stats.active_codes }}</div></div>
+    <div class="stat-card gold"><div class="label">Розыгрыши (всего)</div><div class="val">{{ stats.total_raffles }}</div></div>
+    <div class="stat-card purple"><div class="label">Завершено розыгрышей</div><div class="val">{{ stats.completed_raffles }}</div></div>
+    <div class="stat-card pink"><div class="label">Свободные бутылки</div><div class="val">{{ stats.unassigned_bottles }}</div></div>
+    <div class="stat-card red"><div class="label">Назначенные бутылки</div><div class="val">{{ stats.assigned_bottles }}</div></div>
+</div>
+{% endblock %}

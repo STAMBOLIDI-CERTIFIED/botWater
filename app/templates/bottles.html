@@ -1,0 +1,86 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>🍾 Бутылки</h2>
+<p class="sub">Всего: <b>{{ total }}</b></p>
+<div class="table-wrap">
+    <div class="table-header"><h3>Генерация бутылок</h3></div>
+    <div style="padding:16px 20px">
+        <form method="POST" class="form-inline">
+            <div class="form-group"><label>Количество</label><input type="number" name="count" class="form-input form-input-sm" value="100" min="1" max="10000" required></div>
+            <div class="form-group"><label>Партия (месяц)</label><input type="text" name="batch" class="form-input form-input-sm" placeholder="01" required></div>
+            <div class="form-group"><label>Год</label><input type="text" name="year" class="form-input form-input-sm" value="2025" required></div>
+            <button type="submit" name="generate_bottles" class="btn btn-primary">⚡ Сгенерировать</button>
+        </form>
+    </div>
+</div>
+<div class="table-wrap">
+    <div class="table-header"><h3>Партии</h3></div>
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>Год</th><th>Партия</th><th>Количество</th><th>Действия</th></tr></thead>
+        <tbody>
+        {% for b in batches %}
+        <tr>
+            <td>{{ b.year }}</td>
+            <td>{{ b.batch }}</td>
+            <td><b>{{ b.count }}</b></td>
+            <td class="actions-cell">
+                <a href="/admin?page=bottles&batch={{ b.batch }}" class="btn btn-sm btn-primary">👁️</a>
+                <a href="/admin/download/qr_zip?batch={{ b.year }}&sub={{ b.batch }}" class="btn btn-sm btn-success">📦 ZIP</a>
+                <a href="/admin/download/pdf?batch={{ b.year }}&sub={{ b.batch }}" class="btn btn-sm btn-success">📄 PDF</a>
+                <form method="POST" style="display:inline">
+                    <input type="hidden" name="year" value="{{ b.year }}">
+                    <input type="hidden" name="batch" value="{{ b.batch }}">
+                    <button type="submit" name="delete_batch" class="btn btn-sm btn-danger">🗑️</button>
+                </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="empty">Нет партий</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+<div class="search-bar">
+    <form method="GET" action="/admin" style="display:flex;gap:10px;width:100%;flex-wrap:wrap;">
+        <input type="hidden" name="page" value="bottles">
+        <input type="text" name="search" placeholder="Поиск по ID, партии, году..." style="flex:1;min-width:160px;padding:12px 16px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;font-family:inherit;outline:none;">
+        <button type="submit" class="btn btn-primary btn-sm">🔍 Поиск</button>
+        <a href="/admin?page=bottles" class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--dim);">Сброс</a>
+    </form>
+</div>
+<div class="table-wrap">
+    <div class="table-header"><h3>Бутылки</h3>
+        <div style="display:flex;gap:8px;">
+            <a href="/admin?page=bottles&sort=bottle_id&dir=ASC" class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border);">↑ ID</a>
+            <a href="/admin?page=bottles&sort=bottle_id&dir=DESC" class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border);">↓ ID</a>
+        </div>
+    </div>
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>ID бутылки</th><th>Партия</th><th>Год</th><th>Назначена</th><th>Дата</th><th>Действия</th></tr></thead>
+        <tbody>
+        {% for b in bottles %}
+        <tr>
+            <td><code>{{ b.bottle_id }}</code></td>
+            <td>{{ b.batch or '—' }}</td>
+            <td>{{ b.year or '—' }}</td>
+            <td>{% if b.assigned_to %}✅ {{ b.assigned_to }}{% else %}🔓{% endif %}</td>
+            <td>{{ b.created_at.strftime('%d.%m.%Y') if b.created_at else '—' }}</td>
+            <td class="actions-cell">
+                <a href="/admin/download/single?id={{ b.bottle_id }}" class="btn btn-sm btn-primary">🖼️ PNG</a>
+                <form method="POST" style="display:inline">
+                    <input type="hidden" name="bottle_id" value="{{ b.bottle_id }}">
+                    <button type="submit" name="delete_bottle" class="btn btn-sm btn-danger">🗑️</button>
+                </form>
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="empty">Нет бутылок</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}

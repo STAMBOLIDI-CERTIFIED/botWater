@@ -1,0 +1,45 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>🔐 Администраторы</h2>
+<p class="sub">Управление доступом к админ-панели</p>
+<div class="table-wrap">
+    <div class="table-header"><h3>Добавить администратора</h3></div>
+    <div style="padding:16px 20px">
+        <form method="POST" class="form-inline">
+            <div class="form-group"><label>Telegram ID</label><input type="number" name="tg_id" class="form-input form-input-sm" required placeholder="Telegram ID"></div>
+            <div class="form-group"><label>Имя</label><input type="text" name="name" class="form-input form-input-sm" placeholder="Имя"></div>
+            <button type="submit" name="add_admin" class="btn btn-primary">➕ Добавить</button>
+        </form>
+    </div>
+</div>
+<div class="table-wrap">
+    <div class="table-header"><h3>Список администраторов</h3></div>
+    <div class="table-scroll">
+    <table>
+        <thead><tr><th>ID</th><th>Telegram ID</th><th>Имя</th><th>Добавлен</th><th>Действия</th></tr></thead>
+        <tbody>
+        {% for a in admins %}
+        <tr>
+            <td>{{ a.id }}</td>
+            <td><code>{{ a.telegram_id }}</code> {% if a.telegram_id == superadmin_id %}⭐{% endif %}</td>
+            <td>{{ a.name or '—' }}</td>
+            <td>{{ a.created_at.strftime('%d.%m.%Y') if a.created_at else '—' }}</td>
+            <td class="actions-cell">
+                {% if a.telegram_id != superadmin_id %}
+                <form method="POST" style="display:inline">
+                    <input type="hidden" name="tg_id" value="{{ a.telegram_id }}">
+                    <button type="submit" name="remove_admin" class="btn btn-sm btn-danger">🗑️</button>
+                </form>
+                {% else %}
+                <span class="badge badge-active">Супер-админ</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="empty">Нет администраторов</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</div>
+{% endblock %}
