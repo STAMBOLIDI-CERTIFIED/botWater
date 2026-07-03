@@ -1,6 +1,5 @@
 .git
 .gitignore
-.env
 .env.example
 .idea
 __pycache__
