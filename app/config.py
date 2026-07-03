@@ -22,13 +22,24 @@ def _load_dotenv():
             val = val.strip().strip("\"'")
             if key and not os.environ.get(key):
                 os.environ[key] = val
+    prod_path = Path(__file__).parent.parent / "prod.env"
+    if prod_path.exists():
+        for line in prod_path.read_text().splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key = key.strip()
+            val = val.strip().strip("\"'")
+            if key and not os.environ.get(key):
+                os.environ[key] = val
     _load_dotenv_done = True
 
 
 @lru_cache
 def get_settings():
     _load_dotenv()
-    bot_token = os.environ["BOT_TOKEN"]
+    bot_token = os.environ.get("BOT_TOKEN") or os.environ.get("API_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN") or ""
     domain = os.environ.get("DOMAIN", "localhost:8080")
     parsed = urlparse(domain)
     scheme = "https" if parsed.scheme == "https" else ("https" if "trycloudflare" in domain or "bothost" in domain or "waterprize" in domain else "http")
