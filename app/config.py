@@ -67,4 +67,6 @@ def get_settings():
         "ADMIN_IDS": admin_ids,
         "SUPERADMIN_ID": 818439646,
         "PORT": int(os.environ.get("PORT", 8080)),
+        "SUPABASE_URL": os.environ.get("SUPABASE_URL", ""),
+        "SUPABASE_KEY": os.environ.get("SUPABASE_KEY", ""),
     }
