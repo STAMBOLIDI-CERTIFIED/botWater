@@ -81,6 +81,7 @@ async def _setup_bot_commands():
     s = get_settings()
     token = s["BOT_TOKEN"]
     api = f"https://api.telegram.org/bot{token}"
+    domain = s["DOMAIN"]
     async with httpx.AsyncClient() as client:
         await client.post(f"{api}/setMyCommands", json={
             "commands": [
@@ -97,6 +98,9 @@ async def _setup_bot_commands():
                 "web_app": {"url": s["WEBAPP_URL"]},
             },
         })
+        webhook_url = f"{domain}/webhook"
+        await client.post(f"{api}/setWebhook", json={"url": webhook_url})
+        logger.info(f"Webhook set to {webhook_url}")
         logger.info("Bot commands and menu button set")
 
 # ─── Webhook ────────────────────────────────────────────
