@@ -187,6 +187,14 @@ async def handle_message(db, msg: dict):
             await send_message(chat_id, "✅ Номер сохранён!", reply_markup={"remove_keyboard": True})
         return
 
+    if text.startswith("/start"):
+        payload = ""
+        if " " in text:
+            payload = text.split(" ", 1)[1]
+        if user and user.get("step") not in ("start", None):
+            await handle_start(db, chat_id, user, payload)
+            return
+
     if not user:
         user = await db.create_user(chat_id, text if text and not text.startswith("/") else "")
 
@@ -203,6 +211,9 @@ async def handle_message(db, msg: dict):
         return
 
     if step == "ask_name":
+        if text.startswith("/"):
+            await send_message(chat_id, "⚠️ Пожалуйста, введите ваше имя (не команду):")
+            return
         await db.update_user_name(chat_id, text)
         await db.update_user_step(chat_id, "ask_phone")
         await send_message(
@@ -257,13 +268,6 @@ async def handle_message(db, msg: dict):
         return
 
     # ── Commands ──
-    if text.startswith("/start"):
-        payload = ""
-        if " " in text:
-            payload = text.split(" ", 1)[1]
-        await handle_start(db, chat_id, user, payload)
-        return
-
     if text == "/profile":
         await show_profile(db, chat_id, user)
         return
