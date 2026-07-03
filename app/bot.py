@@ -38,11 +38,15 @@ async def answer_callback(callback_id: str, text: str = "", show_alert: bool = F
 
 # ─── Keyboards ──────────────────────────────────────────
 
-def main_menu_keyboard(webapp_url: str, is_admin: bool = False) -> dict:
+def main_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0) -> dict:
+    app_url = webapp_url
+    if chat_id:
+        sep = "&" if "?" in app_url else "?"
+        app_url = app_url + sep + "user_id=" + str(chat_id)
     kb = {
         "inline_keyboard": [
             [
-                {"text": "📱 Открыть приложение", "web_app": {"url": webapp_url}},
+                {"text": "📱 Открыть приложение", "web_app": {"url": app_url}},
             ],
             [
                 {"text": "💰 Баланс", "callback_data": "balance"},
@@ -161,8 +165,15 @@ async def handle_message(db, msg: dict):
     chat_id = msg["chat"]["id"]
     text = msg.get("text", "")
     contact = msg.get("contact")
+    web_app_data = msg.get("web_app_data")
     user = await db.get_user(chat_id)
     s = get_settings()
+
+    logger.info(f"handle_message chat_id={chat_id} text={text!r} web_app_data={web_app_data!r} user_step={user.get('step') if user else None}")
+
+    if web_app_data:
+        await handle_webapp_data(db, web_app_data.get("data", ""), chat_id)
+        return
 
     if contact and user:
         await db.update_user_phone(chat_id, contact["phone_number"])
@@ -286,12 +297,25 @@ async def handle_message(db, msg: dict):
 
 async def handle_start(db, chat_id: int, user: dict | None, payload: str):
     s = get_settings()
+    logger.info(f"handle_start chat_id={chat_id} payload={payload!r} user={user}")
     if not user:
         user = await db.create_user(chat_id, "", "start", payload)
 
-    if payload and payload.startswith("bottle_"):
-        bottle_id = payload.replace("bottle_", "", 1)
+    # Extract bottle_XXXX from payload (supports full URLs and bare codes)
+    if payload:
+        if "start=bottle_" in payload:
+            payload = payload.split("start=bottle_", 1)[1].split("&", 1)[0]
+        elif payload.startswith("bottle_"):
+            payload = payload[len("bottle_"):]
+        elif payload.startswith("BTL-"):
+            pass
+        else:
+            payload = ""
+
+    bottle_id = payload
+    if bottle_id:
         bottle = await db.get_bottle_by_code(bottle_id)
+        logger.info(f"handle_start bottle_id={bottle_id} bottle_found={bottle is not None} assigned_to={bottle.get('assigned_to') if bottle else None}")
         if not bottle:
             await send_message(chat_id, "❌ Бутылка не найдена в системе.")
             await show_main_menu(db, chat_id, user)
@@ -305,6 +329,7 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
         user_row = await db.get_user(chat_id)
         await db.assign_bottle(bottle_id, user_row["id"])
         await db.add_balance(chat_id, 10, "scan", f"Сканирование бутылки {bottle_id}")
+        await db.add_tree_xp(chat_id, 10)
         await send_message(
             chat_id,
             f"✅ <b>Бутылка зарегистрирована!</b>\n\n"
@@ -332,7 +357,7 @@ async def show_main_menu(db, chat_id: int, user: dict | None = None):
         f"Привет, {user['name'] or 'друг'}! 👋\n"
         f"💰 Баланс: <b>{user['balance']} баллов</b>\n\n"
         f"Сканируйте QR-коды на бутылках и получайте баллы!",
-        reply_markup=main_menu_keyboard(s["WEBAPP_URL"], is_admin),
+        reply_markup=main_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id),
     )
 
 
@@ -536,6 +561,7 @@ async def handle_callback(db, cbd: dict):
 
 async def handle_webapp_data(db, data: str, chat_id: int):
     s = get_settings()
+    logger.info(f"handle_webapp_data chat_id={chat_id} data={data!r}")
 
     if data == "profile":
         await show_profile(db, chat_id)

@@ -1,4 +1,5 @@
 import os
+import time
 from functools import lru_cache
 from urllib.parse import urlparse
 from pathlib import Path
@@ -33,8 +34,10 @@ def get_settings():
     scheme = "https" if parsed.scheme == "https" else ("https" if "trycloudflare" in domain or "bothost" in domain or "waterprize" in domain else "http")
     if not domain.startswith("http"):
         domain = f"{scheme}://{domain}"
-    webapp_url = os.environ.get("WEBAPP_URL", f"{domain}/index.html")
-    admin_panel_url = os.environ.get("ADMIN_PANEL_URL", f"{domain}/admin")
+    index_path = Path(__file__).parent.parent / "public" / "index.html"
+    v = str(int(index_path.stat().st_mtime)) if index_path.exists() else "1"
+    webapp_url = os.environ.get("WEBAPP_URL", f"{domain}/index.html?v={v}")
+    admin_panel_url = os.environ.get("ADMIN_PANEL_URL", f"{domain}/admin?v={v}")
     bot_username = os.environ.get("BOT_USERNAME", "WaterPrizeBot")
     admin_ids_str = os.environ.get("ADMIN_IDS", "818439646")
     admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip()]

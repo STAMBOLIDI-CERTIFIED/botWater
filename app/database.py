@@ -96,6 +96,8 @@ class Database:
                     payout_deadline TIMESTAMP,
                     created_at TIMESTAMP DEFAULT NOW()
                 );
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS tree_xp INTEGER DEFAULT 0;
+                ALTER TABLE users ADD COLUMN IF NOT EXISTS tree_level INTEGER DEFAULT 1;
                 CREATE TABLE IF NOT EXISTS admin_codes (
                     id SERIAL PRIMARY KEY,
                     code TEXT UNIQUE NOT NULL,
@@ -180,6 +182,53 @@ class Database:
         async with self.pool.acquire() as conn:
             await conn.execute("UPDATE users SET balance = $1, updated_at = NOW() WHERE telegram_id = $2", balance, telegram_id)
 
+    async def add_tree_xp(self, telegram_id: int, xp: int):
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """UPDATE users SET tree_xp = tree_xp + $1, updated_at = NOW()
+                   WHERE telegram_id = $2 RETURNING tree_xp, tree_level""",
+                xp, telegram_id,
+            )
+            if row:
+                await self._recalc_tree_level(conn, telegram_id, row["tree_xp"], row["tree_level"])
+
+    async def _recalc_tree_level(self, conn, telegram_id: int, current_xp: int, current_level: int):
+        new_level = 1
+        if current_xp >= 5000:
+            new_level = 6
+        elif current_xp >= 2000:
+            new_level = 5
+        elif current_xp >= 1000:
+            new_level = 4
+        elif current_xp >= 500:
+            new_level = 3
+        elif current_xp >= 100:
+            new_level = 2
+        if new_level != current_level:
+            await conn.execute(
+                "UPDATE users SET tree_level = $1, updated_at = NOW() WHERE telegram_id = $2",
+                new_level, telegram_id,
+            )
+
+    async def get_tree_state(self, telegram_id: int) -> dict:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT tree_xp, tree_level FROM users WHERE telegram_id = $1", telegram_id,
+            )
+            if not row:
+                return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0}
+            current_xp = row["tree_xp"] or 0
+            level = row["tree_level"] or 1
+            thresholds = {1: 100, 2: 500, 3: 1000, 4: 2000, 5: 5000, 6: 999999}
+            next_xp = thresholds.get(level, 100)
+            if level >= 6:
+                next_xp = thresholds[5]
+                progress = 100
+            else:
+                prev = thresholds.get(level - 1, 0) if level > 1 else 0
+                progress = min(100, int((current_xp - prev) / (next_xp - prev) * 100)) if next_xp > prev else 100
+            return {"xp": current_xp, "level": level, "next_level_xp": next_xp, "progress": progress}
+
     async def get_all_users(self) -> list[dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("SELECT * FROM users ORDER BY id DESC")
@@ -189,8 +238,8 @@ class Database:
         async with self.pool.acquire() as conn:
             user = await conn.fetchrow("SELECT balance FROM users WHERE telegram_id = $1", telegram_id)
             scan_count = await conn.fetchval(
-                """SELECT COUNT(*) FROM scans s
-                   JOIN users u ON u.id = s.user_id
+                """SELECT COUNT(*) FROM bottles b
+                   JOIN users u ON u.id = b.assigned_to
                    WHERE u.telegram_id = $1""", telegram_id)
             return {"balance": user["balance"] if user else 0, "total_scans": scan_count or 0}
 
@@ -280,12 +329,11 @@ class Database:
     async def get_scans(self, telegram_id: int) -> list[dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("""
-                SELECT s.*, q.code, q.batch, u.name as user_name
-                FROM scans s
-                JOIN qr_codes q ON q.id = s.code_id
-                JOIN users u ON u.id = s.user_id
+                SELECT b.bottle_id as code, b.batch, b.assigned_at as scanned_at
+                FROM bottles b
+                JOIN users u ON u.id = b.assigned_to
                 WHERE u.telegram_id = $1
-                ORDER BY s.scanned_at DESC
+                ORDER BY b.assigned_at DESC
             """, telegram_id)
             return [dict(r) for r in rows]
 

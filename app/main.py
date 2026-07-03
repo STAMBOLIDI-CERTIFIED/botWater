@@ -16,6 +16,7 @@ from datetime import datetime
 from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 class SafeJinja2Templates:
@@ -34,9 +35,22 @@ from .config import get_settings
 from .database import Database
 from . import bot
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="WaterPrize")
+
+class NoCacheMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if "text/html" in response.headers.get("content-type", ""):
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
+app.add_middleware(NoCacheMiddleware)
+
 db = Database()
 
 BASE_DIR = Path(__file__).parent.parent
@@ -145,6 +159,38 @@ async def api_points_log(user_id: int = 0):
     if not user_id:
         return []
     return await db.get_points_log(user_id)
+
+@app.get("/api/tree")
+async def api_tree(user_id: int = 0):
+    if not user_id:
+        return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0}
+    return await db.get_tree_state(user_id)
+
+@app.post("/api/scan")
+async def api_scan(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    bottle_id = body.get("bottle_id", "")
+    if not user_id or not bottle_id:
+        return JSONResponse({"ok": False, "error": "missing user_id or bottle_id"}, status_code=400)
+
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+
+    bottle = await db.get_bottle_by_code(bottle_id)
+    if not bottle:
+        return JSONResponse({"ok": False, "error": "bottle not found"}, status_code=404)
+    if bottle.get("assigned_to"):
+        return JSONResponse({"ok": False, "error": "already scanned"}, status_code=409)
+
+    await db.assign_bottle(bottle_id, user["id"])
+    await db.add_balance(user_id, 10, "scan", f"Сканирование бутылки {bottle_id}")
+    await db.add_tree_xp(user_id, 10)
+
+    stats = await db.get_user_stats(user_id)
+    tree = await db.get_tree_state(user_id)
+    return {"ok": True, "balance": stats["balance"], "total_scans": stats["total_scans"], "xp": tree["xp"], "level": tree["level"]}
 
 # ─── Admin Auth ────────────────────────────────────────
 
@@ -408,6 +454,14 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
             label = "Начислено" if amount > 0 else "Списано"
             await bot.send_message(tg_id, f"{'💰' if amount > 0 else '💸'} <b>{label} {abs(amount)} баллов</b>\nПричина: {reason}")
             return r(f"{label} {abs(amount)} баллов")
+        if "adjust_xp" in form:
+            tg_id = int(form["telegram_id_xp"])
+            xp = int(form["xp_amount"])
+            reason = form.get("xp_reason", "Начисление опыта")
+            await db.add_tree_xp(tg_id, xp)
+            label = "Начислено" if xp > 0 else "Списано"
+            await bot.send_message(tg_id, f"{'🌳' if xp > 0 else '🍂'} <b>{label} {abs(xp)} XP</b>\nПричина: {reason}")
+            return r(f"{label} {abs(xp)} XP")
 
     elif page == "bottles":
         if "generate_bottles" in form:
@@ -567,6 +621,13 @@ async def health():
 static_dir = BASE_DIR / "public"
 if static_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+
+    @app.get("/index.html")
+    async def index_html():
+        file_path = static_dir / "index.html"
+        if file_path.exists():
+            return HTMLResponse(content=file_path.read_text(encoding="utf-8"))
+        return HTMLResponse(content="Not found", status_code=404)
 
 # ─── Entry ─────────────────────────────────────────────
 

@@ -1,9 +1,9 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>💰 Баллы</h2>
-<p class="sub">Управление баллами пользователей</p>
+<h2>💰 Баллы и Опыт</h2>
+<p class="sub">Управление баллами и опытом деревьев пользователей</p>
 <div class="table-wrap">
-    <div class="table-header"><h3>Начисление / списание</h3></div>
+    <div class="table-header"><h3>Начисление / списание баллов</h3></div>
     <div style="padding:16px 20px">
         <form method="POST" class="form-inline">
             <div class="form-group"><label>Telegram ID</label><input type="number" name="telegram_id" class="form-input form-input-sm" required placeholder="Telegram ID"></div>
@@ -14,10 +14,21 @@
     </div>
 </div>
 <div class="table-wrap">
-    <div class="table-header"><h3>Пользователи (по балансу)</h3></div>
+    <div class="table-header"><h3>🌳 Начисление опыта дерева</h3></div>
+    <div style="padding:16px 20px">
+        <form method="POST" class="form-inline">
+            <div class="form-group"><label>Telegram ID</label><input type="number" name="telegram_id_xp" class="form-input form-input-sm" required placeholder="Telegram ID"></div>
+            <div class="form-group"><label>Опыт (XP)</label><input type="number" name="xp_amount" class="form-input form-input-sm" required placeholder="+500"></div>
+            <div class="form-group"><label>Причина</label><input type="text" name="xp_reason" class="form-input form-input-sm" placeholder="Начисление опыта"></div>
+            <button type="submit" name="adjust_xp" class="btn btn-primary">🌳 Начислить XP</button>
+        </form>
+    </div>
+</div>
+<div class="table-wrap">
+    <div class="table-header"><h3>Пользователи</h3></div>
     <div class="table-scroll">
     <table>
-        <thead><tr><th>ID</th><th>Telegram ID</th><th>Имя</th><th>Баланс</th></tr></thead>
+        <thead><tr><th>ID</th><th>Telegram ID</th><th>Имя</th><th>Баланс</th><th>XP</th><th>Ур.</th></tr></thead>
         <tbody>
         {% for u in users|sort(attribute='balance', reverse=True) %}
         <tr>
@@ -25,9 +36,11 @@
             <td><code>{{ u.telegram_id }}</code></td>
             <td>{{ u.name or '—' }}</td>
             <td><b>{{ u.balance }}</b></td>
+            <td><b>{{ u.tree_xp or 0 }}</b></td>
+            <td>{{ u.tree_level or 1 }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="4" class="empty">Нет пользователей</td></tr>
+        <tr><td colspan="6" class="empty">Нет пользователей</td></tr>
         {% endfor %}
         </tbody>
     </table>
