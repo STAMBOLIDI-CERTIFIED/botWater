@@ -619,12 +619,12 @@
     <div class="splash-dots"><span></span><span></span><span></span></div>
 </div>
 <script>
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        var s = document.getElementById('splash');
-        if (s) { s.classList.add('hide'); setTimeout(function(){ s.remove(); }, 600); }
-    }, 1000);
-});
+function hideSplash() {
+    var s = document.getElementById('splash');
+    if (s) { s.classList.add('hide'); setTimeout(function(){ s.remove(); }, 600); }
+}
+window.addEventListener('load', function() { setTimeout(hideSplash, 1000); });
+setTimeout(hideSplash, 3000);
 </script>
 
 <!-- ГЛАВНОЕ МЕНЮ -->
