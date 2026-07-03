@@ -24,6 +24,11 @@
             --green: #3D9E6A;
             --green-dark: #1A3D2A;
             --green-glow: rgba(61,158,106,0.12);
+            --glass-bg: rgba(26, 29, 36, 0.72);
+            --glass-border: rgba(255, 255, 255, 0.06);
+            --radius-sm: 14px;
+            --radius-md: 20px;
+            --radius-lg: 28px;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
@@ -32,7 +37,7 @@
             font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
-            padding-bottom: 90px;
+            padding-bottom: 110px;
         }
 
         /* === SPLASH === */
@@ -81,9 +86,11 @@
             40% { opacity: 1; transform: scale(1.2); }
         }
 
-        .page { display: none; padding: 0 16px 20px; animation: fadeIn .35s ease; }
-        .page.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+        .page { display: none; padding: 0 16px 20px; }
+        .page.active { display: block !important; animation: fadeIn .4s cubic-bezier(.16,1,.3,1); }
 
         /* === TOP BAR === */
         .top-bar {
@@ -106,12 +113,49 @@
             background: var(--surface);
             display: flex; align-items: center; justify-content: center;
             font-size: 18px; cursor: pointer;
+            position: relative;
         }
+        .top-bell:hover { background: var(--surface-hover); }
+        .bell-badge {
+            position: absolute; top: 4px; right: 4px;
+            min-width: 16px; height: 16px; border-radius: 8px;
+            background: #EF4444; color: #fff; font-size: 10px; font-weight: 700;
+            display: none; align-items: center; justify-content: center; padding: 0 4px;
+        }
+        .bell-badge.show { display: flex; }
+
+        .notif-dropdown {
+            position: absolute; top: calc(100% + 8px); right: 0; z-index: 200;
+            width: 320px; max-width: calc(100vw - 32px);
+            background: var(--surface-solid); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); padding: 8px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+            display: none; animation: fadeIn .2s ease;
+        }
+        .notif-dropdown.show { display: block; }
+        .notif-header { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; margin-bottom: 4px; }
+        .notif-header h4 { font-size: 14px; font-weight: 700; }
+        .notif-clear { font-size: 12px; color: var(--gold); background: none; border: none; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
+        .notif-clear:active { background: var(--surface-hover); }
+        .notif-list { max-height: 360px; overflow-y: auto; }
+        .notif-item { display: flex; gap: 10px; padding: 12px; border-radius: var(--radius-sm); background: var(--surface); margin-bottom: 8px; cursor: pointer; transition: background .2s; }
+        .notif-item:last-child { margin-bottom: 0; }
+        .notif-item:active { background: var(--surface-hover); }
+        .notif-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+        .notif-icon.scan { background: var(--gold-glow); color: var(--gold); }
+        .notif-icon.points { background: var(--green-glow); color: var(--green); }
+        .notif-icon.raffle { background: rgba(139,92,246,0.15); color: #8B5CF6; }
+        .notif-content { flex: 1; min-width: 0; }
+        .notif-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+        .notif-desc { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .notif-time { font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+        .notif-empty { text-align: center; padding: 24px 16px; color: var(--text-dim); font-size: 13px; }
+        .notif-loading { text-align: center; padding: 24px; color: var(--text-dim); font-size: 13px; }
 
         /* === BANNER === */
         .banner {
             background: linear-gradient(135deg, #1A1D24, #252830);
-            border-radius: 20px;
+            border-radius: var(--radius-lg);
             padding: 20px 22px;
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 24px;
@@ -130,7 +174,7 @@
         .banner-text .banner-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
         .banner-arrow {
             width: 36px; height: 36px; border-radius: 50%;
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.08);
             display: flex; align-items: center; justify-content: center;
             color: #fff; font-size: 14px; position: relative; z-index: 1;
         }
@@ -146,28 +190,41 @@
         .card {
             background: var(--surface-solid);
             border: 1px solid var(--border);
-            border-radius: 18px;
-            padding: 18px 16px;
+            border-radius: var(--radius-lg);
+            padding: 20px 18px;
             cursor: pointer;
-            transition: transform .2s ease;
+            transition: all .3s cubic-bezier(.16,1,.3,1);
             position: relative; overflow: hidden;
         }
-        .card:active { transform: scale(0.97); }
-        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .card.anim-in {
+            animation: slideUp .5s cubic-bezier(.16,1,.3,1) both;
+            animation-delay: calc(var(--i, 0) * 80ms);
+        }
+        .card:active { transform: scale(0.96); }
+        .card::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent 50%);
+            pointer-events: none;
+        }
+        .card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+        }
+        .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
         .card-label { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; }
         .card-arrow {
-            width: 28px; height: 28px; border-radius: 8px;
+            width: 30px; height: 30px; border-radius: 10px;
             background: var(--gold-glow);
             display: flex; align-items: center; justify-content: center;
-            font-size: 12px; color: var(--gold); flex-shrink: 0;
+            font-size: 14px; color: var(--gold); flex-shrink: 0;
         }
-        .card-value { font-size: 26px; font-weight: 800; color: var(--gold); line-height: 1; }
-        .card-unit { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+        .card-value { font-size: 28px; font-weight: 800; color: var(--gold); line-height: 1; letter-spacing: -0.5px; }
+        .card-unit { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
 
         /* === FULL CARD === */
         .card-full {
             grid-column: 1 / -1;
-            display: flex; align-items: center; gap: 16px;
+            display: flex; align-items: center; gap: 18px;
         }
         .card-full .card-left { flex: 1; }
         .card-full .card-tag {
@@ -181,13 +238,13 @@
         .card-full .card-btn {
             background: var(--gold);
             color: #fff;
-            border: none; border-radius: 10px;
-            padding: 8px 16px;
+            border: none; border-radius: var(--radius-sm);
+            padding: 9px 18px;
             font-family: inherit; font-size: 12px; font-weight: 700;
             cursor: pointer; margin-top: 10px;
         }
         .card-full .card-img {
-            width: 80px; height: 80px; border-radius: 16px;
+            width: 84px; height: 84px; border-radius: var(--radius-md);
             background: rgba(255,255,255,0.04);
             display: flex; align-items: center; justify-content: center;
             font-size: 36px; flex-shrink: 0;
@@ -197,14 +254,16 @@
         .activity-card {
             background: var(--surface-solid);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--radius-md);
             padding: 16px 18px;
             display: flex; align-items: center; gap: 14px;
             margin-bottom: 8px;
             cursor: pointer;
+            transition: all .2s ease;
         }
+        .activity-card:active { transform: scale(0.98); }
         .activity-icon {
-            width: 42px; height: 42px; border-radius: 14px;
+            width: 44px; height: 44px; border-radius: var(--radius-sm);
             background: rgba(255,255,255,0.06);
             display: flex; align-items: center; justify-content: center;
             font-size: 20px; flex-shrink: 0;
@@ -215,80 +274,106 @@
         .activity-arrow { color: var(--text-dim); font-size: 14px; }
 
         /* === STATS ROW === */
-        .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 20px; }
+        .stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .stat-pill {
             background: var(--surface-solid);
             border: 1px solid var(--border);
-            border-radius: 14px;
-            padding: 14px 8px;
+            border-radius: var(--radius-md);
+            padding: 16px 8px;
             text-align: center;
+            position: relative; overflow: hidden;
         }
-        .stat-pill .sp-icon { font-size: 16px; margin-bottom: 4px; }
-        .stat-pill .sp-val { font-size: 18px; font-weight: 800; }
-        .stat-pill .sp-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+        .stat-pill.anim-in {
+            animation: slideUp .5s cubic-bezier(.16,1,.3,1) both;
+            animation-delay: calc(var(--i, 0) * 60ms);
+        }
+        .stat-pill:active { transform: scale(0.96); }
+        .stat-pill::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent 50%);
+            pointer-events: none;
+        }
+        .stat-pill::before {
+            content: ''; position: absolute; top: 0; left: 30%; right: 30%; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+        }
+        .stat-pill .sp-val { transition: all .4s ease; }
+        .stat-pill .sp-icon { font-size: 18px; margin-bottom: 6px; }
+        .stat-pill .sp-val { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
+        .stat-pill .sp-label { font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
 
-        /* === BOTTOM NAV === */
+        /* === BOTTOM NAV (glassmorphism) === */
         .bottom-nav {
-            position: fixed; bottom: 0; left: 0; right: 0;
-            background: rgba(26,29,36,0.95);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid var(--border);
+            position: fixed; bottom: 12px; left: 12px; right: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius-lg);
             display: flex; justify-content: center; gap: 0;
-            padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+            padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
             z-index: 100;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.3);
         }
         .nav-item {
-            display: flex; flex-direction: column; align-items: center; gap: 3px;
-            padding: 8px 24px;
-            border-radius: 12px;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            flex: 1; padding: 10px 0;
+            border-radius: var(--radius-md);
             cursor: pointer;
-            transition: all .2s;
+            transition: all .3s ease;
             background: transparent;
             border: none;
             font-family: inherit;
             color: var(--text-dim);
+            position: relative;
         }
         .nav-item.active {
             background: var(--gold-glow);
             color: var(--gold);
         }
-        .nav-item .nav-icon { font-size: 20px; }
-        .nav-item .nav-label { font-size: 10px; font-weight: 600; }
+        .nav-item.active .nav-icon { animation: navPop .35s cubic-bezier(.16,1,.3,1); }
+        @keyframes navPop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        .nav-item:active { transform: scale(0.92); }
+        .nav-item .nav-icon { font-size: 22px; line-height: 1; transition: transform .3s ease; }
+        .nav-item .nav-label { font-size: 10px; font-weight: 600; margin-top: 2px; }
 
         /* === BACK === */
         .back-btn {
-            display: inline-flex; align-items: center; gap: 4px;
+            display: inline-flex; align-items: center; gap: 6px;
             font-size: 14px; font-weight: 600;
             color: var(--text-secondary); cursor: pointer;
             background: none; border: none; padding: 14px 0 8px;
             font-family: inherit;
+            transition: opacity .2s;
         }
+        .back-btn:active { opacity: .6; }
 
         /* === PROFILE === */
         .profile-header {
-            text-align: center; padding: 10px 0 20px;
+            text-align: center; padding: 6px 0 20px;
         }
         .profile-avatar {
-            width: 80px; height: 80px; border-radius: 50%;
+            width: 88px; height: 88px; border-radius: 50%;
             background: linear-gradient(135deg, var(--gold), var(--gold-light));
-            margin: 0 auto 12px;
+            margin: 0 auto 14px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 36px; overflow: hidden;
+            font-size: 38px; overflow: hidden;
             border: 3px solid var(--gold);
+            box-shadow: 0 0 30px rgba(201,168,76,0.15);
         }
         .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .profile-name { font-size: 20px; font-weight: 700; }
+        .profile-name { font-size: 22px; font-weight: 700; }
         .profile-id { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
         .profile-list {
             background: var(--surface-solid);
             border: 1px solid var(--border);
-            border-radius: 16px;
+            border-radius: var(--radius-lg);
             overflow: hidden;
         }
         .profile-item {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 14px 18px;
+            padding: 16px 18px;
             border-bottom: 1px solid var(--border);
         }
         .profile-item:last-child { border-bottom: none; }
@@ -298,8 +383,8 @@
         /* === SCANNER === */
         .scan-zone {
             background: var(--surface-solid);
-            border: 1px dashed rgba(201,168,76,0.3);
-            border-radius: 20px;
+            border: 1px dashed rgba(201,168,76,0.25);
+            border-radius: var(--radius-lg);
             padding: 48px 24px; text-align: center;
             margin-bottom: 16px;
         }
@@ -310,14 +395,15 @@
         @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
         .scan-zone p { font-size: 13px; color: var(--text-dim); }
 
-        #reader { width: 100%; max-width: 340px; margin: 0 auto 16px; display: none; border-radius: 16px; overflow: hidden; }
-        #reader video { border-radius: 16px !important; }
+        #reader { width: 100%; max-width: 340px; margin: 0 auto 16px; display: none; border-radius: var(--radius-md); overflow: hidden; }
+        #reader video { border-radius: var(--radius-md) !important; }
 
         .scan-result {
             display: none;
             background: var(--surface-solid);
             border: 1px solid var(--border);
-            border-radius: 20px; padding: 28px 20px;
+            border-radius: var(--radius-lg);
+            padding: 28px 20px;
             margin-bottom: 16px; text-align: center;
         }
         .scan-result.show { display: block; animation: fadeIn .35s ease; }
@@ -330,16 +416,16 @@
         .result-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 6px; }
         .result-data {
             font-size: 13px; font-weight: 500; word-break: break-all;
-            line-height: 1.6; padding: 12px;
+            line-height: 1.6; padding: 14px;
             background: rgba(255,255,255,0.03);
             border: 1px solid var(--border);
-            border-radius: 12px;
+            border-radius: var(--radius-sm);
             color: var(--text-secondary);
         }
 
         .btn {
             width: 100%; padding: 16px;
-            border-radius: 14px; border: none;
+            border-radius: var(--radius-sm); border: none;
             font-family: inherit; font-size: 15px; font-weight: 700;
             cursor: pointer; transition: all .2s;
         }
@@ -355,33 +441,36 @@
             color: var(--text);
             border: 1px solid var(--border);
         }
+        .btn-outline:active { background: var(--surface-hover); }
 
         /* === HISTORY === */
         .tab-bar { display: flex; gap: 8px; margin-bottom: 16px; }
         .tab-btn {
-            flex: 1; padding: 10px; border-radius: 12px;
+            flex: 1; padding: 11px; border-radius: var(--radius-sm);
             font-family: inherit; font-size: 13px; font-weight: 600;
             border: 1px solid var(--border);
             background: transparent;
             color: var(--text-dim);
-            cursor: pointer; transition: all .2s;
+            cursor: pointer; transition: all .25s ease;
         }
         .tab-btn.active {
             background: var(--text);
             color: var(--bg);
             border-color: var(--text);
         }
+        .tab-btn:active { opacity: .7; }
 
         .h-item {
             background: var(--surface-solid);
             border: 1px solid var(--border);
-            border-radius: 14px; padding: 14px;
+            border-radius: var(--radius-md);
+            padding: 16px;
             margin-bottom: 8px;
         }
-        .h-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .h-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
         .h-badge {
-            font-size: 10px; font-weight: 600;
-            padding: 3px 10px; border-radius: 20px;
+            font-size: 11px; font-weight: 700;
+            padding: 4px 12px; border-radius: 20px;
             background: rgba(61,158,106,0.12);
             color: var(--green);
         }
@@ -391,7 +480,7 @@
 
         .empty-state { text-align: center; padding: 48px 24px; }
         .empty-ico {
-            width: 64px; height: 64px; border-radius: 16px;
+            width: 64px; height: 64px; border-radius: var(--radius-md);
             background: var(--surface);
             display: flex; align-items: center; justify-content: center;
             font-size: 28px; margin: 0 auto 12px;
@@ -403,7 +492,7 @@
         .tree-wrap {
             background: var(--surface-solid);
             border: 1px solid var(--border);
-            border-radius: 20px;
+            border-radius: var(--radius-lg);
             padding: 28px 20px 22px;
             text-align: center;
             margin-bottom: 16px;
@@ -464,7 +553,8 @@
 
         .xp-bar-wrap {
             background: rgba(255,255,255,0.03);
-            border-radius: 14px; padding: 12px 14px;
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
             border: 1px solid var(--border);
         }
         .xp-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
@@ -472,10 +562,11 @@
         .xp-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 8px; overflow: hidden; }
         .xp-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #8B7537, var(--gold)); transition: width .6s ease; }
 
-        .tree-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .tree-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
         .tree-stat {
             background: var(--surface-solid); border: 1px solid var(--border);
-            border-radius: 14px; padding: 14px 12px; text-align: center;
+            border-radius: var(--radius-md);
+            padding: 16px 12px; text-align: center;
         }
         .tree-stat-icon { font-size: 18px; margin-bottom: 4px; }
         .tree-stat-val { font-size: 18px; font-weight: 800; }
@@ -483,7 +574,9 @@
 
         .tree-levels {
             background: var(--surface-solid);
-            border: 1px solid var(--border); border-radius: 18px; padding: 16px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 18px;
         }
         .tree-levels-title { font-size: 13px; font-weight: 600; margin-bottom: 10px; text-align: center; }
         .tree-level-item {
@@ -499,19 +592,21 @@
         .tli-xp { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
         .tli-status { font-size: 13px; }
 
-        .terms-box { margin-top: 14px; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; text-align: center; }
+        .terms-box { margin-top: 14px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); text-align: center; }
         .terms-box p { font-size: 11px; color: var(--text-dim); margin-bottom: 8px; }
         .terms-links { display: flex; gap: 8px; justify-content: center; }
         .terms-links a {
-            padding: 6px 14px; font-size: 11px; font-weight: 600;
+            padding: 7px 16px; font-size: 11px; font-weight: 600;
             border: 1px solid var(--border); border-radius: 10px;
             color: var(--text-secondary); text-decoration: none;
+            transition: all .2s;
         }
+        .terms-links a:active { background: var(--surface-hover); }
 
         .shop-balance {
-            text-align: center; padding: 12px; margin-bottom: 14px;
+            text-align: center; padding: 14px; margin-bottom: 14px;
             background: var(--surface-solid); border: 1px solid var(--border);
-            border-radius: 14px; font-size: 14px;
+            border-radius: var(--radius-md); font-size: 14px;
         }
     </style>
 </head>
@@ -544,21 +639,28 @@ window.addEventListener('load', function() {
                 <div class="top-name" id="top-name">—</div>
             </div>
         </div>
-        <div class="top-bell">🔔</div>
+        <div class="top-bell" id="top-bell" onclick="toggleNotif(event)">
+            🔔
+            <span class="bell-badge" id="bell-badge"></span>
+            <div class="notif-dropdown" id="notif-dropdown">
+                <div class="notif-header"><h4>Уведомления</h4><button class="notif-clear" onclick="event.stopPropagation();clearNotifs()">Очистить</button></div>
+                <div class="notif-list" id="notif-list"><div class="notif-loading">Загрузка...</div></div>
+            </div>
+        </div>
     </div>
 
     <div class="stats-row">
-        <div class="stat-pill">
+        <div class="stat-pill anim-in" style="--i:0">
             <div class="sp-icon">💰</div>
             <div class="sp-val" id="stat-balance">0</div>
             <div class="sp-label">баллов</div>
         </div>
-        <div class="stat-pill">
+        <div class="stat-pill anim-in" style="--i:1">
             <div class="sp-icon">🎯</div>
             <div class="sp-val" id="stat-scans">0</div>
             <div class="sp-label">сканов</div>
         </div>
-        <div class="stat-pill">
+        <div class="stat-pill anim-in" style="--i:2">
             <div class="sp-icon">📅</div>
             <div class="sp-val" style="font-size:13px">Пт 20:00</div>
             <div class="sp-label">розыгрыш</div>
@@ -567,7 +669,7 @@ window.addEventListener('load', function() {
 
     <div class="section-title">Меню</div>
     <div class="card-grid">
-        <div class="card" onclick="openPage('tree')">
+        <div class="card anim-in" onclick="openPage('tree')" style="--i:0">
             <div class="card-top">
                 <div class="card-label">Моё дерево</div>
                 <div class="card-arrow">›</div>
@@ -575,7 +677,7 @@ window.addEventListener('load', function() {
             <div class="card-value" id="card-tree-level">1</div>
             <div class="card-unit">уровень</div>
         </div>
-        <div class="card" onclick="openPage('history')">
+        <div class="card anim-in" onclick="openPage('history')" style="--i:1">
             <div class="card-top">
                 <div class="card-label">История</div>
                 <div class="card-arrow">›</div>
@@ -583,7 +685,7 @@ window.addEventListener('load', function() {
             <div class="card-value" id="card-scans">0</div>
             <div class="card-unit">сканирований</div>
         </div>
-        <div class="card" onclick="openPage('shop')">
+        <div class="card anim-in" onclick="openPage('shop')" style="--i:2">
             <div class="card-top">
                 <div class="card-label">Магазин</div>
                 <div class="card-arrow">›</div>
@@ -591,7 +693,7 @@ window.addEventListener('load', function() {
             <div class="card-value">🎁</div>
             <div class="card-unit">обмен на призы</div>
         </div>
-        <div class="card card-full" onclick="openPage('raffles')">
+        <div class="card card-full anim-in" onclick="openPage('raffles')" style="--i:3">
             <div class="card-left">
                 <div class="card-tag">Розыгрыши</div>
                 <div class="card-label">Итоги конкурсов</div>
@@ -601,21 +703,6 @@ window.addEventListener('load', function() {
             <div class="card-img">🎰</div>
         </div>
     </div>
-
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="openPage('menu')">
-            <span class="nav-icon">🏠</span>
-            <span class="nav-label">Главная</span>
-        </button>
-        <button class="nav-item" onclick="openPage('scanner')">
-            <span class="nav-icon">📷</span>
-            <span class="nav-label">Сканер</span>
-        </button>
-        <button class="nav-item" onclick="openPage('tree')">
-            <span class="nav-icon">🌳</span>
-            <span class="nav-label">Дерево</span>
-        </button>
-    </nav>
 </div>
 
 <!-- СКАНЕР -->
@@ -661,7 +748,7 @@ window.addEventListener('load', function() {
         </div>
     </div>
     <button class="btn btn-outline" onclick="sendToBot('profile')" style="margin-top:12px;margin-bottom:8px">📱 Показать телефон в чате</button>
-    <button class="btn btn-outline" onclick="sendToBot('points_log')">💰 История операций</button>
+    <button class="btn btn-outline" onclick="switchHistoryTab('points'); openPage('history')">💰 История операций</button>
     <div class="terms-box">
         <p>Правовая информация</p>
         <div class="terms-links">
@@ -714,6 +801,21 @@ window.addEventListener('load', function() {
     </div>
 </div>
 
+<nav class="bottom-nav">
+    <button class="nav-item active" data-page="menu" onclick="openPage('menu')">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Главная</span>
+    </button>
+    <button class="nav-item" data-page="scanner" onclick="openPage('scanner')">
+        <span class="nav-icon">📷</span>
+        <span class="nav-label">Сканер</span>
+    </button>
+    <button class="nav-item" data-page="tree" onclick="openPage('tree')">
+        <span class="nav-icon">🌳</span>
+        <span class="nav-label">Дерево</span>
+    </button>
+</nav>
+
 <script>
     var TL = [
         { level: 1, name: 'Росток', icon: '🌱', xp: '0–99' },
@@ -739,19 +841,16 @@ window.addEventListener('load', function() {
     const API_BASE = window.location.origin + '/api';
 
     function setUserUI(data) {
-        try {
-            var n = (data && data.name) || user.first_name || 'Пользователь';
-            document.getElementById('top-name').textContent = n;
-            document.getElementById('greeting').textContent = 'Привет, ' + n;
-            document.getElementById('profile-name').textContent = n;
-            document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
-            document.getElementById('profile-id').textContent = user.id || '—';
-            if (data && data.phone) document.getElementById('profile-phone').textContent = data.phone;
-            if (user.photo_url) {
-                document.getElementById('top-avatar').innerHTML = '<img src="' + user.photo_url + '">';
-                document.getElementById('profile-avatar').innerHTML = '<img src="' + user.photo_url + '">';
-            }
-        } catch(e) {}
+        var n = (data && data.name) || user.first_name || 'Пользователь';
+        document.getElementById('top-name').textContent = n;
+        document.getElementById('profile-name').textContent = n;
+        document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
+        document.getElementById('profile-id').textContent = user.id || '—';
+        if (data && data.phone) document.getElementById('profile-phone').textContent = data.phone;
+        if (user.photo_url) {
+            document.getElementById('top-avatar').innerHTML = '<img src="' + user.photo_url + '">';
+            document.getElementById('profile-avatar').innerHTML = '<img src="' + user.photo_url + '">';
+        }
     }
     setUserUI(null);
 
@@ -780,22 +879,13 @@ window.addEventListener('load', function() {
         return null;
     }
 
-    var _debugUid = getUID();
-    var _debugInfo = 'uid=' + _debugUid + ' | user.id=' + user.id + ' | initDataUnsafe=' + (tg.initDataUnsafe && tg.initDataUnsafe.user ? JSON.stringify({id:tg.initDataUnsafe.user.id,first:tg.initDataUnsafe.user.first_name}) : 'null');
-
     async function loadUserData() {
-        try {
-            var uid = getUID();
-            if (!uid) {
-                document.getElementById('top-name').textContent = 'Нет uid!';
-                document.getElementById('greeting').textContent = _debugInfo;
-                return;
-            }
+        var uid = getUID();
+        if (!uid) return;
 
+        try {
             var rawD = await fetch(API_BASE + '/user?user_id=' + uid);
             var txt = await rawD.text();
-            document.getElementById('greeting').textContent = 'API: ' + txt.substring(0, 80);
-
             var d = null, t = null;
             try { d = JSON.parse(txt); } catch(e) {}
             try { t = await apiFetch('/tree?user_id=' + uid); } catch(e) {}
@@ -812,29 +902,90 @@ window.addEventListener('load', function() {
             if (t) {
                 document.getElementById('card-tree-level').textContent = t.level || 1;
             }
-        } catch(e) {
-            document.getElementById('greeting').textContent = 'ERROR: ' + e.message;
-        }
+        } catch(e) {}
     }
     loadUserData();
 
+    setTimeout(function() {
+        document.querySelectorAll('.anim-in').forEach(function(el) {
+            el.addEventListener('animationend', function() { el.classList.remove('anim-in'); }, { once: true });
+        });
+    }, 1000);
+
+    var notifOpen = false;
+    function toggleNotif(e) {
+        if (e) e.stopPropagation();
+        var d = document.getElementById('notif-dropdown');
+        notifOpen = !notifOpen;
+        d.classList.toggle('show', notifOpen);
+        if (notifOpen) loadNotifs();
+    }
+    document.addEventListener('click', function(e) {
+        var b = document.getElementById('top-bell');
+        if (notifOpen && b && !b.contains(e.target)) {
+            notifOpen = false;
+            document.getElementById('notif-dropdown').classList.remove('show');
+        }
+    });
+    async function loadNotifs() {
+        var l = document.getElementById('notif-list');
+        var uid = getUID();
+        if (!uid) { l.innerHTML = '<div class="notif-empty">Нет уведомлений</div>'; return; }
+        var d = await apiFetch('/notifications?user_id=' + uid);
+        if (!d || !d.length) { l.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>'; var b = document.getElementById('bell-badge'); if (b) b.classList.remove('show'); return; }
+        l.innerHTML = d.map(function(n) {
+            var icon = n.type === 'scan' ? '💧' : n.type === 'points' ? '💰' : '🎰';
+            var cls = n.type === 'scan' ? 'scan' : n.type === 'points' ? 'points' : 'raffle';
+            return '<div class="notif-item" onclick="event.stopPropagation();openPage(\'' + (n.link || 'menu') + '\')">'
+                + '<div class="notif-icon ' + cls + '">' + icon + '</div>'
+                + '<div class="notif-content"><div class="notif-title">' + esc(n.title || '') + '</div>'
+                + '<div class="notif-desc">' + esc(n.body || '') + '</div>'
+                + '<div class="notif-time">' + (n.created_at ? new Date(n.created_at).toLocaleString('ru-RU') : '') + '</div></div></div>';
+        }).join('');
+        var badge = document.getElementById('bell-badge');
+        if (badge) { badge.textContent = d.length; badge.classList.add('show'); }
+    }
+    function clearNotifs() {
+        var l = document.getElementById('notif-list');
+        l.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>';
+        var b = document.getElementById('bell-badge');
+        if (b) { b.textContent = ''; b.classList.remove('show'); }
+        var uid = getUID();
+        if (uid) fetch(API_BASE + '/notifications/clear?user_id=' + uid).catch(function(){});
+    }
+
+    function stopScanner() {
+        if (html5QrCode) {
+            try { if (html5QrCode.isScanning) html5QrCode.stop(); } catch(e) {}
+        }
+        var r = document.getElementById('reader');
+        if (r) r.style.display = 'none';
+        var z = document.getElementById('scan-zone');
+        if (z) z.style.display = 'block';
+    }
+
     function openPage(page) {
+        stopScanner();
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         const el = document.getElementById('page-' + page);
-        el.style.animation = 'none'; el.offsetHeight; el.style.animation = '';
+        if (!el) return;
         el.classList.add('active');
+        void el.offsetHeight;
         currentPage = page;
-        tg.BackButton.isVisible = page !== 'menu';
-        document.querySelectorAll('.nav-item').forEach((n, i) => {
-            n.classList.toggle('active', (page === 'menu' && i === 0) || (page === 'scanner' && i === 1) || (page === 'tree' && i === 2));
+        try { tg.BackButton.isVisible = false; } catch(e) {}
+        document.querySelectorAll('.nav-item').forEach(n => {
+            n.classList.toggle('active', n.dataset.page === page);
         });
         if (page === 'menu') loadUserData();
         if (page === 'scanner') {
-            document.getElementById('scan-result').classList.remove('show');
-            document.getElementById('scan-zone').style.display = 'block';
-            document.getElementById('scan-btn').textContent = 'Включить камеру';
-            document.getElementById('scan-btn').disabled = false;
+            var sr = document.getElementById('scan-result');
+            if (sr) sr.classList.remove('show');
+            var sz = document.getElementById('scan-zone');
+            if (sz) sz.style.display = 'block';
+            var sb = document.getElementById('scan-btn');
+            if (sb) { sb.textContent = 'Включить камеру'; sb.disabled = false; }
         }
+        if (page === 'profile') loadUserData();
         if (page === 'history') switchHistoryTab('scans');
         if (page === 'shop') loadShop();
         if (page === 'raffles') loadRaffles();
@@ -851,7 +1002,7 @@ window.addEventListener('load', function() {
         const list = document.getElementById('history-list');
         const d = await apiFetch('/points_log?user_id=' + getUID());
         if (!d || !d.length) { list.innerHTML = '<div class="empty-state"><div class="empty-ico">💰</div><div class="empty-t">Нет операций</div><div class="empty-d">Здесь появятся начисления и списания</div></div>'; return; }
-        list.innerHTML = d.map(e => '<div class="h-item"><div class="h-top"><span class="h-badge' + (parseInt(e.amount) < 0 ? ' negative' : '') + '">' + (parseInt(e.amount) > 0 ? '+' : '') + e.amount + '</span><span class="h-date">' + e.created_at + '</span></div><div class="h-qr">' + esc(e.description) + '</div></div>').join('');
+        list.innerHTML = d.map(e => '<div class="h-item"><div class="h-top"><span class="h-badge' + (parseInt(e.amount) < 0 ? ' negative' : '') + '">' + (parseInt(e.amount) > 0 ? '+' : '') + e.amount + '</span><span class="h-date">' + (e.created_at ? new Date(e.created_at).toLocaleString('ru-RU') : '—') + '</span></div><div class="h-qr">' + esc(e.description) + '</div></div>').join('');
     }
 
     async function loadShop() {

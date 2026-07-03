@@ -345,8 +345,7 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
 # ─── Main Menu ──────────────────────────────────────────
 
 async def show_main_menu(db, chat_id: int, user: dict | None = None):
-    if not user:
-        user = await db.get_user(chat_id) or await db.create_user(chat_id)
+    user = await db.get_user(chat_id) or await db.create_user(chat_id)
     if user["step"] != "menu":
         await db.update_user_step(chat_id, "menu")
     s = get_settings()

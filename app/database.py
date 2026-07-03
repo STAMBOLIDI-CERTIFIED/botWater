@@ -122,6 +122,16 @@ class Database:
                     assigned_at TIMESTAMP,
                     created_at TIMESTAMP DEFAULT NOW()
                 );
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER NOT NULL REFERENCES users(id),
+                    type TEXT NOT NULL DEFAULT 'info',
+                    title TEXT NOT NULL,
+                    body TEXT DEFAULT '',
+                    link TEXT DEFAULT '',
+                    read INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
             """)
 
     # ─── Users ──────────────────────────────────────────
@@ -367,6 +377,32 @@ class Database:
             return [dict(r) for r in rows]
 
     # ─── Prizes ─────────────────────────────────────────
+
+    async def get_notifications(self, telegram_id: int) -> list[dict]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT n.* FROM notifications n
+                JOIN users u ON u.id = n.user_id
+                WHERE u.telegram_id = $1 AND n.read = 0
+                ORDER BY n.created_at DESC LIMIT 20
+            """, telegram_id)
+            return [dict(r) for r in rows]
+
+    async def create_notification(self, telegram_id: int, type_: str, title: str, body: str = "", link: str = ""):
+        async with self.pool.acquire() as conn:
+            user = await conn.fetchrow("SELECT id FROM users WHERE telegram_id = $1", telegram_id)
+            if user:
+                await conn.execute(
+                    "INSERT INTO notifications (user_id, type, title, body, link) VALUES ($1, $2, $3, $4, $5)",
+                    user["id"], type_, title, body, link,
+                )
+
+    async def clear_notifications(self, telegram_id: int):
+        async with self.pool.acquire() as conn:
+            await conn.execute("""
+                UPDATE notifications SET read = 1
+                WHERE user_id = (SELECT id FROM users WHERE telegram_id = $1)
+            """, telegram_id)
 
     async def get_prizes(self) -> list[dict]:
         async with self.pool.acquire() as conn:

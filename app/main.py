@@ -166,6 +166,18 @@ async def api_tree(user_id: int = 0):
         return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0}
     return await db.get_tree_state(user_id)
 
+@app.get("/api/notifications")
+async def api_notifications(user_id: int = 0):
+    if not user_id:
+        return []
+    return await db.get_notifications(user_id)
+
+@app.get("/api/notifications/clear")
+async def api_notifications_clear(user_id: int = 0):
+    if user_id:
+        await db.clear_notifications(user_id)
+    return {"ok": True}
+
 @app.post("/api/scan")
 async def api_scan(request: Request):
     body = await request.json()
