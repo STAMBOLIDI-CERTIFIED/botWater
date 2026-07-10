@@ -11,20 +11,20 @@ def _load_dotenv():
     global _load_dotenv_done
     if _load_dotenv_done:
         return
-    env_path = Path(__file__).parent.parent / ".env"
-    if env_path.exists():
-        for line in env_path.read_text().splitlines():
+    prod_path = Path(__file__).parent.parent / "prod.env"
+    if prod_path.exists():
+        for line in prod_path.read_text().splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
             key, _, val = line.partition("=")
             key = key.strip()
             val = val.strip().strip("\"'")
-            if key and not os.environ.get(key):
+            if key:
                 os.environ[key] = val
-    prod_path = Path(__file__).parent.parent / "prod.env"
-    if prod_path.exists():
-        for line in prod_path.read_text().splitlines():
+    env_path = Path(__file__).parent.parent / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
