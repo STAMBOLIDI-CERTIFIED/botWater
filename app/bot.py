@@ -16,15 +16,33 @@ def _url(method: str) -> str:
     return f"{_API_BASE}{_token()}/{method}"
 
 
+_chat_messages: dict[int, list[int]] = {}
+
+
 async def send_message(chat_id: int, text: str, **kwargs):
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML", **kwargs}
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(_url("sendMessage"), json=payload)
-            return resp.json()
+            data = resp.json()
+            if data and data.get("ok") and data.get("result", {}).get("message_id"):
+                _chat_messages.setdefault(chat_id, []).append(data["result"]["message_id"])
+            return data
         except Exception as e:
             logger.error(f"sendMessage failed: {e}")
             return None
+
+
+async def delete_chat_messages(chat_id: int):
+    msgs = _chat_messages.pop(chat_id, [])
+    if not msgs:
+        return
+    async with httpx.AsyncClient() as client:
+        for msg_id in msgs:
+            try:
+                await client.post(_url("deleteMessage"), json={"chat_id": chat_id, "message_id": msg_id})
+            except Exception:
+                pass
 
 
 async def answer_callback(callback_id: str, text: str = "", show_alert: bool = False):
@@ -191,6 +209,7 @@ async def handle_message(db, msg: dict):
         payload = ""
         if " " in text:
             payload = text.split(" ", 1)[1]
+        await delete_chat_messages(chat_id)
         if user and user.get("step") not in ("start", None):
             await handle_start(db, chat_id, user, payload)
             return
@@ -302,6 +321,7 @@ async def handle_message(db, msg: dict):
 async def handle_start(db, chat_id: int, user: dict | None, payload: str):
     s = get_settings()
     logger.info(f"handle_start chat_id={chat_id} payload={payload!r} user={user}")
+    await delete_chat_messages(chat_id)
     if not user:
         user = await db.create_user(chat_id, "", "start", payload)
 
