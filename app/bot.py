@@ -186,23 +186,12 @@ async def handle_message(db, msg: dict):
     web_app_data = msg.get("web_app_data")
     user = await db.get_user(chat_id)
     s = get_settings()
+    tg_name = msg.get("from", {}).get("first_name", "")
 
     logger.info(f"handle_message chat_id={chat_id} text={text!r} web_app_data={web_app_data!r} user_step={user.get('step') if user else None}")
 
     if web_app_data:
         await handle_webapp_data(db, web_app_data.get("data", ""), chat_id)
-        return
-
-    if contact and user:
-        await db.update_user_phone(chat_id, contact["phone_number"])
-        if user["step"] == "ask_phone":
-            await send_message(
-                chat_id,
-                "📋 Пожалуйста, ознакомьтесь с <b>пользовательским соглашением</b> и правилами розыгрыша:",
-                reply_markup=terms_keyboard(),
-            )
-        else:
-            await send_message(chat_id, "✅ Номер сохранён!", reply_markup={"remove_keyboard": True})
         return
 
     if text.startswith("/"):
@@ -212,37 +201,14 @@ async def handle_message(db, msg: dict):
         payload = ""
         if " " in text:
             payload = text.split(" ", 1)[1]
-        if user and user.get("step") not in ("start", None):
-            await handle_start(db, chat_id, user, payload)
-            return
-
-    if not user:
-        user = await db.create_user(chat_id, text if text and not text.startswith("/") else "")
+        if not user:
+            user = await db.create_user(chat_id, tg_name, "menu", payload)
+        elif user.get("step") not in ("start", None, "menu"):
+            await db.update_user_step(chat_id, "menu")
+        await handle_start(db, chat_id, user, payload)
+        return
 
     step = user.get("step", "start")
-
-    # ── Registration flow ──
-    if step == "start":
-        await send_message(
-            chat_id,
-            "👋 <b>Добро пожаловать!</b>\n\nКак вас зовут?",
-            reply_markup={"remove_keyboard": True},
-        )
-        await db.update_user_step(chat_id, "ask_name")
-        return
-
-    if step == "ask_name":
-        if text.startswith("/"):
-            await send_message(chat_id, "⚠️ Пожалуйста, введите ваше имя (не команду):")
-            return
-        await db.update_user_name(chat_id, text)
-        await db.update_user_step(chat_id, "ask_phone")
-        await send_message(
-            chat_id,
-            "📱 Отправьте ваш номер телефона для регистрации:",
-            reply_markup=contact_keyboard(),
-        )
-        return
 
     if step in ("ask_fio",):
         if not text or len(text.strip()) < 3:
@@ -324,7 +290,13 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
     s = get_settings()
     logger.info(f"handle_start chat_id={chat_id} payload={payload!r} user={user}")
     if not user:
-        user = await db.create_user(chat_id, "", "start", payload)
+        user = await db.get_user(chat_id)
+    if not user:
+        await show_main_menu(db, chat_id)
+        return
+
+    if user.get("step") != "menu":
+        await db.update_user_step(chat_id, "menu")
 
     # Extract bottle_XXXX from payload (supports full URLs and bare codes)
     if payload:
