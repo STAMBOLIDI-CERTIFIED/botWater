@@ -67,6 +67,7 @@ async def startup():
         sys.exit(1)
     await db.connect()
     logger.info("Database connected")
+    logger.info(f"WEBAPP_URL={s['WEBAPP_URL']}")
     await _setup_bot_commands()
 
 
