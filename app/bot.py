@@ -205,11 +205,13 @@ async def handle_message(db, msg: dict):
             await send_message(chat_id, "✅ Номер сохранён!", reply_markup={"remove_keyboard": True})
         return
 
+    if text.startswith("/"):
+        await delete_chat_messages(chat_id)
+
     if text.startswith("/start"):
         payload = ""
         if " " in text:
             payload = text.split(" ", 1)[1]
-        await delete_chat_messages(chat_id)
         if user and user.get("step") not in ("start", None):
             await handle_start(db, chat_id, user, payload)
             return
@@ -321,7 +323,6 @@ async def handle_message(db, msg: dict):
 async def handle_start(db, chat_id: int, user: dict | None, payload: str):
     s = get_settings()
     logger.info(f"handle_start chat_id={chat_id} payload={payload!r} user={user}")
-    await delete_chat_messages(chat_id)
     if not user:
         user = await db.create_user(chat_id, "", "start", payload)
 
