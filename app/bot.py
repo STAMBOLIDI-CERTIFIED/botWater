@@ -188,7 +188,23 @@ async def handle_message(db, msg: dict):
     s = get_settings()
     tg_name = msg.get("from", {}).get("first_name", "")
 
-    logger.info(f"handle_message chat_id={chat_id} text={text!r} web_app_data={web_app_data!r} user_step={user.get('step') if user else None}")
+    logger.info(f"handle_message chat_id={chat_id} text={text!r} contact={contact!r} web_app_data={web_app_data!r} user_step={user.get('step') if user else None}")
+
+    if contact:
+        phone = contact.get("phone_number", "")
+        logger.info(f"Contact received: phone={phone!r} from user={contact.get('user_id')}")
+        if phone:
+            try:
+                if not user:
+                    user = await db.create_user(chat_id, tg_name, "menu")
+                await db.update_user_phone(chat_id, phone)
+                logger.info(f"Phone {phone} saved for chat_id={chat_id}")
+                await send_message(chat_id, f"✅ Номер телефона <b>{phone}</b> сохранён!")
+                await show_main_menu(db, chat_id, user)
+            except Exception as e:
+                logger.error(f"Failed to save phone: {e}")
+                await send_message(chat_id, "⚠️ Ошибка сохранения номера. Попробуйте позже.")
+        return
 
     if web_app_data:
         await handle_webapp_data(db, web_app_data.get("data", ""), chat_id)
@@ -201,10 +217,18 @@ async def handle_message(db, msg: dict):
         payload = ""
         if " " in text:
             payload = text.split(" ", 1)[1]
+        is_new = not user
         if not user:
             user = await db.create_user(chat_id, tg_name, "menu", payload)
         elif user.get("step") not in ("start", None, "menu"):
             await db.update_user_step(chat_id, "menu")
+        if is_new and not user.get("phone"):
+            await send_message(
+                chat_id,
+                "📱 Для завершения регистрации отправьте свой <b>номер телефона</b>:",
+                reply_markup=contact_keyboard(),
+            )
+            return
         await handle_start(db, chat_id, user, payload)
         return
 
