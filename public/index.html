@@ -217,7 +217,7 @@
             border-radius: var(--radius-lg);
             padding: 20px 18px;
             cursor: pointer;
-            transition: all .3s cubic-bezier(.16,1,.3,1);
+            transition: all .35s cubic-bezier(.16,1,.3,1);
             position: relative; overflow: hidden;
         }
         .card.anim-in {
@@ -225,15 +225,11 @@
             animation-delay: calc(var(--i, 0) * 80ms + 200ms);
         }
         .card:active { transform: scale(0.96); }
-        .card:hover { border-color: rgba(201,168,76,0.25); box-shadow: 0 8px 32px rgba(0,0,0,0.2), 0 0 0 1px rgba(201,168,76,0.1); }
         .card::after {
             content: ''; position: absolute; inset: 0;
             background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent 50%);
             pointer-events: none;
             transition: opacity .3s;
-        }
-        .card:hover::after {
-            background: linear-gradient(135deg, rgba(201,168,76,0.06), transparent 60%);
         }
         .card::before {
             content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
@@ -253,23 +249,36 @@
         .card:hover .card-value { transform: scale(1.05); }
         .card-unit { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
 
-        /* === THEMED CARDS === */
-        @keyframes treeGlow { 0%,100% { box-shadow: inset 0 0 30px rgba(61,158,106,0.05), 0 0 0 0 rgba(61,158,106,0); } 50% { box-shadow: inset 0 0 40px rgba(61,158,106,0.1), 0 0 24px 0 rgba(61,158,106,0.08); } }
-        @keyframes shopGlow { 0%,100% { box-shadow: inset 0 0 30px rgba(168,85,247,0.05), 0 0 0 0 rgba(168,85,247,0); } 50% { box-shadow: inset 0 0 40px rgba(168,85,247,0.1), 0 0 24px 0 rgba(168,85,247,0.08); } }
-        @keyframes treeEmojiFloat { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(3deg); } }
-        @keyframes shopEmojiWiggle { 0%,100% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(-8deg) scale(1.1); } 75% { transform: rotate(8deg) scale(1.1); } }
-        @keyframes treeParticles { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px) scale(0); } }
-        @keyframes shopSparkle { 0%,100% { opacity: 0; transform: scale(0) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(180deg); } }
+        /* === CARD SHAPES === */
+        @keyframes borderRotate {
+            0% { --angle: 0deg; }
+            100% { --angle: 360deg; }
+        }
+        @keyframes gradientShift {
+            0%,100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        @keyframes shapeMorph {
+            0%,100% { border-radius: 28px 28px 28px 28px; }
+            25% { border-radius: 32px 24px 32px 24px; }
+            50% { border-radius: 24px 32px 24px 32px; }
+            75% { border-radius: 28px 28px 24px 32px; }
+        }
 
+        /* Tree — organic leaf shape */
         .card-tree {
+            border-radius: 28px 12px 28px 12px;
             background: linear-gradient(160deg, #1A1D24 0%, #142A1E 50%, #1A1D24 100%);
-            border-color: rgba(61,158,106,0.2);
+            border: 1px solid rgba(61,158,106,0.2);
             animation: treeGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
             animation-delay: .2s, .2s;
+            transition: all .35s cubic-bezier(.16,1,.3,1);
         }
         .card-tree:hover {
+            border-radius: 12px 28px 12px 28px;
             border-color: rgba(61,158,106,0.4);
             box-shadow: 0 8px 32px rgba(61,158,106,0.15), inset 0 0 40px rgba(61,158,106,0.08);
+            transform: translateY(-2px);
         }
         .card-tree:hover .card-arrow { background: rgba(61,158,106,0.25); color: var(--green); transform: translateX(3px); }
         .card-tree .card-value { color: var(--green); }
@@ -293,15 +302,40 @@
         .card-tree:hover .tree-particle:nth-child(3) { animation-delay: .5s; left: 85%; bottom: 50%; }
         .card-tree:hover .tree-particle:nth-child(4) { animation-delay: .8s; left: 60%; bottom: 45%; }
 
+        /* History — sharp angular cut */
+        .card-history {
+            border-radius: 20px 20px 20px 6px;
+            background: linear-gradient(135deg, #1A1D24 0%, #1D1F26 100%);
+            border: 1px solid rgba(201,168,76,0.15);
+            transition: all .35s cubic-bezier(.16,1,.3,1);
+        }
+        .card-history:hover {
+            border-radius: 6px 20px 6px 20px;
+            border-color: rgba(201,168,76,0.3);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.25), 0 0 0 1px rgba(201,168,76,0.1);
+            transform: translateY(-2px);
+        }
+        .card-history:hover .card-arrow { transform: translateX(3px); background: rgba(201,168,76,0.2); }
+        .card-history::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(201,168,76,0.04), transparent 50%);
+            pointer-events: none;
+        }
+
+        /* Shop — wavy/organic purple */
         .card-shop {
+            border-radius: 12px 28px 12px 28px;
             background: linear-gradient(160deg, #1A1D24 0%, #251A2E 50%, #1A1D24 100%);
-            border-color: rgba(168,85,247,0.2);
+            border: 1px solid rgba(168,85,247,0.2);
             animation: shopGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
             animation-delay: .35s, .35s;
+            transition: all .35s cubic-bezier(.16,1,.3,1);
         }
         .card-shop:hover {
+            border-radius: 28px 12px 28px 12px;
             border-color: rgba(168,85,247,0.4);
             box-shadow: 0 8px 32px rgba(168,85,247,0.15), inset 0 0 40px rgba(168,85,247,0.08);
+            transform: translateY(-2px);
         }
         .card-shop:hover .card-arrow { background: rgba(168,85,247,0.25); color: #A855F7; transform: translateX(3px); }
         .card-shop .card-value { color: #A855F7; }
@@ -325,13 +359,56 @@
         .card-shop:hover .shop-sparkle:nth-child(2) { animation-delay: .3s; top: 10px; right: 50px; }
         .card-shop:hover .shop-sparkle:nth-child(3) { animation-delay: .6s; top: 30px; right: 20px; }
 
+        /* Raffles — diagonal cut */
+        .card-raffles {
+            border-radius: 20px;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+            background: linear-gradient(135deg, #1A1D24 0%, #2A2214 50%, #1A1D24 100%);
+            border: 1px solid rgba(201,168,76,0.15);
+            transition: all .35s cubic-bezier(.16,1,.3,1);
+        }
+        .card-raffles:hover {
+            clip-path: polygon(0 0, 100% 0, 100% 100%, calc(100% - 16px) 100%, 0 calc(100% - 16px));
+            border-color: rgba(201,168,76,0.35);
+            box-shadow: 0 8px 32px rgba(201,168,76,0.12), inset 0 0 30px rgba(201,168,76,0.05);
+            transform: translateY(-2px);
+        }
+        .card-raffles:hover .card-btn {
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            box-shadow: 0 4px 16px rgba(201,168,76,0.3);
+        }
+        .card-raffles:hover .card-img {
+            transform: scale(1.1) rotate(8deg);
+        }
+        .card-raffles::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(201,168,76,0.04), transparent 50%);
+            pointer-events: none;
+        }
+
         /* === FULL CARD === */
         .card-full {
             grid-column: 1 / -1;
             display: flex; align-items: center; gap: 18px;
+            border-radius: 20px;
+            clip-path: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+            background: linear-gradient(135deg, #1A1D24 0%, #2A2214 50%, #1A1D24 100%);
+            border: 1px solid rgba(201,168,76,0.15);
+            transition: all .35s cubic-bezier(.16,1,.3,1);
+            animation: slideUp .5s cubic-bezier(.16,1,.3,1) .55s both;
         }
-        .card-full:hover { border-color: rgba(201,168,76,0.25); }
-        .card-full .card-left { flex: 1; }
+        .card-full:hover {
+            clip-path: polygon(0 0, 100% 0, 100% 100%, calc(100% - 16px) 100%, 0 calc(100% - 16px));
+            border-color: rgba(201,168,76,0.35);
+            box-shadow: 0 8px 32px rgba(201,168,76,0.12), inset 0 0 30px rgba(201,168,76,0.05);
+            transform: translateY(-2px);
+        }
+        .card-full::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(201,168,76,0.04), transparent 50%);
+            pointer-events: none;
+        }
+        .card-full .card-left { flex: 1; position: relative; z-index: 1; }
         .card-full .card-tag {
             font-size: 10px; font-weight: 600; color: var(--gold);
             text-transform: uppercase; letter-spacing: 0.5px;
@@ -341,13 +418,21 @@
             font-size: 11px; color: var(--text-dim); margin-top: 4px; line-height: 1.4;
         }
         .card-full .card-btn {
-            background: var(--gold);
-            color: #fff;
-            border: none; border-radius: var(--radius-sm);
+            background: rgba(201,168,76,0.15);
+            color: var(--gold);
+            border: 1px solid rgba(201,168,76,0.2);
+            border-radius: var(--radius-sm);
             padding: 9px 18px;
             font-family: inherit; font-size: 12px; font-weight: 700;
             cursor: pointer; margin-top: 10px;
-            transition: all .2s ease;
+            transition: all .25s cubic-bezier(.16,1,.3,1);
+        }
+        .card-full:hover .card-btn {
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 4px 16px rgba(201,168,76,0.3);
+            transform: scale(1.05);
         }
         .card-full .card-btn:active { transform: scale(0.95); }
         .card-full .card-img {
@@ -355,9 +440,10 @@
             background: rgba(255,255,255,0.04);
             display: flex; align-items: center; justify-content: center;
             font-size: 36px; flex-shrink: 0;
-            transition: transform .3s ease;
+            transition: transform .35s cubic-bezier(.16,1,.3,1);
+            position: relative; z-index: 1;
         }
-        .card-full:hover .card-img { transform: scale(1.1) rotate(5deg); }
+        .card-full:hover .card-img { transform: scale(1.1) rotate(8deg); }
 
         /* === ACTIVITY CARD === */
         .activity-card {
@@ -791,7 +877,7 @@ setTimeout(hideSplash, 3000);
             <div class="tree-particle" style="left:80%;bottom:40%"></div>
             <div class="tree-particle" style="left:65%;bottom:35%"></div>
         </div>
-        <div class="card anim-in" onclick="openPage('history')" style="--i:1">
+        <div class="card card-history anim-in" onclick="openPage('history')" style="--i:1">
             <div class="card-top">
                 <div class="card-label">История</div>
                 <div class="card-arrow">›</div>
@@ -810,7 +896,7 @@ setTimeout(hideSplash, 3000);
             <div class="shop-sparkle" style="top:8px;right:40px"></div>
             <div class="shop-sparkle" style="top:25px;right:15px"></div>
         </div>
-        <div class="card card-full anim-in" onclick="openPage('raffles')" style="--i:3">
+        <div class="card card-full card-raffles anim-in" onclick="openPage('raffles')" style="--i:3">
             <div class="card-left">
                 <div class="card-tag">Розыгрыши</div>
                 <div class="card-label">Итоги конкурсов</div>
