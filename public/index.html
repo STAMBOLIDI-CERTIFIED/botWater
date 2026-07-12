@@ -253,6 +253,78 @@
         .card:hover .card-value { transform: scale(1.05); }
         .card-unit { font-size: 12px; color: var(--text-dim); margin-top: 6px; }
 
+        /* === THEMED CARDS === */
+        @keyframes treeGlow { 0%,100% { box-shadow: inset 0 0 30px rgba(61,158,106,0.05), 0 0 0 0 rgba(61,158,106,0); } 50% { box-shadow: inset 0 0 40px rgba(61,158,106,0.1), 0 0 24px 0 rgba(61,158,106,0.08); } }
+        @keyframes shopGlow { 0%,100% { box-shadow: inset 0 0 30px rgba(168,85,247,0.05), 0 0 0 0 rgba(168,85,247,0); } 50% { box-shadow: inset 0 0 40px rgba(168,85,247,0.1), 0 0 24px 0 rgba(168,85,247,0.08); } }
+        @keyframes treeEmojiFloat { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(3deg); } }
+        @keyframes shopEmojiWiggle { 0%,100% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(-8deg) scale(1.1); } 75% { transform: rotate(8deg) scale(1.1); } }
+        @keyframes treeParticles { 0% { opacity: 0; transform: translateY(0) scale(0.5); } 50% { opacity: 1; } 100% { opacity: 0; transform: translateY(-30px) scale(0); } }
+        @keyframes shopSparkle { 0%,100% { opacity: 0; transform: scale(0) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(180deg); } }
+
+        .card-tree {
+            background: linear-gradient(160deg, #1A1D24 0%, #142A1E 50%, #1A1D24 100%);
+            border-color: rgba(61,158,106,0.2);
+            animation: treeGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
+            animation-delay: .2s, .2s;
+        }
+        .card-tree:hover {
+            border-color: rgba(61,158,106,0.4);
+            box-shadow: 0 8px 32px rgba(61,158,106,0.15), inset 0 0 40px rgba(61,158,106,0.08);
+        }
+        .card-tree:hover .card-arrow { background: rgba(61,158,106,0.25); color: var(--green); transform: translateX(3px); }
+        .card-tree .card-value { color: var(--green); }
+        .card-tree::after {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(circle at 80% 20%, rgba(61,158,106,0.08), transparent 60%);
+            pointer-events: none;
+        }
+        .card-tree .tree-emoji {
+            position: absolute; right: 14px; bottom: 14px; font-size: 32px;
+            animation: treeEmojiFloat 3s ease-in-out infinite;
+            filter: drop-shadow(0 4px 8px rgba(61,158,106,0.3));
+        }
+        .card-tree:hover .tree-emoji { animation: treeEmojiFloat 1.5s ease-in-out infinite; }
+        .card-tree .tree-particle {
+            position: absolute; width: 4px; height: 4px; border-radius: 50%;
+            background: var(--green); opacity: 0;
+        }
+        .card-tree:hover .tree-particle { animation: treeParticles 1.2s ease-out infinite; }
+        .card-tree:hover .tree-particle:nth-child(2) { animation-delay: .2s; left: 70%; bottom: 30%; }
+        .card-tree:hover .tree-particle:nth-child(3) { animation-delay: .5s; left: 85%; bottom: 50%; }
+        .card-tree:hover .tree-particle:nth-child(4) { animation-delay: .8s; left: 60%; bottom: 45%; }
+
+        .card-shop {
+            background: linear-gradient(160deg, #1A1D24 0%, #251A2E 50%, #1A1D24 100%);
+            border-color: rgba(168,85,247,0.2);
+            animation: shopGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
+            animation-delay: .35s, .35s;
+        }
+        .card-shop:hover {
+            border-color: rgba(168,85,247,0.4);
+            box-shadow: 0 8px 32px rgba(168,85,247,0.15), inset 0 0 40px rgba(168,85,247,0.08);
+        }
+        .card-shop:hover .card-arrow { background: rgba(168,85,247,0.25); color: #A855F7; transform: translateX(3px); }
+        .card-shop .card-value { color: #A855F7; }
+        .card-shop .card-unit { color: rgba(168,85,247,0.5); }
+        .card-shop::after {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(circle at 80% 20%, rgba(168,85,247,0.08), transparent 60%);
+            pointer-events: none;
+        }
+        .card-shop .shop-emoji {
+            position: absolute; right: 14px; bottom: 14px; font-size: 32px;
+            animation: shopEmojiWiggle 2.5s ease-in-out infinite;
+            filter: drop-shadow(0 4px 8px rgba(168,85,247,0.3));
+        }
+        .card-shop:hover .shop-emoji { animation: shopEmojiWiggle 1s ease-in-out infinite; }
+        .card-shop .shop-sparkle {
+            position: absolute; width: 6px; height: 6px; opacity: 0;
+            background: #A855F7; clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        }
+        .card-shop:hover .shop-sparkle { animation: shopSparkle 1s ease-in-out infinite; }
+        .card-shop:hover .shop-sparkle:nth-child(2) { animation-delay: .3s; top: 10px; right: 50px; }
+        .card-shop:hover .shop-sparkle:nth-child(3) { animation-delay: .6s; top: 30px; right: 20px; }
+
         /* === FULL CARD === */
         .card-full {
             grid-column: 1 / -1;
@@ -707,13 +779,17 @@ setTimeout(hideSplash, 3000);
 
     <div class="section-title">Меню</div>
     <div class="card-grid">
-        <div class="card anim-in" onclick="openPage('tree')" style="--i:0">
+        <div class="card card-tree anim-in" onclick="openPage('tree')" style="--i:0">
             <div class="card-top">
                 <div class="card-label">Моё дерево</div>
                 <div class="card-arrow">›</div>
             </div>
             <div class="card-value" id="card-tree-level">1</div>
             <div class="card-unit">уровень</div>
+            <div class="tree-emoji">🌳</div>
+            <div class="tree-particle" style="left:75%;bottom:20%"></div>
+            <div class="tree-particle" style="left:80%;bottom:40%"></div>
+            <div class="tree-particle" style="left:65%;bottom:35%"></div>
         </div>
         <div class="card anim-in" onclick="openPage('history')" style="--i:1">
             <div class="card-top">
@@ -723,13 +799,16 @@ setTimeout(hideSplash, 3000);
             <div class="card-value" id="card-scans">0</div>
             <div class="card-unit">сканирований</div>
         </div>
-        <div class="card anim-in" onclick="openPage('shop')" style="--i:2">
+        <div class="card card-shop anim-in" onclick="openPage('shop')" style="--i:2">
             <div class="card-top">
                 <div class="card-label">Магазин</div>
                 <div class="card-arrow">›</div>
             </div>
             <div class="card-value">🎁</div>
             <div class="card-unit">обмен на призы</div>
+            <div class="shop-emoji">🎁</div>
+            <div class="shop-sparkle" style="top:8px;right:40px"></div>
+            <div class="shop-sparkle" style="top:25px;right:15px"></div>
         </div>
         <div class="card card-full anim-in" onclick="openPage('raffles')" style="--i:3">
             <div class="card-left">
