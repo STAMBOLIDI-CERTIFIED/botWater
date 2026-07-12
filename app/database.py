@@ -79,18 +79,22 @@ class Database:
     async def get_user_by_id(self, user_id: int) -> dict | None:
         return await self._fetch_one("users", f"id=eq.{user_id}&select=*")
 
-    async def create_user(self, telegram_id: int, name: str = "", step: str = "start", start_payload: str = "") -> dict:
+    async def create_user(self, telegram_id: int, name: str = "", step: str = "start", start_payload: str = "", phone: str = "") -> dict:
         existing = await self.get_user(telegram_id)
         if existing:
             if name and not existing.get("name"):
                 await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"name": name})
                 existing["name"] = name
+            if phone and not existing.get("phone"):
+                await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"phone": phone})
+                existing["phone"] = phone
             return existing
         rows = await self._fetch("users", method="POST", json_data={
             "telegram_id": telegram_id,
             "name": name,
             "step": step,
             "start_payload": start_payload,
+            "phone": phone,
         })
         return rows[0] if rows else {}
 
@@ -101,7 +105,9 @@ class Database:
         await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"name": name})
 
     async def update_user_phone(self, telegram_id: int, phone: str):
-        await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"phone": phone})
+        logger.info(f"update_user_phone telegram_id={telegram_id} phone={phone!r}")
+        result = await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"phone": phone})
+        logger.info(f"update_user_phone result: {result}")
 
     async def accept_terms(self, telegram_id: int):
         await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"agreed_terms": 1, "step": "menu"})
