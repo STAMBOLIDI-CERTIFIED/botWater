@@ -1152,8 +1152,8 @@ setTimeout(hideSplash, 3000);
     </div>
 
     <div class="post-gift-buttons">
-        <button class="btn btn-primary" onclick="sendToBot('menu')">🎁 Магазин призов</button>
-        <button class="btn btn-outline" onclick="sendToBot('scan')">📷 Сканировать следующую бутылку</button>
+        <button class="btn btn-primary" onclick="openPage('menu')">🎁 Магазин призов</button>
+        <button class="btn btn-outline" onclick="openPage('scanner')">📷 Сканировать следующую бутылку</button>
     </div>
 </div>
 
@@ -1515,14 +1515,11 @@ setTimeout(hideSplash, 3000);
 
     async function checkGift() {
         var uid = getUID();
-        if (!uid) return;
+        if (!uid) return false;
         try {
             var d = await apiFetch('/gift?user_id=' + uid);
             if (d && !d.opened) {
                 openPage('gift');
-                return true;
-            } else if (d && d.opened) {
-                showPostGift(d.gift_points || 0, d.balance || 0);
                 return true;
             }
         } catch(e) {}
