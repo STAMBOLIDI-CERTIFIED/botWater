@@ -446,6 +446,85 @@ class Database:
             count += 1
         return count
 
+    # ─── Gift System ───────────────────────────────────
+
+    async def has_gift_been_opened(self, telegram_id: int) -> bool:
+        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=gift_opened")
+        if not user:
+            return False
+        return bool(user.get("gift_opened"))
+
+    async def mark_gift_opened(self, telegram_id: int, points: int):
+        user = await self.get_user(telegram_id)
+        if not user:
+            return
+        new_balance = (user.get("balance") or 0) + points
+        await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {
+            "gift_opened": True,
+            "gift_points": points,
+            "balance": new_balance,
+        })
+        await self._fetch("points_log", method="POST", json_data={
+            "user_id": user["id"],
+            "amount": points,
+            "type": "gift",
+            "description": f"Моментальный подарок: {points} баллов",
+        })
+
+    async def get_nearest_prize(self, telegram_id: int) -> dict | None:
+        user = await self.get_user(telegram_id)
+        if not user:
+            return None
+        balance = user.get("balance") or 0
+        prizes = await self.get_prizes()
+        if not prizes:
+            return None
+        nearest = None
+        for prize in prizes:
+            if prize["price_points"] > balance:
+                if nearest is None or prize["price_points"] < nearest["price_points"]:
+                    nearest = prize
+        if not nearest:
+            nearest = prizes[-1] if prizes else None
+        if nearest:
+            missing = max(0, nearest["price_points"] - balance)
+            return {
+                "name": nearest["name"],
+                "price": nearest["price_points"],
+                "missing": missing,
+                "image_url": nearest.get("image_url", ""),
+            }
+        return None
+
+    async def activate_qr_code(self, telegram_id: int, qr_code: str) -> bool:
+        user = await self.get_user(telegram_id)
+        if not user:
+            return False
+        existing = await self._fetch_one("user_qr_activations",
+            f"user_id=eq.{user['id']}&qr_code=eq.{qr_code}")
+        if existing:
+            return False
+        try:
+            await self._fetch("user_qr_activations", method="POST", json_data={
+                "user_id": user["id"],
+                "qr_code": qr_code,
+            })
+            return True
+        except Exception:
+            return False
+
+    async def is_qr_code_activated_by_anyone(self, qr_code: str) -> dict | None:
+        return await self._fetch_one("user_qr_activations",
+            f"qr_code=eq.{qr_code}&select=*,users:user_id(telegram_id,name)")
+
+    async def get_user_activation_count(self, telegram_id: int) -> int:
+        user = await self.get_user(telegram_id)
+        if not user:
+            return 0
+        rows = await self._fetch("user_qr_activations",
+            f"user_id=eq.{user['id']}&select=id")
+        return len(rows)
+
     # ─── Bottles ────────────────────────────────────────
 
     async def create_bottles_batch(self, count: int, batch: str, year: str) -> list[str]:

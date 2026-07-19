@@ -153,6 +153,18 @@ def exchange_confirm_keyboard(prize_id: int) -> dict:
     }
 
 
+def gift_keyboard(webapp_url: str) -> dict:
+    sep = "&" if "?" in webapp_url else "?"
+    gift_url = webapp_url + sep + "gift=1"
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "🎁 Открыть подарок", "web_app": {"url": gift_url}},
+            ],
+        ]
+    }
+
+
 # ─── Helpers ────────────────────────────────────────────
 
 def get_settings():
@@ -347,17 +359,54 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
             await send_message(chat_id, "⚠️ Эта бутылка уже была отсканирована другим пользователем.")
             await show_main_menu(db, chat_id, user)
             return
+
+        already_activated = await db.is_qr_code_activated_by_anyone(bottle_id)
+        if already_activated:
+            await send_message(chat_id, "Этот QR-код уже был активирован.")
+            await show_main_menu(db, chat_id, user)
+            return
+
         user_row = await db.get_user(chat_id)
         await db.assign_bottle(bottle_id, user_row["id"])
+        await db.activate_qr_code(chat_id, bottle_id)
         await db.add_balance(chat_id, 10, "scan", f"Сканирование бутылки {bottle_id}")
         await db.add_tree_xp(chat_id, 10)
+
+        s = get_settings()
+        app_url = s["WEBAPP_URL"]
+        if chat_id:
+            sep = "&" if "?" in app_url else "?"
+            app_url = app_url + sep + "user_id=" + str(chat_id)
+
         await send_message(
             chat_id,
-            f"✅ <b>Бутылка зарегистрирована!</b>\n\n"
-            f"➕ Вам начислено <b>10 баллов</b>\n"
-            f"💰 Текущий баланс: <b>{user_row['balance'] + 10} баллов</b>",
+            "🎉 <b>Поздравляем!</b>\n\n"
+            "Вы зарегистрировали бутылку и автоматически стали участником главного конкурса призов.\n\n"
+            "Но это ещё не всё 👇",
         )
-        await show_main_menu(db, chat_id, user)
+        await send_message(
+            chat_id,
+            "🎁 <b>Для вас доступен моментальный подарок!</b>\n\n"
+            "Откройте мини-приложение и получите свой первый приз прямо сейчас.\n\n"
+            "Внутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы.",
+            reply_markup=gift_keyboard(app_url),
+        )
+        return
+
+    gift_opened = await db.has_gift_been_opened(chat_id)
+    if not gift_opened:
+        s = get_settings()
+        app_url = s["WEBAPP_URL"]
+        if chat_id:
+            sep = "&" if "?" in app_url else "?"
+            app_url = app_url + sep + "user_id=" + str(chat_id)
+        await send_message(
+            chat_id,
+            "🎁 <b>Для вас доступен моментальный подарок!</b>\n\n"
+            "Откройте мини-приложение и получите свой первый приз прямо сейчас.\n\n"
+            "Внутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы.",
+            reply_markup=gift_keyboard(app_url),
+        )
         return
 
     await show_main_menu(db, chat_id, user)
