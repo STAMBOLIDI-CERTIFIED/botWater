@@ -214,9 +214,18 @@ async def api_gift_open(request: Request):
 
     import random
     points = random.choices([10, 15, 25, 50, 100], weights=[35, 30, 20, 10, 5], k=1)[0]
-    await db.mark_gift_opened(user_id, points)
 
-    nearest = await db.get_nearest_prize(user_id)
+    try:
+        await db.mark_gift_opened(user_id, points)
+    except Exception as e:
+        logger.error(f"mark_gift_opened failed: {e}")
+        return JSONResponse({"error": "failed to save gift"}, status_code=500)
+
+    try:
+        nearest = await db.get_nearest_prize(user_id)
+    except Exception:
+        nearest = None
+
     user = await db.get_user(user_id)
 
     return {

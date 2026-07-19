@@ -511,6 +511,12 @@
             z-index: 100;
             box-shadow: 0 8px 40px rgba(0,0,0,0.3);
             animation: navSlideUp .5s cubic-bezier(.16,1,.3,1) .3s both;
+            transition: opacity .3s ease, transform .3s ease;
+        }
+        .bottom-nav.nav-hidden {
+            opacity: 0;
+            transform: translateY(30px);
+            pointer-events: none;
         }
         .nav-item {
             display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -1332,7 +1338,13 @@ setTimeout(hideSplash, 3000);
             n.classList.toggle('active', n.dataset.page === page);
         });
         var nav = document.querySelector('.bottom-nav');
-        if (nav) nav.style.display = (page === 'gift' || page === 'post-gift') ? 'none' : 'flex';
+        if (nav) {
+            if (page === 'gift' || page === 'post-gift') {
+                nav.classList.add('nav-hidden');
+            } else {
+                nav.classList.remove('nav-hidden');
+            }
+        }
         if (page === 'menu') loadUserData();
         if (page === 'scanner') {
             var sr = document.getElementById('scan-result');
@@ -1515,15 +1527,35 @@ setTimeout(hideSplash, 3000);
 
         createParticles();
 
+        function closeOverlay() {
+            opening.classList.remove('active');
+            box.style.pointerEvents = '';
+            box.style.animation = '';
+        }
+
+        var fallbackTimer = setTimeout(function() {
+            closeOverlay();
+            openPage('menu');
+        }, 8000);
+
         try {
+            var controller = new AbortController();
+            var timeoutId = setTimeout(function() { controller.abort(); }, 5000);
+
             var resp = await fetch(API_BASE + '/gift/open', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: uid })
+                body: JSON.stringify({ user_id: uid }),
+                signal: controller.signal
             });
-            var result = await resp.json();
+            clearTimeout(timeoutId);
 
-            if (result.ok) {
+            var result;
+            try { result = await resp.json(); } catch(parseErr) { result = null; }
+
+            clearTimeout(fallbackTimer);
+
+            if (result && result.ok) {
                 giftData = result;
                 setTimeout(function() {
                     document.getElementById('gift-opening-emoji').textContent = '✨';
@@ -1531,18 +1563,19 @@ setTimeout(hideSplash, 3000);
                 }, 800);
 
                 setTimeout(function() {
-                    opening.classList.remove('active');
+                    closeOverlay();
                     showPostGift(result.points, result.balance);
                 }, 2000);
             } else {
                 setTimeout(function() {
-                    opening.classList.remove('active');
+                    closeOverlay();
                     openPage('menu');
                 }, 1000);
             }
         } catch(e) {
+            clearTimeout(fallbackTimer);
             setTimeout(function() {
-                opening.classList.remove('active');
+                closeOverlay();
                 openPage('menu');
             }, 1000);
         }
