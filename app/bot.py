@@ -229,18 +229,10 @@ async def handle_message(db, msg: dict):
         payload = ""
         if " " in text:
             payload = text.split(" ", 1)[1]
-        is_new = not user
         if not user:
             user = await db.create_user(chat_id, tg_name, "menu", payload)
         elif user.get("step") not in ("start", None, "menu"):
             await db.update_user_step(chat_id, "menu")
-        if is_new and not user.get("phone"):
-            await send_message(
-                chat_id,
-                "📱 Для завершения регистрации отправьте свой <b>номер телефона</b>:",
-                reply_markup=contact_keyboard(),
-            )
-            return
         await handle_start(db, chat_id, user, payload)
         return
 

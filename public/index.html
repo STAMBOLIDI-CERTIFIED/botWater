@@ -1296,10 +1296,7 @@ setTimeout(hideSplash, 3000);
 
             if (!initGiftChecked) {
                 initGiftChecked = true;
-                var urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('gift') === '1') {
-                    await checkGift();
-                }
+                await checkGift();
             }
         } catch(e) {}
     }
