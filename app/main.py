@@ -187,7 +187,10 @@ async def api_notifications_clear(user_id: int = 0):
 async def api_gift_status(user_id: int = 0):
     if not user_id:
         return JSONResponse({"error": "missing user_id"}, status_code=400)
-    opened = await db.has_gift_been_opened(user_id)
+    try:
+        opened = await db.has_gift_been_opened(user_id)
+    except Exception:
+        opened = False
     user = await db.get_user(user_id)
     return {
         "opened": opened,
@@ -202,7 +205,10 @@ async def api_gift_open(request: Request):
     if not user_id:
         return JSONResponse({"error": "missing user_id"}, status_code=400)
 
-    opened = await db.has_gift_been_opened(user_id)
+    try:
+        opened = await db.has_gift_been_opened(user_id)
+    except Exception:
+        opened = False
     if opened:
         return JSONResponse({"error": "gift already opened"}, status_code=409)
 

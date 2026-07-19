@@ -449,21 +449,29 @@ class Database:
     # ─── Gift System ───────────────────────────────────
 
     async def has_gift_been_opened(self, telegram_id: int) -> bool:
-        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=gift_opened")
-        if not user:
+        try:
+            user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=gift_opened")
+            if not user:
+                return False
+            return bool(user.get("gift_opened"))
+        except Exception:
             return False
-        return bool(user.get("gift_opened"))
 
     async def mark_gift_opened(self, telegram_id: int, points: int):
         user = await self.get_user(telegram_id)
         if not user:
             return
         new_balance = (user.get("balance") or 0) + points
-        await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {
-            "gift_opened": True,
-            "gift_points": points,
-            "balance": new_balance,
-        })
+        try:
+            await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {
+                "gift_opened": True,
+                "gift_points": points,
+                "balance": new_balance,
+            })
+        except Exception:
+            await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {
+                "balance": new_balance,
+            })
         await self._fetch("points_log", method="POST", json_data={
             "user_id": user["id"],
             "amount": points,
