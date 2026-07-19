@@ -393,7 +393,10 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
         )
         return
 
-    gift_opened = await db.has_gift_been_opened(chat_id)
+    try:
+        gift_opened = await db.has_gift_been_opened(chat_id)
+    except Exception:
+        gift_opened = False
     if not gift_opened:
         s = get_settings()
         app_url = s["WEBAPP_URL"]
