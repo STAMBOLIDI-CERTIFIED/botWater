@@ -888,6 +888,46 @@
         .post-gift-buttons .btn {
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
+
+        /* Gift Opening Overlay */
+        .gift-opening {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 10000;
+            display: none;
+            align-items: center; justify-content: center;
+            flex-direction: column;
+        }
+        .gift-opening.active { display: flex; animation: fadeIn .3s ease; }
+        .gift-opening-box {
+            font-size: 120px;
+            animation: giftOpenBounce .6s cubic-bezier(.16,1,.3,1);
+        }
+        @keyframes giftOpenBounce {
+            0% { transform: scale(0.5) rotate(-10deg); opacity: 0; }
+            60% { transform: scale(1.3) rotate(5deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0); }
+        }
+        .gift-opening-text {
+            font-size: 18px; font-weight: 700;
+            color: var(--gold); margin-top: 20px;
+            animation: slideUp .5s cubic-bezier(.16,1,.3,1) .3s both;
+        }
+        .gift-particles {
+            position: absolute; width: 100%; height: 100%;
+            pointer-events: none;
+        }
+        .gift-particle {
+            position: absolute;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--gold);
+            animation: particleBurst 1s ease-out forwards;
+        }
+        @keyframes particleBurst {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
     </style>
 </head>
 <body>
