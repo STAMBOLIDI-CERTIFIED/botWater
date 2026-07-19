@@ -183,6 +183,50 @@ async def api_notifications_clear(user_id: int = 0):
         await db.clear_notifications(user_id)
     return {"ok": True}
 
+@app.get("/api/gift")
+async def api_gift_status(user_id: int = 0):
+    if not user_id:
+        return JSONResponse({"error": "missing user_id"}, status_code=400)
+    opened = await db.has_gift_been_opened(user_id)
+    user = await db.get_user(user_id)
+    return {
+        "opened": opened,
+        "gift_points": user.get("gift_points") if user else 0,
+        "balance": user.get("balance") if user else 0,
+    }
+
+@app.post("/api/gift/open")
+async def api_gift_open(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    if not user_id:
+        return JSONResponse({"error": "missing user_id"}, status_code=400)
+
+    opened = await db.has_gift_been_opened(user_id)
+    if opened:
+        return JSONResponse({"error": "gift already opened"}, status_code=409)
+
+    import random
+    points = random.choices([10, 15, 25, 50, 100], weights=[35, 30, 20, 10, 5], k=1)[0]
+    await db.mark_gift_opened(user_id, points)
+
+    nearest = await db.get_nearest_prize(user_id)
+    user = await db.get_user(user_id)
+
+    return {
+        "ok": True,
+        "points": points,
+        "balance": user.get("balance") if user else points,
+        "nearest_prize": nearest,
+    }
+
+@app.get("/api/nearest_prize")
+async def api_nearest_prize(user_id: int = 0):
+    if not user_id:
+        return JSONResponse({"error": "missing user_id"}, status_code=400)
+    nearest = await db.get_nearest_prize(user_id)
+    return nearest or {}
+
 @app.post("/api/scan")
 async def api_scan(request: Request):
     body = await request.json()

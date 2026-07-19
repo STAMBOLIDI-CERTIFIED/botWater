@@ -37,7 +37,7 @@
             font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
             min-height: 100vh;
             overflow-x: hidden;
-            padding-bottom: 110px;
+            padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
         }
 
         /* === SPLASH === */
@@ -97,6 +97,8 @@
         @keyframes avatarGlow { 0%,100% { box-shadow: 0 0 0 2px var(--gold), 0 0 0 0 rgba(201,168,76,0); } 50% { box-shadow: 0 0 0 2px var(--gold), 0 0 16px 4px rgba(201,168,76,0.2); } }
         @keyframes navSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
         @keyframes emojiBounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+        @keyframes shopEmojiWiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
+        @keyframes shopSparkle { 0%,100% { opacity:0; transform:scale(0); } 50% { opacity:1; transform:scale(1); } }
         .page { display: none; padding: 0 16px 20px; }
         .page.active { display: block !important; animation: fadeIn .4s cubic-bezier(.16,1,.3,1); }
 
@@ -803,6 +805,83 @@
             background: var(--surface-solid); border: 1px solid var(--border);
             border-radius: var(--radius-md); font-size: 14px;
         }
+
+        /* === GIFT PAGE === */
+        .gift-page {
+            padding: 0 16px 20px;
+            min-height: 80vh;
+            align-items: center; justify-content: center;
+        }
+        .gift-page:not(.active) { display: none; }
+        .gift-page.active { display: flex !important; animation: fadeIn .4s cubic-bezier(.16,1,.3,1); }
+        .post-gift {
+            padding: 0 16px 20px;
+        }
+        .post-gift:not(.active) { display: none; }
+        .post-gift.active { display: block !important; animation: fadeIn .4s cubic-bezier(.16,1,.3,1); }
+        .post-gift-header {
+            text-align: center; padding: 30px 0 20px;
+        }
+        .post-gift-emoji {
+            font-size: 64px;
+            animation: emojiBounce .6s cubic-bezier(.16,1,.3,1);
+        }
+        .post-gift-title {
+            font-size: 24px; font-weight: 800;
+            margin: 16px 0 8px;
+        }
+        .post-gift-points {
+            font-size: 36px; font-weight: 800;
+            color: var(--gold);
+            margin: 12px 0;
+        }
+        .post-gift-subtitle {
+            font-size: 14px; color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+        .progress-section {
+            background: var(--surface-solid);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            margin-bottom: 16px;
+        }
+        .progress-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .progress-title {
+            font-size: 14px; font-weight: 600;
+        }
+        .progress-balance {
+            font-size: 13px; color: var(--gold); font-weight: 700;
+        }
+        .progress-bar-container {
+            background: rgba(255,255,255,0.06);
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 8px;
+            background: linear-gradient(90deg, var(--gold), var(--gold-light));
+            transition: width 1s cubic-bezier(.16,1,.3,1);
+        }
+        .progress-info {
+            font-size: 12px; color: var(--text-dim);
+            line-height: 1.5;
+        }
+        .progress-info strong {
+            color: var(--text);
+        }
+        .post-gift-buttons {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .post-gift-buttons .btn {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -992,6 +1071,53 @@ setTimeout(hideSplash, 3000);
     </div>
 </div>
 
+<!-- ПОДАРОК -->
+<div id="page-gift" class="page gift-page">
+    <div class="gift-container">
+        <div class="gift-box" id="gift-box" onclick="openGift()">
+            <div class="gift-glow"></div>
+            <div class="gift-box-img">🎁</div>
+        </div>
+        <div class="gift-text">Ваш подарок ждёт!</div>
+        <div class="gift-hint">Нажмите на подарок, чтобы открыть его.</div>
+    </div>
+</div>
+
+<!-- ЭКРАН ПОСЛЕ ПОДАРКА -->
+<div id="page-post-gift" class="page post-gift">
+    <div class="post-gift-header">
+        <div class="post-gift-emoji">🎉</div>
+        <div class="post-gift-title">Поздравляем!</div>
+        <div class="post-gift-points" id="post-gift-points">+25</div>
+        <div class="post-gift-subtitle">Баллы уже начислены на ваш счёт.</div>
+    </div>
+
+    <div class="progress-section" id="post-gift-progress">
+        <div class="progress-header">
+            <div class="progress-title">Ближайший приз</div>
+            <div class="progress-balance" id="post-gift-balance">25 / 500 баллов</div>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="post-gift-bar" style="width: 5%"></div>
+        </div>
+        <div class="progress-info" id="post-gift-info">
+            Для получения <strong>кружки</strong> не хватает <strong>475 баллов</strong>.
+        </div>
+    </div>
+
+    <div class="post-gift-buttons">
+        <button class="btn btn-primary" onclick="sendToBot('menu')">🎁 Магазин призов</button>
+        <button class="btn btn-outline" onclick="sendToBot('scan')">📷 Сканировать следующую бутылку</button>
+    </div>
+</div>
+
+<!-- АНИМАЦИЯ ОТКРЫТИЯ -->
+<div class="gift-opening" id="gift-opening">
+    <div class="gift-particles" id="gift-particles"></div>
+    <div class="gift-opening-box" id="gift-opening-emoji">🎁</div>
+    <div class="gift-opening-text" id="gift-opening-text">Открываем подарок...</div>
+</div>
+
 <!-- ДЕРЕВО -->
 <div id="page-tree" class="page">
     <button class="back-btn" onclick="openPage('menu')">‹ Назад</button>
@@ -1040,6 +1166,8 @@ setTimeout(hideSplash, 3000);
     const user = tg.initDataUnsafe?.user || {};
     let html5QrCode = null, currentPage = 'menu';
     const API_BASE = window.location.origin + '/api';
+
+    var initGiftChecked = false;
 
     function setUserUI(data) {
         var n = (data && data.name) || user.first_name || 'Пользователь';
@@ -1119,6 +1247,14 @@ setTimeout(hideSplash, 3000);
             if (t) {
                 document.getElementById('card-tree-level').textContent = t.level || 1;
             }
+
+            if (!initGiftChecked) {
+                initGiftChecked = true;
+                var urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('gift') === '1') {
+                    await checkGift();
+                }
+            }
         } catch(e) {}
     }
     loadUserData();
@@ -1195,6 +1331,8 @@ setTimeout(hideSplash, 3000);
         document.querySelectorAll('.nav-item').forEach(n => {
             n.classList.toggle('active', n.dataset.page === page);
         });
+        var nav = document.querySelector('.bottom-nav');
+        if (nav) nav.style.display = (page === 'gift' || page === 'post-gift') ? 'none' : 'flex';
         if (page === 'menu') loadUserData();
         if (page === 'scanner') {
             var sr = document.getElementById('scan-result');
@@ -1209,6 +1347,7 @@ setTimeout(hideSplash, 3000);
         if (page === 'shop') loadShop();
         if (page === 'raffles') loadRaffles();
         if (page === 'tree') loadTree();
+        if (page === 'gift') {} // gift page is static
     }
 
     function switchHistoryTab(tab) {
@@ -1233,13 +1372,14 @@ setTimeout(hideSplash, 3000);
         const bal = d ? d.balance : 0;
         g.innerHTML = prizes.map(p => {
             const ok = bal >= p.price_points;
+            const missing = Math.max(0, p.price_points - bal);
             return '<div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:16px;overflow:hidden">'
                 + (p.image_url ? '<img src="' + esc(p.image_url) + '" style="width:100%;height:110px;object-fit:cover" onerror="this.style.display=\'none\'">' : '')
                 + '<div style="padding:12px"><div style="font-size:13px;font-weight:700;margin-bottom:3px">' + esc(p.name) + '</div>'
                 + '<div style="font-size:11px;color:var(--text-dim);margin-bottom:8px">' + esc(p.description) + '</div>'
                 + '<div style="font-size:11px;font-weight:700;color:var(--gold);margin-bottom:8px">🎯 ' + p.price_points + ' баллов</div>'
                 + (ok ? '<button class="btn btn-primary" style="padding:10px;font-size:12px" onclick="sendToBot(\'exchange:' + p.id + '\')">🎁 Обменять</button>'
-                    : '<button class="btn btn-outline" style="padding:10px;font-size:12px" disabled>Не хватает</button>')
+                    : '<button class="btn btn-outline" style="padding:10px;font-size:12px" disabled>Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
     }
@@ -1258,7 +1398,10 @@ setTimeout(hideSplash, 3000);
         }).join('');
     }
 
-    tg.BackButton.onClick(() => { if (currentPage !== 'menu') { closeScannerAndBack(); openPage('menu'); } });
+    tg.BackButton.onClick(() => {
+        if (currentPage === 'gift' || currentPage === 'post-gift') return;
+        if (currentPage !== 'menu') { closeScannerAndBack(); openPage('menu'); }
+    });
 
     function startScan() {
         const btn = document.getElementById('scan-btn'), reader = document.getElementById('reader'), zone = document.getElementById('scan-zone');
@@ -1317,6 +1460,112 @@ setTimeout(hideSplash, 3000);
 
     function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
     function sendToBot(c) { tg.sendData(c); }
+
+    // === GIFT SYSTEM ===
+    let giftData = null;
+
+    async function checkGift() {
+        var uid = getUID();
+        if (!uid) return;
+        try {
+            var d = await apiFetch('/gift?user_id=' + uid);
+            if (d && !d.opened) {
+                openPage('gift');
+                return true;
+            } else if (d && d.opened) {
+                showPostGift(d.gift_points || 0, d.balance || 0);
+                return true;
+            }
+        } catch(e) {}
+        return false;
+    }
+
+    function showPostGift(points, balance) {
+        document.getElementById('post-gift-points').textContent = '+' + points;
+        document.getElementById('post-gift-balance').textContent = balance + ' / ' + (balance + 475) + ' баллов';
+
+        var nearest = giftData ? giftData.nearest_prize : null;
+        if (nearest) {
+            var pct = nearest.price > 0 ? Math.min(100, Math.round((balance / nearest.price) * 100)) : 0;
+            document.getElementById('post-gift-bar').style.width = pct + '%';
+            document.getElementById('post-gift-balance').textContent = balance + ' / ' + nearest.price + ' баллов';
+            if (nearest.missing > 0) {
+                document.getElementById('post-gift-info').innerHTML =
+                    'Для получения <strong>' + esc(nearest.name) + '</strong> не хватает <strong>' + nearest.missing + ' баллов</strong>.';
+            } else {
+                document.getElementById('post-gift-info').innerHTML =
+                    'Вы можете обменять баллы на приз <strong>' + esc(nearest.name) + '</strong>!';
+            }
+        } else {
+            document.getElementById('post-gift-info').innerHTML = 'Накапливайте баллы и обменивайте на призы!';
+        }
+        openPage('post-gift');
+    }
+
+    async function openGift() {
+        var uid = getUID();
+        if (!uid) return;
+
+        var box = document.getElementById('gift-box');
+        box.style.pointerEvents = 'none';
+        box.style.animation = 'none';
+
+        var opening = document.getElementById('gift-opening');
+        opening.classList.add('active');
+
+        createParticles();
+
+        try {
+            var resp = await fetch(API_BASE + '/gift/open', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid })
+            });
+            var result = await resp.json();
+
+            if (result.ok) {
+                giftData = result;
+                setTimeout(function() {
+                    document.getElementById('gift-opening-emoji').textContent = '✨';
+                    document.getElementById('gift-opening-text').textContent = '+' + result.points + ' баллов!';
+                }, 800);
+
+                setTimeout(function() {
+                    opening.classList.remove('active');
+                    showPostGift(result.points, result.balance);
+                }, 2000);
+            } else {
+                setTimeout(function() {
+                    opening.classList.remove('active');
+                    openPage('menu');
+                }, 1000);
+            }
+        } catch(e) {
+            setTimeout(function() {
+                opening.classList.remove('active');
+                openPage('menu');
+            }, 1000);
+        }
+    }
+
+    function createParticles() {
+        var container = document.getElementById('gift-particles');
+        container.innerHTML = '';
+        var colors = ['#C9A84C', '#E0C46A', '#3D9E6A', '#A855F7', '#EF4444', '#3B82F6'];
+        for (var i = 0; i < 20; i++) {
+            var p = document.createElement('div');
+            p.className = 'gift-particle';
+            p.style.left = '50%';
+            p.style.top = '50%';
+            p.style.background = colors[Math.floor(Math.random() * colors.length)];
+            var angle = (Math.PI * 2 * i) / 20;
+            var dist = 80 + Math.random() * 120;
+            p.style.setProperty('--tx', Math.cos(angle) * dist + 'px');
+            p.style.setProperty('--ty', Math.sin(angle) * dist + 'px');
+            p.style.animationDelay = (Math.random() * 0.3) + 's';
+            container.appendChild(p);
+        }
+    }
 
     async function loadTree() {
         try {
