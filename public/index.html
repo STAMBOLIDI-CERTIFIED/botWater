@@ -99,6 +99,10 @@
         @keyframes emojiBounce { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
         @keyframes shopEmojiWiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 75% { transform: rotate(8deg); } }
         @keyframes shopSparkle { 0%,100% { opacity:0; transform:scale(0); } 50% { opacity:1; transform:scale(1); } }
+        @keyframes cardTreeGlow { 0%,100% { box-shadow: 0 0 0 rgba(61,158,106,0); } 50% { box-shadow: 0 0 24px 6px rgba(61,158,106,0.15); } }
+        @keyframes cardShopGlow { 0%,100% { box-shadow: 0 0 0 rgba(168,85,247,0); } 50% { box-shadow: 0 0 24px 6px rgba(168,85,247,0.15); } }
+        @keyframes treeEmojiFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        @keyframes treeParticles { 0% { opacity: 0; transform: translateY(0) scale(0.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-24px) scale(1); } }
         .page { display: none; padding: 0 16px 20px; }
         .page.active { display: block !important; animation: fadeIn .4s cubic-bezier(.16,1,.3,1); }
 
@@ -272,7 +276,7 @@
             border-radius: 28px 12px 28px 12px;
             background: linear-gradient(160deg, #1A1D24 0%, #142A1E 50%, #1A1D24 100%);
             border: 1px solid rgba(61,158,106,0.2);
-            animation: treeGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
+            animation: cardTreeGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
             animation-delay: .2s, .2s;
             transition: all .35s cubic-bezier(.16,1,.3,1);
         }
@@ -329,7 +333,7 @@
             border-radius: 12px 28px 12px 28px;
             background: linear-gradient(160deg, #1A1D24 0%, #251A2E 50%, #1A1D24 100%);
             border: 1px solid rgba(168,85,247,0.2);
-            animation: shopGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
+            animation: cardShopGlow 3s ease-in-out infinite, slideUp .5s cubic-bezier(.16,1,.3,1) both;
             animation-delay: .35s, .35s;
             transition: all .35s cubic-bezier(.16,1,.3,1);
         }
@@ -743,8 +747,8 @@
         .tree-l6 .tree-leaf:nth-child(6) { display: block; width: 22px; height: 18px; top: 22px; left: 80px; }
         .tree-l6 .tree-leaf:nth-child(7) { display: block; width: 18px; height: 14px; top: 28px; left: 50px; }
         .tree-l6 .tree-leaf:nth-child(8) { display: block; width: 16px; height: 12px; top: 36px; left: 100px; }
-        .tree-l6 .tree-glow { display: block; top: 28px; left: 50%; transform: translateX(-50%); width: 110px; height: 110px; background: radial-gradient(circle, rgba(201,168,76,0.15), transparent 70%); animation: treeGlow 3s ease-in-out infinite; }
-        @keyframes treeGlow { 0%,100% { opacity:.5; transform:translateX(-50%) scale(1); } 50% { opacity:1; transform:translateX(-50%) scale(1.1); } }
+        .tree-l6 .tree-glow { display: block; top: 28px; left: 50%; transform: translateX(-50%); width: 110px; height: 110px; background: radial-gradient(circle, rgba(201,168,76,0.15), transparent 70%); animation: treeGlowPulse 3s ease-in-out infinite; }
+        @keyframes treeGlowPulse { 0%,100% { opacity:.5; transform:translateX(-50%) scale(1); } 50% { opacity:1; transform:translateX(-50%) scale(1.1); } }
         .tree-l6 .tree-dot { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 6px rgba(201,168,76,0.5); animation: twinkle 2s ease-in-out infinite; }
         .tree-l6 .tree-dot:nth-child(9) { top: 5px; left: 82px; animation-delay: 0s; }
         .tree-l6 .tree-dot:nth-child(10) { top: 16px; left: 54px; animation-delay: .7s; }
@@ -937,12 +941,12 @@
     <div class="splash-dots"><span></span><span></span><span></span></div>
 </div>
 <script>
-function hideSplash() {
-    var s = document.getElementById('splash');
-    if (s) { s.classList.add('hide'); setTimeout(function(){ s.remove(); }, 600); }
-}
-window.addEventListener('load', function() { setTimeout(hideSplash, 1000); });
-setTimeout(hideSplash, 3000);
+    function hideSplash() {
+        var s = document.getElementById('splash');
+        if (s) { s.classList.add('hide'); setTimeout(function(){ s.remove(); }, 600); }
+    }
+    window.addEventListener('load', function() { setTimeout(hideSplash, 1000); });
+    setTimeout(hideSplash, 3000);
 </script>
 
 <!-- ГЛАВНОЕ МЕНЮ -->
@@ -1634,17 +1638,17 @@ setTimeout(hideSplash, 3000);
 
     async function loadTree() {
         try {
-        var uid = getUID();
-        const c = document.getElementById('tree-container');
-        if (!uid) { c.innerHTML = '<div class="empty-state"><div class="empty-ico">🌳</div><div class="empty-t">Нет данных пользователя</div></div>'; return; }
-        const d = await apiFetch('/tree?user_id=' + uid);
-        if (!d) { c.innerHTML = '<div class="empty-state"><div class="empty-ico">🌳</div><div class="empty-t">Ошибка загрузки</div><div class="empty-d">Попробуйте позже</div></div>'; return; }
-        const xp = d.xp||0, lv = d.level||1, nx = d.next_level_xp||100, pr = d.progress||0;
-        const sn = TL[lv-1]?.name||'Древо жизни', si = TL[lv-1]?.icon||'🌟', mx = lv>=6;
-        let ex = '';
-        for (let i=3;i<=12;i++) ex+='<div class="tree-leaf"></div>';
-        if (mx) { ex+='<div class="tree-glow"></div>'; for(let i=9;i<=12;i++) ex+='<div class="tree-dot"></div>'; }
-        c.innerHTML = `<div class="tree-wrap">
+            var uid = getUID();
+            const c = document.getElementById('tree-container');
+            if (!uid) { c.innerHTML = '<div class="empty-state"><div class="empty-ico">🌳</div><div class="empty-t">Нет данных пользователя</div></div>'; return; }
+            const d = await apiFetch('/tree?user_id=' + uid);
+            if (!d) { c.innerHTML = '<div class="empty-state"><div class="empty-ico">🌳</div><div class="empty-t">Ошибка загрузки</div><div class="empty-d">Попробуйте позже</div></div>'; return; }
+            const xp = d.xp||0, lv = d.level||1, nx = d.next_level_xp||100, pr = d.progress||0;
+            const sn = TL[lv-1]?.name||'Древо жизни', si = TL[lv-1]?.icon||'🌟', mx = lv>=6;
+            let ex = '';
+            for (let i=3;i<=12;i++) ex+='<div class="tree-leaf"></div>';
+            if (mx) { ex+='<div class="tree-glow"></div>'; for(let i=9;i<=12;i++) ex+='<div class="tree-dot"></div>'; }
+            c.innerHTML = `<div class="tree-wrap">
             <div class="tree-stage">${si} ${sn}</div>
             <div class="tree-level-badge">Уровень ${lv}${mx?' ★':''}</div>
             <div class="tree-art tree-l${Math.min(lv,6)}"><div class="tree-ground"></div><div class="tree-trunk"></div><div class="tree-top"></div>${ex}</div>
