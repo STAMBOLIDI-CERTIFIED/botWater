@@ -510,13 +510,10 @@
             padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
             z-index: 100;
             box-shadow: 0 8px 40px rgba(0,0,0,0.3);
-            opacity: 1;
-            transform: translateY(0);
-            transition: opacity .3s ease, transform .3s ease;
+            transition: opacity .25s ease;
         }
         .bottom-nav.nav-hidden {
             opacity: 0;
-            transform: translateY(30px);
             pointer-events: none;
         }
         .nav-item {
