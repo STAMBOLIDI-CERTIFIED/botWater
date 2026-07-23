@@ -293,19 +293,42 @@ class Database:
     async def get_prizes(self) -> list[dict]:
         return await self._fetch("prizes", "select=*&active=eq.1&order=price_points.asc")
 
+    async def get_prizes_by_category(self, category_id: int) -> list[dict]:
+        return await self._fetch("prizes", f"select=*&category_id=eq.{category_id}&active=eq.1&order=price_points.asc")
+
     async def get_prize(self, prize_id: int) -> dict | None:
         return await self._fetch_one("prizes", f"id=eq.{prize_id}&select=*")
 
-    async def add_prize(self, name: str, description: str, image_url: str, price_points: int):
-        await self._fetch("prizes", method="POST", json_data={
+    async def add_prize(self, name: str, description: str, image_url: str, price_points: int, category_id: int = 0):
+        data = {
             "name": name,
             "description": description,
             "image_url": image_url,
             "price_points": price_points,
-        })
+        }
+        if category_id:
+            data["category_id"] = category_id
+        await self._fetch("prizes", method="POST", json_data=data)
 
     async def delete_prize(self, prize_id: int):
         await self._fetch("prizes", f"id=eq.{prize_id}", "DELETE")
+
+    # ─── Shop Categories ─────────────────────────────
+
+    async def get_shop_categories(self) -> list[dict]:
+        return await self._fetch("shop_categories", "select=*&order=sort_order.asc")
+
+    async def get_shop_category(self, category_id: int) -> dict | None:
+        return await self._fetch_one("shop_categories", f"id=eq.{category_id}&select=*")
+
+    async def get_shop_category_by_title(self, title: str) -> dict | None:
+        return await self._fetch_one("shop_categories", f"title=eq.{title}&select=*")
+
+    async def update_shop_category(self, category_id: int, data: dict):
+        await self._fetch("shop_categories", f"id=eq.{category_id}", "PATCH", data)
+
+    async def get_all_prizes(self) -> list[dict]:
+        return await self._fetch("prizes", "select=*&order=price_points.asc")
 
     # ─── Orders ─────────────────────────────────────────
 

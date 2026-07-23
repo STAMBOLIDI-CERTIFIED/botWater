@@ -146,6 +146,22 @@ async def api_user(user_id: int = 0):
 async def api_prizes():
     return await db.get_prizes()
 
+@app.get("/api/shop/categories")
+async def api_shop_categories():
+    return await db.get_shop_categories()
+
+@app.get("/api/shop/categories/{category_id}")
+async def api_shop_category_items(category_id: int):
+    category = await db.get_shop_category(category_id)
+    if not category:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    items = await db.get_prizes_by_category(category_id)
+    return {"category": category, "items": items}
+
+@app.get("/api/shop/categories/{category_id}/items")
+async def api_shop_category_items_list(category_id: int):
+    return await db.get_prizes_by_category(category_id)
+
 @app.get("/api/raffles")
 async def api_raffles(user_id: int = 0):
     raffles = await db.get_raffle_results()
@@ -383,7 +399,10 @@ async def admin_panel(request: Request, page: str = "dashboard"):
     elif page == "points":
         ctx["users"] = await db.get_all_users()
     elif page == "prizes":
-        ctx["prizes"] = await db.get_prizes()
+        ctx["prizes"] = await db.get_all_prizes()
+        ctx["categories"] = await db.get_shop_categories()
+    elif page == "shop":
+        ctx["categories"] = await db.get_shop_categories()
     elif page == "orders":
         ctx["orders"] = await db.get_pending_orders()
     elif page == "bottles":
@@ -482,6 +501,7 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
             name = form["name"]
             desc = form.get("description", "")
             price = int(form["price"])
+            category_id = int(form.get("category_id", 0))
             image_url = ""
             file = form.get("prize_image")
             if file and hasattr(file, "filename") and file.filename:
@@ -493,7 +513,7 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
                     content = await file.read()
                     (upload_dir / filename).write_bytes(content)
                     image_url = f"/uploads/prizes/{filename}"
-            await db.add_prize(name, desc, image_url, price)
+            await db.add_prize(name, desc, image_url, price, category_id)
             return r(f"Приз «{name}» добавлен")
         if "delete_prize" in form:
             prize_id = int(form["prize_id"])
@@ -504,6 +524,31 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
                     img_path.unlink()
             await db.delete_prize(prize_id)
             return r("Приз удалён")
+
+    elif page == "shop":
+        if "update_category" in form:
+            cat_id = int(form["category_id"])
+            data = {
+                "title": form.get("title", ""),
+                "subtitle": form.get("subtitle", ""),
+                "description": form.get("description", ""),
+                "icon": form.get("icon", "🎁"),
+                "color": form.get("color", "#C9A84C"),
+                "sort_order": int(form.get("sort_order", 0)),
+                "is_active": "is_active" in form,
+            }
+            file = form.get("category_image")
+            if file and hasattr(file, "filename") and file.filename:
+                upload_dir = BASE_DIR / "public" / "uploads" / "shop"
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                ext = Path(file.filename).suffix.lower()
+                if ext in (".png", ".jpg", ".jpeg", ".webp"):
+                    filename = f"cat_{cat_id}_{datetime.now().timestamp()}{ext}"
+                    content = await file.read()
+                    (upload_dir / filename).write_bytes(content)
+                    data["image_url"] = f"/uploads/shop/{filename}"
+            await db.update_shop_category(cat_id, data)
+            return r(f"Категория «{data['title']}» обновлена")
 
     elif page == "orders":
         if "complete_order" in form:
