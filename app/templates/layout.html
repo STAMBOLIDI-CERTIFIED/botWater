@@ -127,6 +127,11 @@
 {% if success_msg %}
 <div class="success-msg">{{ success_msg }}</div>
 {% endif %}
+{% if error_msg %}
+<div class="success-msg" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);color:#EF4444">
+    ⚠️ Ошибка загрузки данных: {{ error_msg }}<br><span style="font-size:12px;opacity:0.7">Проверьте, что все таблицы созданы в Supabase (выполните миграции)</span>
+</div>
+{% endif %}
 {% block content %}{% endblock %}
 </main>
 <script>
