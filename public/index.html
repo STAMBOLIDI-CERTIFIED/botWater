@@ -149,7 +149,7 @@
         .bell-badge.show { display: flex; }
 
         .notif-dropdown {
-            position: absolute; top: calc(100% + 8px); right: 0; z-index: 200;
+            position: fixed; z-index: 9000;
             width: 320px; max-width: calc(100vw - 32px);
             background: var(--surface-solid); border: 1px solid var(--border);
             border-radius: var(--radius-lg); padding: 8px;
@@ -1322,7 +1322,13 @@
     function toggleNotif(e) {
         if (e) e.stopPropagation();
         var d = document.getElementById('notif-dropdown');
+        var bell = document.getElementById('top-bell');
         notifOpen = !notifOpen;
+        if (notifOpen) {
+            var rect = bell.getBoundingClientRect();
+            d.style.top = (rect.bottom + 8) + 'px';
+            d.style.right = (window.innerWidth - rect.right) + 'px';
+        }
         d.classList.toggle('show', notifOpen);
         if (notifOpen) loadNotifs();
     }
