@@ -44,9 +44,10 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         if "text/html" in response.headers.get("content-type", ""):
-            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
-            response.headers["Pragma"] = "no-cache"
-            response.headers["Expires"] = "0"
+            if not request.url.path.startswith("/admin"):
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
         return response
 
 app.add_middleware(NoCacheMiddleware)
