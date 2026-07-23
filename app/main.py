@@ -376,51 +376,55 @@ async def admin_panel(request: Request, page: str = "dashboard"):
 
     ctx = admin_context(request, page, success_msg=success_msg)
 
-    if page == "dashboard":
-        ctx["stats"] = await _dashboard_stats()
-    elif page == "users":
-        search = request.query_params.get("search", "")
-        if search:
-            ctx["users"] = await db.search_users(search)
-            ctx["search"] = search
-        else:
+    try:
+        if page == "dashboard":
+            ctx["stats"] = await _dashboard_stats()
+        elif page == "users":
+            search = request.query_params.get("search", "")
+            if search:
+                ctx["users"] = await db.search_users(search)
+                ctx["search"] = search
+            else:
+                ctx["users"] = await db.get_all_users()
+        elif page == "codes":
+            ctx["codes"] = await db.get_all_codes()
+            ctx["active_count"] = await db.get_active_codes_count()
+            ctx["code_stats"] = await db.get_code_stats()
+        elif page == "raffles":
+            ctx["raffles"] = await db.get_raffles()
+            ctx["active_codes"] = await db.get_active_codes_count()
+        elif page == "payouts":
+            ctx["payouts"] = await db.get_pending_payouts()
+            ctx["all_payouts"] = await db.get_raffles()
+        elif page == "points":
             ctx["users"] = await db.get_all_users()
-    elif page == "codes":
-        ctx["codes"] = await db.get_all_codes()
-        ctx["active_count"] = await db.get_active_codes_count()
-        ctx["code_stats"] = await db.get_code_stats()
-    elif page == "raffles":
-        ctx["raffles"] = await db.get_raffles()
-        ctx["active_codes"] = await db.get_active_codes_count()
-    elif page == "payouts":
-        ctx["payouts"] = await db.get_pending_payouts()
-        ctx["all_payouts"] = await db.get_raffles()
-    elif page == "points":
-        ctx["users"] = await db.get_all_users()
-    elif page == "prizes":
-        ctx["prizes"] = await db.get_all_prizes()
-        ctx["categories"] = await db.get_shop_categories()
-    elif page == "shop":
-        ctx["categories"] = await db.get_shop_categories()
-    elif page == "orders":
-        ctx["orders"] = await db.get_pending_orders()
-    elif page == "bottles":
-        batch = request.query_params.get("batch", "")
-        search = request.query_params.get("search", "")
-        sort = request.query_params.get("sort", "id")
-        dir_ = request.query_params.get("dir", "DESC")
-        limit = int(request.query_params.get("limit", 200))
-        offset = int(request.query_params.get("offset", 0))
-        if search:
-            ctx["bottles"] = await db.search_bottles(search, sort, dir_, limit, offset)
-            ctx["total"] = await db.count_bottles(search=search)
-        else:
-            ctx["bottles"] = await db.get_bottles(batch, sort, dir_, limit, offset)
-            ctx["total"] = await db.count_bottles(batch=batch)
-        ctx["batches"] = await db.get_bottle_batches()
-    elif page == "admins":
-        ctx["admins"] = await db.get_admins()
-        ctx["superadmin_id"] = s["SUPERADMIN_ID"]
+        elif page == "prizes":
+            ctx["prizes"] = await db.get_all_prizes()
+            ctx["categories"] = await db.get_shop_categories()
+        elif page == "shop":
+            ctx["categories"] = await db.get_shop_categories()
+        elif page == "orders":
+            ctx["orders"] = await db.get_pending_orders()
+        elif page == "bottles":
+            batch = request.query_params.get("batch", "")
+            search = request.query_params.get("search", "")
+            sort = request.query_params.get("sort", "id")
+            dir_ = request.query_params.get("dir", "DESC")
+            limit = int(request.query_params.get("limit", 200))
+            offset = int(request.query_params.get("offset", 0))
+            if search:
+                ctx["bottles"] = await db.search_bottles(search, sort, dir_, limit, offset)
+                ctx["total"] = await db.count_bottles(search=search)
+            else:
+                ctx["bottles"] = await db.get_bottles(batch, sort, dir_, limit, offset)
+                ctx["total"] = await db.count_bottles(batch=batch)
+            ctx["batches"] = await db.get_bottle_batches()
+        elif page == "admins":
+            ctx["admins"] = await db.get_admins()
+            ctx["superadmin_id"] = s["SUPERADMIN_ID"]
+    except Exception as e:
+        logger.error(f"Admin page '{page}' error: {e}")
+        ctx["error_msg"] = str(e)
 
     template = f"{page}.html"
     template_path = Path(__file__).parent / "templates" / template
