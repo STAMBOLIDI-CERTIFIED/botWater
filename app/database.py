@@ -294,7 +294,10 @@ class Database:
         return await self._fetch("prizes", "select=*&active=eq.1&order=price_points.asc")
 
     async def get_prizes_by_category(self, category_id: int) -> list[dict]:
-        return await self._fetch("prizes", f"select=*&category_id=eq.{category_id}&active=eq.1&order=price_points.asc")
+        try:
+            return await self._fetch("prizes", f"select=*&category_id=eq.{category_id}&active=eq.1&order=price_points.asc")
+        except Exception:
+            return []
 
     async def get_prize(self, prize_id: int) -> dict | None:
         return await self._fetch_one("prizes", f"id=eq.{prize_id}&select=*")
@@ -316,19 +319,34 @@ class Database:
     # ─── Shop Categories ─────────────────────────────
 
     async def get_shop_categories(self) -> list[dict]:
-        return await self._fetch("shop_categories", "select=*&order=sort_order.asc")
+        try:
+            return await self._fetch("shop_categories", "select=*&order=sort_order.asc")
+        except Exception:
+            return []
 
     async def get_shop_category(self, category_id: int) -> dict | None:
-        return await self._fetch_one("shop_categories", f"id=eq.{category_id}&select=*")
+        try:
+            return await self._fetch_one("shop_categories", f"id=eq.{category_id}&select=*")
+        except Exception:
+            return None
 
     async def get_shop_category_by_title(self, title: str) -> dict | None:
-        return await self._fetch_one("shop_categories", f"title=eq.{title}&select=*")
+        try:
+            return await self._fetch_one("shop_categories", f"title=eq.{title}&select=*")
+        except Exception:
+            return None
 
     async def update_shop_category(self, category_id: int, data: dict):
-        await self._fetch("shop_categories", f"id=eq.{category_id}", "PATCH", data)
+        try:
+            await self._fetch("shop_categories", f"id=eq.{category_id}", "PATCH", data)
+        except Exception:
+            pass
 
     async def get_all_prizes(self) -> list[dict]:
-        return await self._fetch("prizes", "select=*&order=price_points.asc")
+        try:
+            return await self._fetch("prizes", "select=*&order=price_points.asc")
+        except Exception:
+            return []
 
     # ─── Orders ─────────────────────────────────────────
 
