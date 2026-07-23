@@ -185,7 +185,7 @@ class Database:
     # ─── QR Codes ───────────────────────────────────────
 
     async def get_all_codes(self) -> list[dict]:
-        return await self._fetch("qr_codes", "select=*,users:winner_id(name)&order=id.desc")
+        return await self._fetch("qr_codes", "select=*&order=id.desc")
 
     async def get_active_codes_count(self) -> int:
         rows = await self._fetch("qr_codes", "select=id&status=eq.active")
@@ -228,7 +228,7 @@ class Database:
             return False
 
     async def get_user_scans(self, user_id: int) -> list[dict]:
-        return await self._fetch("scans", f"select=*,qr_codes:code_id(code,batch)&user_id=eq.{user_id}&order=scanned_at.desc")
+        return await self._fetch("scans", f"select=*&user_id=eq.{user_id}&order=scanned_at.desc")
 
     async def get_scans(self, telegram_id: int) -> list[dict]:
         user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
@@ -355,7 +355,7 @@ class Database:
         return rows[0]["id"] if rows else 0
 
     async def get_pending_orders(self) -> list[dict]:
-        return await self._fetch("orders", "select=*,users:user_id(name,telegram_id,phone),prizes:prize_id(name)&status=eq.pending&order=created_at.desc")
+        return await self._fetch("orders", "select=*&status=eq.pending&order=created_at.desc")
 
     async def complete_order(self, order_id: int):
         await self._fetch("orders", f"id=eq.{order_id}", "PATCH", {"status": "completed"})
@@ -363,10 +363,10 @@ class Database:
     # ─── Raffles ────────────────────────────────────────
 
     async def get_raffles(self) -> list[dict]:
-        return await self._fetch("raffles", "select=*,users!raffles_winner_scan_id_fkey(name,telegram_id),scans:winner_scan_id(qr_codes(code))&order=created_at.desc")
+        return await self._fetch("raffles", "select=*&order=created_at.desc")
 
     async def get_raffle_results(self) -> list[dict]:
-        return await self._fetch("raffles", "select=*,users!raffles_winner_scan_id_fkey(name),scans:winner_scan_id(qr_codes(code))&status=eq.completed&order=created_at.desc")
+        return await self._fetch("raffles", "select=*&status=eq.completed&order=created_at.desc")
 
     async def get_raffle_stats(self) -> dict:
         all_rows = await self._fetch("raffles", "select=status")
@@ -447,13 +447,13 @@ class Database:
             await self._fetch("raffles", f"id=eq.{raffle_id}", "PATCH", {"payout_choice": choice})
 
     async def get_pending_payouts(self) -> list[dict]:
-        return await self._fetch("raffles", "select=*,scans:winner_scan_id(users(name,telegram_id,phone,passport_fio,passport_snumber,passport_inn))&status=eq.completed&payout_choice=eq.money&payout_status=is.null&order=created_at.desc")
+        return await self._fetch("raffles", "select=*&status=eq.completed&payout_choice=eq.money&payout_status=is.null&order=created_at.desc")
 
     async def get_user_raffle_wins(self, telegram_id: int) -> list[dict]:
-        return await self._fetch("raffles", f"select=*,scans:winner_scan_id(qr_codes(code),users(telegram_id))&status=eq.completed&scans.users.telegram_id=eq.{telegram_id}&order=created_at.desc")
+        return await self._fetch("raffles", f"select=*&status=eq.completed&order=created_at.desc")
 
     async def process_expired_payouts(self):
-        all_payouts = await self._fetch("raffles", "select=*,scans:winner_scan_id(user_id)&status=eq.completed&payout_choice=eq.money&payout_status=is.null")
+        all_payouts = await self._fetch("raffles", "select=*&status=eq.completed&payout_choice=eq.money&payout_status=is.null")
         now = datetime.utcnow()
         expired = []
         for r in all_payouts:
@@ -564,7 +564,7 @@ class Database:
 
     async def is_qr_code_activated_by_anyone(self, qr_code: str) -> dict | None:
         return await self._fetch_one("user_qr_activations",
-            f"qr_code=eq.{qr_code}&select=*,users:user_id(telegram_id,name)")
+            f"qr_code=eq.{qr_code}&select=*")
 
     async def get_user_activation_count(self, telegram_id: int) -> int:
         user = await self.get_user(telegram_id)
