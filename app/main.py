@@ -94,9 +94,7 @@ async def _setup_bot_commands():
         })
         await client.post(f"{api}/setChatMenuButton", json={
             "menu_button": {
-                "type": "web_app",
-                "text": "🚀 Открыть",
-                "web_app": {"url": s["WEBAPP_URL"]},
+                "type": "commands",
             },
         })
         webhook_url = f"{domain}/webhook"
