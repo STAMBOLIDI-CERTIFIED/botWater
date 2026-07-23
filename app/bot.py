@@ -56,30 +56,41 @@ async def answer_callback(callback_id: str, text: str = "", show_alert: bool = F
 
 # ─── Keyboards ──────────────────────────────────────────
 
-def main_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0) -> dict:
+# Exact labels used on the persistent reply-keyboard. Kept as constants so the
+# text-message dispatcher in handle_message can match them reliably.
+BTN_OPEN_APP = "📱 Открыть приложение"
+BTN_BALANCE = "💰 Баланс"
+BTN_STATS = "📊 Статистика"
+BTN_RAFFLE = "🎰 Следующий розыгрыш"
+BTN_ADMIN = "🔐 Админ-панель"
+
+
+def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0) -> dict:
+    """Reply keyboard that stays pinned under the text input box (not tied to
+    a single message like an inline keyboard). web_app buttons open the mini
+    app directly; the rest are plain text buttons handled in handle_message.
+    """
     app_url = webapp_url
     if chat_id:
         sep = "&" if "?" in app_url else "?"
         app_url = app_url + sep + "user_id=" + str(chat_id)
-    kb = {
-        "inline_keyboard": [
-            [
-                {"text": "📱 Открыть приложение", "web_app": {"url": app_url}},
-            ],
-            [
-                {"text": "💰 Баланс", "callback_data": "balance"},
-                {"text": "📊 Статистика", "callback_data": "stats"},
-            ],
-            [
-                {"text": "🎰 Следующий розыгрыш", "callback_data": "raffle_info"},
-            ],
-        ]
-    }
+
+    rows = [
+        [{"text": BTN_OPEN_APP, "web_app": {"url": app_url}}],
+        [{"text": BTN_BALANCE}, {"text": BTN_STATS}],
+        [{"text": BTN_RAFFLE}],
+    ]
+
     if is_admin:
-        kb["inline_keyboard"].append([
-            {"text": "🔐 Админ-панель", "web_app": {"url": get_settings()["ADMIN_PANEL_URL"]}}
-        ])
-    return kb
+        s = get_settings()
+        # web_app buttons must be alone in their row
+        rows.append([{"text": BTN_ADMIN, "web_app": {"url": s["ADMIN_PANEL_URL"]}}])
+
+    return {
+        "keyboard": rows,
+        "resize_keyboard": True,
+        "is_persistent": True,
+    }
 
 
 def contact_keyboard() -> dict:
@@ -178,6 +189,56 @@ async def process_expired_payouts(db):
         logger.info(f"Auto-converted {count} expired payouts to points")
 
 
+async def apply_persistent_menu(db, chat_id: int):
+    """Push/refresh the persistent reply-keyboard for a chat. Call this once
+    after a user is created and again whenever admin status could have
+    changed, so the correct set of buttons (incl. admin panel) is shown.
+    Sending it as an invisible-ish service message keeps the chat log clean;
+    feel free to fold this into whatever message you already send instead.
+    """
+    s = get_settings()
+    is_admin = await db.is_admin(chat_id)
+    await send_message(
+        chat_id,
+        "⌨️ Меню обновлено.",
+        reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id),
+    )
+
+
+async def send_balance(db, chat_id: int):
+    stats = await db.get_user_stats(chat_id)
+    await send_message(
+        chat_id,
+        f"💰 <b>Ваш баланс:</b> {stats['balance']} баллов\n"
+        f"📊 Всего сканирований: {stats['total_scans']}",
+    )
+
+
+async def send_stats(db, chat_id: int):
+    stats = await db.get_user_stats(chat_id)
+    codes_count = await db.get_active_codes_count()
+    unassigned = await db.get_unassigned_bottle_count()
+    await send_message(
+        chat_id,
+        f"📊 <b>Статистика</b>\n\n"
+        f"👤 Ваши сканирования: <b>{stats['total_scans']}</b>\n"
+        f"💰 Баллы: <b>{stats['balance']}</b>\n"
+        f"📱 Активных QR-кодов: <b>{codes_count}</b>\n"
+        f"🍾 Свободных бутылок: <b>{unassigned}</b>",
+    )
+
+
+async def send_raffle_info(db, chat_id: int):
+    raf_stats = await db.get_raffle_stats()
+    await send_message(
+        chat_id,
+        f"🎰 <b>Розыгрыши</b>\n\n"
+        f"Всего розыгрышей: <b>{raf_stats['total_raffles']}</b>\n"
+        f"Завершено: <b>{raf_stats['completed']}</b>\n\n"
+        f"Следите за новостями в приложении!",
+    )
+
+
 # ─── Main Dispatcher ────────────────────────────────────
 
 async def handle_update(db, body: dict):
@@ -220,6 +281,22 @@ async def handle_message(db, msg: dict):
 
     if web_app_data:
         await handle_webapp_data(db, web_app_data.get("data", ""), chat_id)
+        return
+
+    # ── Persistent reply-keyboard text buttons ──
+    # These replace the old inline "balance"/"stats"/"raffle_info" callbacks
+    # since the buttons now live on the persistent keyboard, not attached to
+    # a specific message.
+    if text == BTN_BALANCE:
+        await send_balance(db, chat_id)
+        return
+
+    if text == BTN_STATS:
+        await send_stats(db, chat_id)
+        return
+
+    if text == BTN_RAFFLE:
+        await send_raffle_info(db, chat_id)
         return
 
     if text.startswith("/"):
@@ -420,8 +497,9 @@ async def show_main_menu(db, chat_id: int, user: dict | None = None):
         f"💧 <b>Главное меню</b>\n\n"
         f"Привет, {user['name'] or 'друг'}! 👋\n"
         f"💰 Баланс: <b>{user['balance']} баллов</b>\n\n"
-        f"Сканируйте QR-коды на бутылках и получайте баллы!",
-        reply_markup=main_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id),
+        f"Сканируйте QR-коды на бутылках и получайте баллы!\n"
+        f"Кнопки для быстрого доступа теперь под полем ввода 👇",
+        reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id),
     )
 
 
@@ -473,41 +551,22 @@ async def handle_callback(db, cbd: dict):
         )
         return
 
+    # "balance" / "stats" / "raffle_info" callbacks kept for backward
+    # compatibility with any inline buttons still in flight, but the primary
+    # entry point is now the persistent reply-keyboard (see handle_message).
     if data == "balance":
         await answer_callback(cid)
-        stats = await db.get_user_stats(chat_id)
-        await send_message(
-            chat_id,
-            f"💰 <b>Ваш баланс:</b> {stats['balance']} баллов\n"
-            f"📊 Всего сканирований: {stats['total_scans']}",
-        )
+        await send_balance(db, chat_id)
         return
 
     if data == "stats":
         await answer_callback(cid)
-        stats = await db.get_user_stats(chat_id)
-        codes_count = await db.get_active_codes_count()
-        unassigned = await db.get_unassigned_bottle_count()
-        await send_message(
-            chat_id,
-            f"📊 <b>Статистика</b>\n\n"
-            f"👤 Ваши сканирования: <b>{stats['total_scans']}</b>\n"
-            f"💰 Баллы: <b>{stats['balance']}</b>\n"
-            f"📱 Активных QR-кодов: <b>{codes_count}</b>\n"
-            f"🍾 Свободных бутылок: <b>{unassigned}</b>",
-        )
+        await send_stats(db, chat_id)
         return
 
     if data == "raffle_info":
         await answer_callback(cid)
-        raf_stats = await db.get_raffle_stats()
-        await send_message(
-            chat_id,
-            f"🎰 <b>Розыгрыши</b>\n\n"
-            f"Всего розыгрышей: <b>{raf_stats['total_raffles']}</b>\n"
-            f"Завершено: <b>{raf_stats['completed']}</b>\n\n"
-            f"Следите за новостями в приложении!",
-        )
+        await send_raffle_info(db, chat_id)
         return
 
     if data.startswith("payout_money:"):
