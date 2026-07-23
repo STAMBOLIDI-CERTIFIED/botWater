@@ -10,6 +10,14 @@
             <div class="form-group"><label>Описание</label><textarea name="description" class="form-input form-input-sm" rows="2"></textarea></div>
             <div class="form-group"><label>Изображение</label><input type="file" name="prize_image" class="form-input form-input-sm" accept="image/*"></div>
             <div class="form-group"><label>Цена (баллы)</label><input type="number" name="price" class="form-input form-input-sm" required></div>
+            <div class="form-group"><label>Категория</label>
+                <select name="category_id" class="form-input form-input-sm">
+                    <option value="0">— Без категории —</option>
+                    {% for c in categories %}
+                    <option value="{{ c.id }}">{{ c.icon }} {{ c.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             <button type="submit" name="add_prize" class="btn btn-primary">Добавить приз</button>
         </form>
     </div>
@@ -18,12 +26,13 @@
     <div class="table-header"><h3>Все призы</h3></div>
     <div class="table-scroll">
     <table>
-        <thead><tr><th>ID</th><th>Название</th><th>Описание</th><th>Изображение</th><th>Цена</th><th>Действия</th></tr></thead>
+        <thead><tr><th>ID</th><th>Название</th><th>Категория</th><th>Описание</th><th>Изображение</th><th>Цена</th><th>Действия</th></tr></thead>
         <tbody>
         {% for p in prizes %}
         <tr>
             <td>{{ p.id }}</td>
             <td>{{ p.name }}</td>
+            <td>{% if p.category_id %}{% for c in categories %}{% if c.id == p.category_id %}{{ c.icon }} {{ c.title }}{% endif %}{% endfor %}{% else %}—{% endif %}</td>
             <td>{{ p.description or '—' }}</td>
             <td>{% if p.image_url %}<img src="{{ p.image_url }}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;">{% else %}—{% endif %}</td>
             <td><b>{{ p.price_points }}</b> баллов</td>
@@ -35,7 +44,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="empty">Нет призов</td></tr>
+        <tr><td colspan="7" class="empty">Нет призов</td></tr>
         {% endfor %}
         </tbody>
     </table>

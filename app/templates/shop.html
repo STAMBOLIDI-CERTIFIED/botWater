@@ -1,0 +1,65 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>🏪 Магазин</h2>
+<p class="sub">Управление категориями магазина призов</p>
+
+{% for cat in categories %}
+<div class="table-wrap" style="margin-bottom:20px">
+    <div class="table-header">
+        <h3>{{ cat.icon }} {{ cat.title }} <span style="color:var(--dim);font-weight:400;font-size:13px">— {{ cat.subtitle }}</span></h3>
+        <span class="badge {% if cat.is_active %}badge-active{% else %}badge-used{% endif %}">{% if cat.is_active %}Активна{% else %}Выкл{% endif %}</span>
+    </div>
+    <div style="padding:16px 20px">
+        <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="category_id" value="{{ cat.id }}">
+            <div class="form-inline" style="margin-bottom:12px">
+                <div class="form-group">
+                    <label>Название</label>
+                    <input type="text" name="title" class="form-input form-input-sm" value="{{ cat.title }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Подзаголовок</label>
+                    <input type="text" name="subtitle" class="form-input form-input-sm" value="{{ cat.subtitle }}">
+                </div>
+                <div class="form-group">
+                    <label>Иконка</label>
+                    <input type="text" name="icon" class="form-input form-input-sm" value="{{ cat.icon }}" style="width:60px">
+                </div>
+                <div class="form-group">
+                    <label>Цвет</label>
+                    <input type="color" name="color" class="form-input form-input-sm" value="{{ cat.color }}" style="width:60px;padding:4px">
+                </div>
+                <div class="form-group">
+                    <label>Порядок</label>
+                    <input type="number" name="sort_order" class="form-input form-input-sm" value="{{ cat.sort_order }}" style="width:70px">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Описание</label>
+                <textarea name="description" class="form-input form-input-sm" rows="2">{{ cat.description }}</textarea>
+            </div>
+            <div class="form-group">
+                <label>Изображение</label>
+                <input type="file" name="category_image" class="form-input form-input-sm" accept="image/*">
+                {% if cat.image_url %}<div style="margin-top:6px"><img src="{{ cat.image_url }}" style="height:48px;border-radius:8px;object-fit:cover"></div>{% endif %}
+            </div>
+            <div class="form-group">
+                <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer">
+                    <input type="checkbox" name="is_active" value="1" {% if cat.is_active %}checked{% endif %} style="width:16px;height:16px">
+                    Активна
+                </label>
+            </div>
+            <button type="submit" name="update_category" class="btn btn-primary btn-sm">💾 Сохранить</button>
+        </form>
+    </div>
+</div>
+{% endfor %}
+
+{% if not categories %}
+<div class="empty" style="padding:48px;text-align:center">
+    <p style="font-size:40px;margin-bottom:8px">🏪</p>
+    <p>Категории магазина не найдены</p>
+    <p style="color:var(--dim);font-size:12px;margin-top:4px">Выполните миграцию 002_shop_categories.sql</p>
+</div>
+{% endif %}
+{% endblock %}
