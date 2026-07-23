@@ -24,7 +24,7 @@
             <td>{{ u.phone or '—' }}</td>
             <td><b>{{ u.balance }}</b></td>
             <td>{% if u.passport_fio %}✅{% else %}—{% endif %}</td>
-            <td>{{ u.created_at.strftime('%d.%m.%Y') if u.created_at else '—' }}</td>
+            <td>{{ u.created_at[:10] if u.created_at else '—' }}</td>
             <td class="actions-cell">
                 <button class="btn btn-sm btn-primary" onclick="showUserModal({{ u.id }}, '{{ u.name or '' }}', {{ u.telegram_id }}, {{ u.balance }}, '{{ u.phone or '' }}', '{{ u.passport_fio or '' }}', '{{ u.passport_snumber or '' }}', '{{ u.passport_inn or '' }}')">👁️</button>
             </td>
