@@ -1429,7 +1429,7 @@
         if (!cats || !cats.length) { g.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:40px;margin-bottom:10px">🏪</div><div style="font-weight:600;font-size:15px">Категории пока пусты</div></div>'; return; }
         g.innerHTML = cats.filter(c => c.is_active).map(c =>
             '<div style="background:linear-gradient(135deg,#1A1D24,' + (c.color || '#222') + '15);border:1px solid ' + (c.color || '#C9A84C') + '25;border-radius:20px;padding:20px;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .25s ease" onclick="openShopCategory(' + c.id + ')" onactive="this.style.transform=\'scale(0.97)\'" oninactive="this.style.transform=\'\'">'
-            + '<div style="width:56px;height:56px;border-radius:16px;background:' + (c.color || '#C9A84C') + '18;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">' + esc(c.icon) + '</div>'
+            + '<div style="width:56px;height:56px;border-radius:16px;background:' + (c.color || '#C9A84C') + '18;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden">' + (c.image_url ? '<img src="' + esc(c.image_url) + '" style="width:100%;height:100%;object-fit:cover">' : '<span style="font-size:28px">' + esc(c.icon) + '</span>') + '</div>'
             + '<div style="flex:1;min-width:0"><div style="font-size:16px;font-weight:700;color:' + (c.color || '#C9A84C') + '">' + esc(c.title) + '</div>'
             + '<div style="font-size:12px;color:var(--text-dim);margin-top:2px">' + esc(c.subtitle) + '</div></div>'
             + '<div style="font-size:18px;color:var(--text-dim)">›</div></div>'
@@ -1448,8 +1448,7 @@
         const items = data.items || [];
         const d = await apiFetch('/user?user_id=' + getUID());
         const bal = d ? d.balance : 0;
-        h.innerHTML = '<div style="text-align:center;padding:8px 0 12px"><div style="font-size:36px;margin-bottom:6px">' + esc(cat.icon) + '</div>'
-            + '<div style="font-size:20px;font-weight:800;color:' + (cat.color || '#C9A84C') + '">' + esc(cat.title) + '</div>'
+        h.innerHTML = '<div style="text-align:center;padding:8px 0 12px">' + (cat.image_url ? '<img src="' + esc(cat.image_url) + '" style="width:64px;height:64px;border-radius:16px;object-fit:cover;margin-bottom:8px;border:2px solid ' + (cat.color || '#C9A84C') + '">' : '<div style="font-size:36px;margin-bottom:6px">' + esc(cat.icon) + '</div>') + '<div style="font-size:20px;font-weight:800;color:' + (cat.color || '#C9A84C') + '">' + esc(cat.title) + '</div>'
             + '<div style="font-size:13px;color:var(--text-dim);margin-top:2px">' + esc(cat.subtitle) + '</div></div>';
         if (!items.length) { g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:36px;margin-bottom:8px">' + esc(cat.icon) + '</div><div style="font-weight:600;font-size:14px">Призов пока нет</div></div>'; return; }
         g.innerHTML = items.map(p => {
