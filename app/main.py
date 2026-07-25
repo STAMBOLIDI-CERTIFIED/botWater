@@ -237,6 +237,11 @@ async def api_gift_open(request: Request):
         return JSONResponse({"error": "failed to save gift"}, status_code=500)
 
     try:
+        await db.create_notification(user_id, "points", "Подарок", f"Вы получили {points} баллов", "menu")
+    except Exception:
+        pass
+
+    try:
         nearest = await db.get_nearest_prize(user_id)
     except Exception:
         nearest = None
@@ -278,6 +283,7 @@ async def api_scan(request: Request):
     await db.assign_bottle(bottle_id, user["id"])
     await db.add_balance(user_id, 10, "scan", f"Сканирование бутылки {bottle_id}")
     await db.add_tree_xp(user_id, 10)
+    await db.create_notification(user_id, "scan", "Сканирование", f"+10 баллов за бутылку {bottle_id}", "history")
 
     stats = await db.get_user_stats(user_id)
     tree = await db.get_tree_state(user_id)
@@ -457,6 +463,7 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
             amount = int(form["amount"])
             reason = form.get("reason", "")
             await db.add_balance(tg_id, amount, "admin", reason or "Начисление администратором")
+            await db.create_notification(tg_id, "points", "Начисление баллов", f"+{amount} баллов. Причина: {reason or '—'}", "history")
             user = await db.get_user(tg_id)
             if user:
                 await bot.send_message(tg_id, f"💰 Вам начислено <b>{amount} баллов</b>\nПричина: {reason or '—'}")
@@ -466,6 +473,7 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
             amount = int(form["amount"])
             reason = form.get("reason", "")
             await db.add_balance(tg_id, -amount, "admin_deduct", reason or "Списание администратором")
+            await db.create_notification(tg_id, "points", "Списание баллов", f"-{amount} баллов. Причина: {reason or '—'}", "history")
             await bot.send_message(tg_id, f"💸 С вас списано <b>{amount} баллов</b>\nПричина: {reason or '—'}")
             return r(f"Списано {amount} баллов")
 
@@ -576,6 +584,8 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
             reason = form.get("reason", "Корректировка администратором")
             await db.add_balance(tg_id, amount, "admin_adjust", reason)
             label = "Начислено" if amount > 0 else "Списано"
+            prefix = "+" if amount > 0 else ""
+            await db.create_notification(tg_id, "points", f"{label} баллов", f"{prefix}{amount} баллов. Причина: {reason}", "history")
             await bot.send_message(tg_id, f"{'💰' if amount > 0 else '💸'} <b>{label} {abs(amount)} баллов</b>\nПричина: {reason}")
             return r(f"{label} {abs(amount)} баллов")
         if "adjust_xp" in form:

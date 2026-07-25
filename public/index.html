@@ -175,6 +175,7 @@
         .notif-icon.scan { background: var(--gold-glow); color: var(--gold); }
         .notif-icon.points { background: var(--green-glow); color: var(--green); }
         .notif-icon.raffle { background: rgba(139,92,246,0.15); color: #8B5CF6; }
+        .notif-icon.donation { background: rgba(239,68,68,0.15); color: #EF4444; }
         .notif-content { flex: 1; min-width: 0; }
         .notif-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
         .notif-desc { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1115,6 +1116,16 @@
     <button class="back-btn" onclick="openPage('shop')">‹ Назад к магазину</button>
     <div id="shop-cat-header" style="margin-bottom:16px"></div>
     <div id="shop-cat-items" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    <div id="shop-donation" style="display:none">
+        <div class="shop-balance">💰 Баланс: <b id="shop-donation-balance">—</b> баллов</div>
+        <div style="background:var(--surface-solid);border:1px solid var(--border);border-radius:var(--radius-lg);padding:24px 20px;text-align:center;margin-bottom:16px">
+            <div style="font-size:48px;margin-bottom:12px">❤️</div>
+            <div style="font-size:18px;font-weight:700;color:#EF4444;margin-bottom:6px">Пожертвование баллов</div>
+            <div style="font-size:13px;color:var(--text-dim);margin-bottom:20px;line-height:1.5">Поддержите проекты и инициативы<br>Ваши баллы пойдут на добрые дела</div>
+            <input type="number" id="donation-amount" min="1" placeholder="Сумма в баллах" style="width:100%;padding:16px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:18px;font-weight:700;text-align:center;margin-bottom:16px;font-family:inherit;outline:none">
+            <button class="btn btn-primary" style="background:linear-gradient(135deg,#EF4444,#DC2626);box-shadow:0 4px 20px rgba(239,68,68,0.25)" onclick="sendDonation()">❤️ Пожертвовать</button>
+        </div>
+    </div>
 </div>
 
 <!-- РОЗЫГРЫШИ -->
@@ -1346,8 +1357,8 @@
         var d = await apiFetch('/notifications?user_id=' + uid);
         if (!d || !d.length) { l.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>'; var b = document.getElementById('bell-badge'); if (b) b.classList.remove('show'); return; }
         l.innerHTML = d.map(function(n) {
-            var icon = n.type === 'scan' ? '💧' : n.type === 'points' ? '💰' : '🎰';
-            var cls = n.type === 'scan' ? 'scan' : n.type === 'points' ? 'points' : 'raffle';
+            var icon = n.type === 'scan' ? '💧' : n.type === 'points' ? '💰' : n.type === 'donation' ? '❤️' : '🎰';
+            var cls = n.type === 'scan' ? 'scan' : n.type === 'points' ? 'points' : n.type === 'donation' ? 'donation' : 'raffle';
             return '<div class="notif-item" onclick="event.stopPropagation();openPage(\'' + (n.link || 'menu') + '\')">'
                 + '<div class="notif-icon ' + cls + '">' + icon + '</div>'
                 + '<div class="notif-content"><div class="notif-title">' + esc(n.title || '') + '</div>'
@@ -1447,16 +1458,26 @@
         openPage('shop-category');
         const h = document.getElementById('shop-cat-header');
         const g = document.getElementById('shop-cat-items');
+        const dForm = document.getElementById('shop-donation');
         h.innerHTML = '<div style="text-align:center;padding:10px 0"><div style="font-size:14px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:1px">Загрузка...</div></div>';
         g.innerHTML = '';
+        dForm.style.display = 'none';
         const data = await apiFetch('/shop/categories/' + catId);
         if (!data || !data.category) { h.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim)">Категория не найдена</div>'; return; }
         const cat = data.category;
         const items = data.items || [];
         const d = await apiFetch('/user?user_id=' + getUID());
         const bal = d ? d.balance : 0;
+        const isCharity = cat.title === 'Благотворительность';
         h.innerHTML = '<div style="text-align:center;padding:8px 0 12px">' + (cat.image_url ? '<img src="' + esc(cat.image_url) + '" style="width:64px;height:64px;border-radius:16px;object-fit:cover;margin-bottom:8px;border:2px solid ' + (cat.color || '#C9A84C') + '">' : '<div style="font-size:36px;margin-bottom:6px">' + esc(cat.icon) + '</div>') + '<div style="font-size:20px;font-weight:800;color:' + (cat.color || '#C9A84C') + '">' + esc(cat.title) + '</div>'
             + '<div style="font-size:13px;color:var(--text-dim);margin-top:2px">' + esc(cat.subtitle) + '</div></div>';
+        if (isCharity) {
+            document.getElementById('shop-donation-balance').textContent = bal;
+            dForm.style.display = 'block';
+            g.style.display = 'none';
+            return;
+        }
+        g.style.display = 'grid';
         if (!items.length) { g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:36px;margin-bottom:8px">' + esc(cat.icon) + '</div><div style="font-weight:600;font-size:14px">Призов пока нет</div></div>'; return; }
         g.innerHTML = items.map(p => {
             const ok = bal >= p.price_points;
@@ -1548,6 +1569,13 @@
 
     function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
     function sendToBot(c) { tg.sendData(c); }
+    function sendDonation() {
+        var inp = document.getElementById('donation-amount');
+        var amount = parseInt(inp.value);
+        if (!amount || amount < 1) { inp.style.borderColor = '#EF4444'; return; }
+        inp.style.borderColor = '';
+        tg.sendData('donate:' + amount);
+    }
 
     // === GIFT SYSTEM ===
     let giftData = null;
