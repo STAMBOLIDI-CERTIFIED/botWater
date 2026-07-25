@@ -13,7 +13,7 @@
             <td>{{ o.id }}</td>
             <td>{{ o.name or '—' }} <code>{{ o.telegram_id }}</code><br><small>{{ o.phone or '' }}</small></td>
             <td>{{ o.prize_name }}</td>
-            <td>{{ o.created_at.strftime('%d.%m.%Y %H:%M') if o.created_at else '—' }}</td>
+            <td>{{ o.created_at[:16] if o.created_at else '—' }}</td>
             <td><span class="badge badge-pending">{{ o.status }}</span></td>
             <td class="actions-cell">
                 <form method="POST" style="display:inline">

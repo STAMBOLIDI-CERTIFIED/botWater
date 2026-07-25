@@ -698,7 +698,7 @@ async def handle_webapp_data(db, data: str, chat_id: int):
             return
         lines = [f"📆 <b>История сканирований</b>\n"]
         for sc in scans[:20]:
-            lines.append(f"• {sc.get('code', '—')} — {sc['scanned_at'].strftime('%d.%m.%Y %H:%M') if sc.get('scanned_at') else '—'}")
+            lines.append(f"• {sc.get('code', '—')} — {sc['scanned_at'][:16] if sc.get('scanned_at') else '—'}")
         await send_message(chat_id, "\n".join(lines))
         return
 
@@ -710,7 +710,7 @@ async def handle_webapp_data(db, data: str, chat_id: int):
         lines = [f"🪙 <b>История баллов</b>\n"]
         for entry in log[:20]:
             sign = "+" if entry["amount"] > 0 else ""
-            lines.append(f"{sign}{entry['amount']} — {entry.get('description', '') or entry['type']} ({entry['created_at'].strftime('%d.%m.%Y') if entry.get('created_at') else '—'})")
+            lines.append(f"{sign}{entry['amount']} — {entry.get('description', '') or entry['type']} ({entry['created_at'][:10] if entry.get('created_at') else '—'})")
         await send_message(chat_id, "\n".join(lines))
         return
 

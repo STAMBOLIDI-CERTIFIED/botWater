@@ -20,7 +20,7 @@
         {% for r in raffles %}
         <tr>
             <td>{{ r.id }}</td>
-            <td>{{ r.created_at.strftime('%d.%m.%Y %H:%M') if r.created_at else '—' }}</td>
+            <td>{{ r.created_at[:16] if r.created_at else '—' }}</td>
             <td>{{ r.winner_name or '—' }}</td>
             <td><code>{{ r.winning_code or '—' }}</code></td>
             <td>{{ r.prize_amount }} руб.</td>

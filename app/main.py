@@ -442,12 +442,47 @@ async def admin_panel(request: Request, page: str = "dashboard"):
     success_msg = request.query_params.get("msg", "")
 
     if request.method == "POST":
-        form = await request.form()
-        result = await _handle_admin_post(page, form, admin_id)
-        if result:
-            return result
+        try:
+            form = await request.form()
+            result = await _handle_admin_post(page, form, admin_id)
+            if result:
+                return result
+        except Exception as e:
+            logger.error(f"Admin POST '{page}' error: {e}")
+            ctx = admin_context(request, page, success_msg=success_msg, error_msg=str(e))
+            ctx.setdefault("users", []); ctx.setdefault("codes", []); ctx.setdefault("raffles", [])
+            ctx.setdefault("payouts", []); ctx.setdefault("prizes", []); ctx.setdefault("categories", [])
+            ctx.setdefault("orders", []); ctx.setdefault("bottles", []); ctx.setdefault("batches", [])
+            ctx.setdefault("admins", []); ctx.setdefault("total", 0); ctx.setdefault("active_count", 0)
+            ctx.setdefault("active_codes", 0); ctx.setdefault("code_stats", {}); ctx.setdefault("stats", {})
+            ctx.setdefault("splash_logo_url", ""); ctx.setdefault("superadmin_id", "")
+            template = f"{page}.html"
+            template_path = Path(__file__).parent / "templates" / template
+            if not template_path.exists():
+                template = "dashboard.html"
+            return templates.TemplateResponse(template, ctx)
 
     ctx = admin_context(request, page, success_msg=success_msg)
+
+    ctx["users"] = []
+    ctx["codes"] = []
+    ctx["raffles"] = []
+    ctx["payouts"] = []
+    ctx["all_payouts"] = []
+    ctx["prizes"] = []
+    ctx["categories"] = []
+    ctx["orders"] = []
+    ctx["bottles"] = []
+    ctx["batches"] = []
+    ctx["admins"] = []
+    ctx["total"] = 0
+    ctx["active_count"] = 0
+    ctx["active_codes"] = 0
+    ctx["code_stats"] = {}
+    ctx["stats"] = {}
+    ctx["error_msg"] = ""
+    ctx["splash_logo_url"] = ""
+    ctx["superadmin_id"] = ""
 
     try:
         if page == "dashboard":

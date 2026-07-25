@@ -640,6 +640,9 @@ class Database:
 
     async def delete_batch(self, year: str, batch: str) -> int:
         r = await self.client.delete(f"{SUPABASE_REST}/bottles?year=eq.{year}&batch=eq.{batch}")
+        if r.status_code == 200:
+            data = r.json()
+            return len(data) if isinstance(data, list) else 1
         return 0
 
     async def get_bottle_batches(self) -> list[dict]:
