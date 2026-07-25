@@ -15,7 +15,7 @@
             <td>{{ p.phone or '—' }}</td>
             <td><b>{{ p.prize_amount }} руб.</b></td>
             <td>{% if p.passport_fio %}{{ p.passport_fio }}<br><small>{{ p.passport_snumber }}</small>{% else %}—{% endif %}</td>
-            <td>{{ p.created_at.strftime('%d.%m.%Y') if p.created_at else '—' }}</td>
+            <td>{{ p.created_at[:10] if p.created_at else '—' }}</td>
             <td class="actions-cell">
                 <form method="POST" style="display:inline">
                     <input type="hidden" name="raffle_id" value="{{ p.id }}">

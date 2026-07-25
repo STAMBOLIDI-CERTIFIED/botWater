@@ -67,7 +67,7 @@
             <td>{{ b.batch or '—' }}</td>
             <td>{{ b.year or '—' }}</td>
             <td>{% if b.assigned_to %}✅ {{ b.assigned_to }}{% else %}🔓{% endif %}</td>
-            <td>{{ b.created_at.strftime('%d.%m.%Y') if b.created_at else '—' }}</td>
+            <td>{{ b.created_at[:10] if b.created_at else '—' }}</td>
             <td class="actions-cell">
                 <a href="/admin/download/single?id={{ b.bottle_id }}" class="btn btn-sm btn-primary">🖼️ PNG</a>
                 <form method="POST" style="display:inline">
