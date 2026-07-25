@@ -1992,6 +1992,30 @@
         return '<span class="icn ' + (cls||'') + '">' + svg + '</span>';
     }
 
+    function renderStaticIcons(root) {
+        root = root || document.body;
+        var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, function(n) {
+            return n.parentNode && n.parentNode.nodeName === 'SCRIPT' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT;
+        }, false);
+        var node, nodes = [];
+        while (node = walker.nextNode()) {
+            if (node.nodeValue && /icon\('(\w+)'\)/.test(node.nodeValue)) {
+                nodes.push(node);
+            }
+        }
+        for (var i = 0; i < nodes.length; i++) {
+            var el = nodes[i], parent = el.parentNode;
+            var html = el.nodeValue.replace(/icon\('(\w+)'\)/g, function(m, name) {
+                return ICONS[name] ? '<span class="icn">' + ICONS[name] + '</span>' : m;
+            });
+            var temp = document.createElement('span');
+            temp.innerHTML = html;
+            while (temp.firstChild) parent.insertBefore(temp.firstChild, el);
+            parent.removeChild(el);
+        }
+    }
+    renderStaticIcons();
+
     var TL = [
         { level: 1, name: 'Росток', icon: icon('sprout'), xp: '0–99' },
         { level: 2, name: 'Саженец', icon: icon('sprout'), xp: '100–499' },
