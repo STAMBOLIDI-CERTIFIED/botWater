@@ -907,7 +907,7 @@ def _build_pdf(bottles: list) -> bytes:
             pdf.set_font("Courier", size=5)
             pdf.cell(qr_mm, label_h, text=b["bottle_id"], align="C")
 
-    return pdf.output()
+    return bytes(pdf.output())
 
 # ─── Health ─────────────────────────────────────────────
 

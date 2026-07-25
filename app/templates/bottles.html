@@ -105,10 +105,13 @@ let qrId = document.getElementById('qrModalId');
 let qrDownload = document.getElementById('qrDownloadLink');
 
 function showQR(bottleId) {
+    var token = sessionStorage.getItem('admin_token');
+    var params = '?id=' + encodeURIComponent(bottleId);
+    if (token) params += '&token=' + encodeURIComponent(token);
     qrTitle.textContent = 'QR-код';
-    qrImg.src = '/admin/view/qr/' + encodeURIComponent(bottleId);
+    qrImg.src = '/admin/view/qr/' + encodeURIComponent(bottleId) + (token ? '?token=' + encodeURIComponent(token) : '');
     qrId.textContent = bottleId;
-    qrDownload.href = '/admin/download/single?id=' + encodeURIComponent(bottleId);
+    qrDownload.href = '/admin/download/single' + params;
     qrModal.classList.add('show');
 }
 
