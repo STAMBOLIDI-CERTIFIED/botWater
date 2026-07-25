@@ -2968,7 +2968,7 @@
         var idx = Math.abs(seed);
         var wl = 85 + (idx % 14);
         var capColors = ['#2B7BE4','#1E90FF','#4169E1','#1877F2','#0066CC','#3B82F6','#0D6EFD','#6366F1','#7C3AED','#8B5CF6','#06B6D4','#0891B2','#0EA5E9','#2563EB','#1D4ED8','#3730A3'];
-        var waterColors = ['rgba(30,144,255,0.85)','rgba(24,119,242,0.85)','rgba(37,99,235,0.85)','rgba(59,130,246,0.85)','rgba(14,165,233,0.85)','rgba(56,189,248,0.85)','rgba(30,64,175,0.85)','rgba(96,165,250,0.85)'];
+        var waterColors = ['#1E90FF','#1877F2','#2563EB','#3B82F6','#0EA5E9','#38BDF8','#1E40AF','#60A5FA'];
         var cc = capColors[idx % capColors.length];
         var wc = waterColors[idx % waterColors.length];
         var dateStr = scanned_at ? new Date(scanned_at).toLocaleDateString('ru-RU', {day:'numeric',month:'short',year:'numeric'}) : '';
@@ -2989,7 +2989,7 @@
             + '<div class="sb-cap" style="background:' + cc + '"><div class="sb-cap-shine"></div><div class="sb-cap-edge"></div></div>'
             + '<div class="sb-neck"></div>'
             + '<div class="sb-body"><div class="sb-body-inner">'
-            + '<div class="sb-water" style="height:' + wl + '%;background:linear-gradient(180deg,' + wc + ' 0%,' + wc + '80 100%)"><div class="sb-water-surface"></div></div>'
+            + '<div class="sb-water" style="height:' + wl + '%;background:' + wc + '"><div class="sb-water-surface"></div></div>'
             + '<div class="sb-shine"></div><div class="sb-shine2"></div>'
             + bubblesHTML
             + '</div></div>'
