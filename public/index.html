@@ -1432,6 +1432,24 @@
         requestAnimationFrame(step);
     }
 
+    async function updateNotifBadge() {
+        var uid = getUID();
+        if (!uid) return;
+        try {
+            var d = await apiFetch('/notifications?user_id=' + uid);
+            var badge = document.getElementById('bell-badge');
+            if (!badge) return;
+            if (d && d.length) {
+                badge.textContent = d.length;
+                badge.classList.add('show');
+                var bell = document.getElementById('top-bell');
+                if (bell) { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); }
+            } else {
+                badge.classList.remove('show');
+            }
+        } catch(e) {}
+    }
+
     async function loadUserData() {
         var uid = getUID();
         if (!uid) return;
@@ -1460,6 +1478,8 @@
                 initGiftChecked = true;
                 await checkGift();
             }
+
+            await updateNotifBadge();
         } catch(e) {}
     }
     loadUserData();
@@ -1716,14 +1736,17 @@
     }
 
     function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
-    function sendToBot(c) { tg.sendData(c); }
+    function sendToBot(c) { tg.sendData(c); setTimeout(updateNotifBadge, 2000); }
     function sendDonation() {
         var inp = document.getElementById('donation-amount');
         var amount = parseInt(inp.value);
         if (!amount || amount < 1) { inp.style.borderColor = '#EF4444'; return; }
         inp.style.borderColor = '';
         tg.sendData('donate:' + amount);
+        setTimeout(updateNotifBadge, 2000);
     }
+
+    setInterval(updateNotifBadge, 30000);
 
     // === GIFT SYSTEM ===
     let giftData = null;
