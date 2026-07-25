@@ -830,7 +830,11 @@ async def admin_download(dl_type: str, request: Request):
         bottles = await db.get_bottles(batch=batch_val, year=year_val, limit=10000)
         if not bottles:
             raise HTTPException(404)
-        pdf = _build_pdf(bottles)
+        try:
+            pdf = _build_pdf(bottles)
+        except Exception as e:
+            logger.error(f"PDF build error: {e}", exc_info=True)
+            raise HTTPException(500, f"PDF generation failed: {e}")
         filename = f"bottles_{year_val}{'_' + batch_val if batch_val else ''}.pdf"
         return Response(
             content=pdf,
@@ -851,7 +855,11 @@ async def admin_download(dl_type: str, request: Request):
                 link = _make_qr_link(b["bottle_id"])
                 png = _make_qr_img(link)
                 zf.writestr(f"{b['bottle_id']}.png", png)
-            pdf = _build_pdf(bottles)
+            try:
+                pdf = _build_pdf(bottles)
+            except Exception as e:
+                logger.error(f"PDF build error for ZIP: {e}", exc_info=True)
+                raise HTTPException(500, f"PDF generation failed: {e}")
             zf.writestr(f"bottles_{year_val}{'_' + batch_val if batch_val else ''}.pdf", pdf)
         buf.seek(0)
         filename = f"bottles_{year_val}{'_' + batch_val if batch_val else ''}.zip"
