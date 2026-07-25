@@ -58,11 +58,11 @@ async def answer_callback(callback_id: str, text: str = "", show_alert: bool = F
 
 # Exact labels used on the persistent reply-keyboard. Kept as constants so the
 # text-message dispatcher in handle_message can match them reliably.
-BTN_OPEN_APP = "📱 Открыть приложение"
-BTN_BALANCE = "💰 Баланс"
-BTN_STATS = "📊 Статистика"
-BTN_RAFFLE = "🎰 Следующий розыгрыш"
-BTN_ADMIN = "🔐 Админ-панель"
+BTN_OPEN_APP = "📲 Открыть приложение"
+BTN_BALANCE = "🪙 Баланс"
+BTN_STATS = "📈 Статистика"
+BTN_RAFFLE = "🎯 Розыгрыши"
+BTN_ADMIN = "🛡️ Админ-панель"
 
 
 def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0) -> dict:
@@ -98,7 +98,7 @@ def contact_keyboard() -> dict:
         "keyboard": [
             [
                 {
-                    "text": "📱 Отправить номер телефона",
+                    "text": "📲 Отправить номер телефона",
                     "request_contact": True,
                 }
             ]
@@ -112,10 +112,10 @@ def terms_keyboard() -> dict:
     return {
         "inline_keyboard": [
             [
-                {"text": "✅ Принимаю", "callback_data": "accept_terms"},
-                {"text": "❌ Отклоняю", "callback_data": "decline_terms"},
+                {"text": "👍 Принимаю", "callback_data": "accept_terms"},
+                {"text": "👎 Отклоняю", "callback_data": "decline_terms"},
             ],
-            [{"text": "📄 Пользовательское соглашение", "url": get_settings()["WEBAPP_URL"].replace("index.html", "terms.html")}],
+            [{"text": "📃 Пользовательское соглашение", "url": get_settings()["WEBAPP_URL"].replace("index.html", "terms.html")}],
         ]
     }
 
@@ -124,7 +124,7 @@ def payout_choice_keyboard(raffle_id: int) -> dict:
     return {
         "inline_keyboard": [
             [
-                {"text": "💳 Получить деньги", "callback_data": f"payout_money:{raffle_id}"},
+                {"text": "💵 Получить деньги", "callback_data": f"payout_money:{raffle_id}"},
                 {"text": "🔄 Конвертировать в баллы", "callback_data": f"payout_points:{raffle_id}"},
             ],
         ]
@@ -135,8 +135,8 @@ def consent_keyboard(raffle_id: int) -> dict:
     return {
         "inline_keyboard": [
             [
-                {"text": "✅ Согласен", "callback_data": f"accept_consent:{raffle_id}"},
-                {"text": "❌ Отмена", "callback_data": f"cancel_consent:{raffle_id}"},
+                {"text": "👍 Согласен", "callback_data": f"accept_consent:{raffle_id}"},
+                {"text": "✖️ Отмена", "callback_data": f"cancel_consent:{raffle_id}"},
             ],
         ]
     }
@@ -146,7 +146,7 @@ def passport_confirm_keyboard(raffle_id: int) -> dict:
     return {
         "inline_keyboard": [
             [
-                {"text": "✅ Всё верно", "callback_data": f"confirm_passport:{raffle_id}"},
+                {"text": "👍 Всё верно", "callback_data": f"confirm_passport:{raffle_id}"},
                 {"text": "🔄 Заново", "callback_data": f"restart_passport:{raffle_id}"},
             ],
         ]
@@ -157,8 +157,8 @@ def exchange_confirm_keyboard(prize_id: int) -> dict:
     return {
         "inline_keyboard": [
             [
-                {"text": "✅ Подтвердить", "callback_data": f"exchange_prize:{prize_id}"},
-                {"text": "❌ Отмена", "callback_data": "cancel_exchange"},
+                {"text": "👍 Подтвердить", "callback_data": f"exchange_prize:{prize_id}"},
+                {"text": "✖️ Отмена", "callback_data": "cancel_exchange"},
             ],
         ]
     }
@@ -170,7 +170,7 @@ def gift_keyboard(webapp_url: str) -> dict:
     return {
         "inline_keyboard": [
             [
-                {"text": "🎁 Открыть подарок", "web_app": {"url": gift_url}},
+                {"text": "🎀 Открыть подарок", "web_app": {"url": gift_url}},
             ],
         ]
     }
@@ -209,8 +209,8 @@ async def send_balance(db, chat_id: int):
     stats = await db.get_user_stats(chat_id)
     await send_message(
         chat_id,
-        f"💰 <b>Ваш баланс:</b> {stats['balance']} баллов\n"
-        f"📊 Всего сканирований: {stats['total_scans']}",
+        f"🪙 <b>Ваш баланс:</b> {stats['balance']} баллов\n"
+        f"📈 Всего сканирований: {stats['total_scans']}",
     )
 
 
@@ -220,11 +220,11 @@ async def send_stats(db, chat_id: int):
     unassigned = await db.get_unassigned_bottle_count()
     await send_message(
         chat_id,
-        f"📊 <b>Статистика</b>\n\n"
-        f"👤 Ваши сканирования: <b>{stats['total_scans']}</b>\n"
-        f"💰 Баллы: <b>{stats['balance']}</b>\n"
-        f"📱 Активных QR-кодов: <b>{codes_count}</b>\n"
-        f"🍾 Свободных бутылок: <b>{unassigned}</b>",
+        f"📈 <b>Статистика</b>\n\n"
+        f"🙋 Ваши сканирования: <b>{stats['total_scans']}</b>\n"
+        f"🪙 Баллы: <b>{stats['balance']}</b>\n"
+        f"📲 Активных QR-кодов: <b>{codes_count}</b>\n"
+        f"🧊 Свободных бутылок: <b>{unassigned}</b>",
     )
 
 
@@ -232,7 +232,7 @@ async def send_raffle_info(db, chat_id: int):
     raf_stats = await db.get_raffle_stats()
     await send_message(
         chat_id,
-        f"🎰 <b>Розыгрыши</b>\n\n"
+        f"🎯 <b>Розыгрыши</b>\n\n"
         f"Всего розыгрышей: <b>{raf_stats['total_raffles']}</b>\n"
         f"Завершено: <b>{raf_stats['completed']}</b>\n\n"
         f"Следите за новостями в приложении!",
@@ -272,7 +272,7 @@ async def handle_message(db, msg: dict):
                     user = await db.create_user(chat_id, tg_name, "menu")
                 await db.update_user_phone(chat_id, phone)
                 logger.info(f"Phone {phone} saved for chat_id={chat_id}")
-                await send_message(chat_id, f"✅ Номер телефона <b>{phone}</b> сохранён!")
+                await send_message(chat_id, f"👍 Номер телефона <b>{phone}</b> сохранён!")
                 await show_main_menu(db, chat_id, user)
             except Exception as e:
                 logger.error(f"Failed to save phone: {e}")
@@ -322,7 +322,7 @@ async def handle_message(db, msg: dict):
         await db.update_passport_data(chat_id, fio=text.strip())
         await db.update_user_step(chat_id, "ask_passport")
         raffle_id = user.get("start_payload", "").replace("payout_", "")
-        await send_message(chat_id, "📄 Введите <b>серию и номер паспорта</b> (цифры, без пробелов):")
+        await send_message(chat_id, "📃 Введите <b>серию и номер паспорта</b> (цифры, без пробелов):")
         return
 
     if step == "ask_passport":
@@ -332,7 +332,7 @@ async def handle_message(db, msg: dict):
             return
         await db.update_passport_data(chat_id, snumber=snumber)
         await db.update_user_step(chat_id, "ask_inn")
-        await send_message(chat_id, "📄 Введите <b>ИНН</b> (12 цифр):")
+        await send_message(chat_id, "📃 Введите <b>ИНН</b> (12 цифр):")
         return
 
     if step == "ask_inn":
@@ -350,7 +350,7 @@ async def handle_message(db, msg: dict):
             rid = 0
         await send_message(
             chat_id,
-            f"📋 <b>Проверьте данные:</b>\n\n"
+            f"📝 <b>Проверьте данные:</b>\n\n"
             f"ФИО: {user_data['passport_fio']}\n"
             f"Паспорт: {user_data['passport_snumber']}\n"
             f"ИНН: {user_data['passport_inn']}\n\n"
@@ -369,17 +369,17 @@ async def handle_message(db, msg: dict):
             s = get_settings()
             await send_message(
                 chat_id,
-                f"🔐 <b>Админ-панель</b>\n\nНажмите кнопку ниже для входа:",
-                reply_markup={"inline_keyboard": [[{"text": "🔐 Админ-панель", "web_app": {"url": s["ADMIN_PANEL_URL"]}}]]},
+                f"🛡️ <b>Админ-панель</b>\n\nНажмите кнопку ниже для входа:",
+                reply_markup={"inline_keyboard": [[{"text": "🛡️ Админ-панель", "web_app": {"url": s["ADMIN_PANEL_URL"]}}]]},
             )
         else:
-            await send_message(chat_id, "⛔ Доступ запрещён.")
+            await send_message(chat_id, "🚫 Доступ запрещён.")
         return
 
     if text == "/terms":
         await send_message(
             chat_id,
-            f"📄 <b>Пользовательское соглашение</b>\n\n{get_settings()['WEBAPP_URL'].replace('index.html', 'terms.html')}",
+            f"📃 <b>Пользовательское соглашение</b>\n\n{get_settings()['WEBAPP_URL'].replace('index.html', 'terms.html')}",
         )
         return
 
@@ -419,7 +419,7 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
         bottle = await db.get_bottle_by_code(bottle_id)
         logger.info(f"handle_start bottle_id={bottle_id} bottle_found={bottle is not None} assigned_to={bottle.get('assigned_to') if bottle else None}")
         if not bottle:
-            await send_message(chat_id, "❌ Бутылка не найдена в системе.")
+            await send_message(chat_id, "✖️ Бутылка не найдена в системе.")
             await show_main_menu(db, chat_id, user)
             return
         if user["step"] != "menu":
@@ -450,13 +450,13 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
 
         await send_message(
             chat_id,
-            "🎉 <b>Поздравляем!</b>\n\n"
+            "🥳 <b>Поздравляем!</b>\n\n"
             "Вы зарегистрировали бутылку и автоматически стали участником главного конкурса призов.\n\n"
             "Но это ещё не всё 👇",
         )
         await send_message(
             chat_id,
-            "🎁 <b>Для вас доступен моментальный подарок!</b>\n\n"
+            "🎀 <b>Для вас доступен моментальный подарок!</b>\n\n"
             "Откройте мини-приложение и получите свой первый приз прямо сейчас.\n\n"
             "Внутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы.",
             reply_markup=gift_keyboard(app_url),
@@ -475,7 +475,7 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
             app_url = app_url + sep + "user_id=" + str(chat_id)
         await send_message(
             chat_id,
-            "🎁 <b>Для вас доступен моментальный подарок!</b>\n\n"
+            "🎀 <b>Для вас доступен моментальный подарок!</b>\n\n"
             "Откройте мини-приложение и получите свой первый приз прямо сейчас.\n\n"
             "Внутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы.",
             reply_markup=gift_keyboard(app_url),
@@ -497,7 +497,7 @@ async def show_main_menu(db, chat_id: int, user: dict | None = None):
         chat_id,
         f"💧 <b>Главное меню</b>\n\n"
         f"Привет, {user['name'] or 'друг'}! 👋\n"
-        f"💰 Баланс: <b>{user['balance']} баллов</b>\n\n"
+        f"🪙 Баланс: <b>{user['balance']} баллов</b>\n\n"
         f"Сканируйте QR-коды на бутылках и получайте баллы!\n"
         f"Кнопки для быстрого доступа теперь под полем ввода 👇",
         reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id),
@@ -519,9 +519,9 @@ async def show_profile(db, chat_id: int, user: dict | None = None):
         f"ID: <code>{chat_id}</code>\n"
         f"Имя: {user['name'] or '—'}\n"
         f"Телефон: {user['phone'] or '—'}\n"
-        f"💰 Баланс: <b>{stats['balance']} баллов</b>\n"
-        f"📊 Сканирований: <b>{stats['total_scans']}</b>\n\n"
-        f"📄 <a href='{get_settings()['WEBAPP_URL'].replace('index.html', 'terms.html')}'>Пользовательское соглашение</a>",
+        f"🪙 Баланс: <b>{stats['balance']} баллов</b>\n"
+        f"📈 Сканирований: <b>{stats['total_scans']}</b>\n\n"
+        f"📃 <a href='{get_settings()['WEBAPP_URL'].replace('index.html', 'terms.html')}'>Пользовательское соглашение</a>",
     )
 
 
@@ -536,7 +536,7 @@ async def handle_callback(db, cbd: dict):
 
     if data == "accept_terms":
         await db.accept_terms(chat_id)
-        await answer_callback(cid, "✅ Соглашение принято!")
+        await answer_callback(cid, "👍 Соглашение принято!")
         payload = user.get("start_payload", "") if user else ""
         if payload and payload.startswith("bottle_"):
             await handle_start(db, chat_id, user, payload)
@@ -545,7 +545,7 @@ async def handle_callback(db, cbd: dict):
         return
 
     if data == "decline_terms":
-        await answer_callback(cid, "❌ Вы отказались от соглашения", show_alert=True)
+        await answer_callback(cid, "✖️ Вы отказались от соглашения", show_alert=True)
         await send_message(
             chat_id,
             "К сожалению, без принятия соглашения использование бота невозможно.",
@@ -580,13 +580,13 @@ async def handle_callback(db, cbd: dict):
             await db.update_passport_data(chat_id, snumber="pending")
             await send_message(
                 chat_id,
-                "📋 Для получения выплаты необходимо заполнить данные.\n\n"
+                "📝 Для получения выплаты необходимо заполнить данные.\n\n"
                 "Введите <b>ФИО полностью</b>:",
             )
         else:
             await send_message(
                 chat_id,
-                "✅ Вы выбрали получение денег. Администратор свяжется с вами для выплаты.",
+                "👍 Вы выбрали получение денег. Администратор свяжется с вами для выплаты.",
             )
         return
 
@@ -603,7 +603,7 @@ async def handle_callback(db, cbd: dict):
             await db.set_payout_choice(raffle_id, "points")
             await send_message(
                 chat_id,
-                f"✅ Выигрыш конвертирован в баллы!\n"
+                f"👍 Выигрыш конвертирован в баллы!\n"
                 f"➕ Начислено <b>{points} баллов</b>",
             )
         else:
@@ -612,31 +612,31 @@ async def handle_callback(db, cbd: dict):
 
     if data.startswith("accept_consent:"):
         raffle_id = int(data.split(":", 1)[1])
-        await answer_callback(cid, "✅ Спасибо!")
+        await answer_callback(cid, "👍 Спасибо!")
         await db.update_user_step(chat_id, "ask_fio")
-        await send_message(chat_id, "📋 Введите <b>ФИО полностью</b> (как в паспорте):")
+        await send_message(chat_id, "📝 Введите <b>ФИО полностью</b> (как в паспорте):")
         return
 
     if data.startswith("cancel_consent:"):
-        await answer_callback(cid, "❌ Отменено")
+        await answer_callback(cid, "✖️ Отменено")
         await db.update_user_step(chat_id, "menu")
         await show_main_menu(db, chat_id, user)
         return
 
     if data.startswith("confirm_passport:"):
         raffle_id = data.split(":", 1)[1]
-        await answer_callback(cid, "✅ Данные сохранены!")
+        await answer_callback(cid, "👍 Данные сохранены!")
         await db.update_user_step(chat_id, "menu")
         await send_message(
             chat_id,
-            "✅ Ваши данные переданы администратору. Ожидайте выплату.",
+            "👍 Ваши данные переданы администратору. Ожидайте выплату.",
         )
         if raffle_id and raffle_id.isdigit():
             admin_ids = s["ADMIN_IDS"]
             for aid in admin_ids:
                 await send_message(
                     aid,
-                    f"📋 <b>Новые данные для выплаты</b>\n"
+                    f"📝 <b>Новые данные для выплаты</b>\n"
                     f"Пользователь: <code>{chat_id}</code>\n"
                     f"Розыгрыш: #{raffle_id}\n\n"
                     f"Требуется обработка в админ-панели.",
@@ -648,11 +648,11 @@ async def handle_callback(db, cbd: dict):
         await answer_callback(cid, "🔄 Начнём заново")
         await db.update_user_step(chat_id, "ask_fio")
         await db.update_passport_data(chat_id, fio="", snumber="", inn="")
-        await send_message(chat_id, "📋 Введите <b>ФИО полностью</b> (как в паспорте):")
+        await send_message(chat_id, "📝 Введите <b>ФИО полностью</b> (как в паспорте):")
         return
 
     if data == "cancel_exchange":
-        await answer_callback(cid, "❌ Обмен отменён")
+        await answer_callback(cid, "✖️ Обмен отменён")
         return
 
     if data.startswith("exchange_prize:"):
@@ -660,18 +660,18 @@ async def handle_callback(db, cbd: dict):
         await answer_callback(cid)
         prize = await db.get_prize(prize_id)
         if not prize:
-            await send_message(chat_id, "❌ Приз не найден.")
+            await send_message(chat_id, "✖️ Приз не найден.")
             return
         user_row = await db.get_user(chat_id)
         if not user_row or user_row["balance"] < prize["price_points"]:
-            await send_message(chat_id, "❌ Недостаточно баллов для обмена.")
+            await send_message(chat_id, "✖️ Недостаточно баллов для обмена.")
             return
         await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user_row["id"], prize_id)
         await db.create_notification(chat_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
         await send_message(
             chat_id,
-            f"🎉 <b>Заказ оформлен!</b>\n\n"
+            f"🥳 <b>Заказ оформлен!</b>\n\n"
             f"Приз: {prize['name']}\n"
             f"Номер заказа: #{order_id}\n\n"
             f"Мы свяжемся с вами для уточнения получения.",
@@ -694,9 +694,9 @@ async def handle_webapp_data(db, data: str, chat_id: int):
     if data == "history":
         scans = await db.get_scans(chat_id)
         if not scans:
-            await send_message(chat_id, "📭 У вас пока нет сканирований.")
+            await send_message(chat_id, "📪 У вас пока нет сканирований.")
             return
-        lines = [f"📅 <b>История сканирований</b>\n"]
+        lines = [f"📆 <b>История сканирований</b>\n"]
         for sc in scans[:20]:
             lines.append(f"• {sc.get('code', '—')} — {sc['scanned_at'].strftime('%d.%m.%Y %H:%M') if sc.get('scanned_at') else '—'}")
         await send_message(chat_id, "\n".join(lines))
@@ -705,9 +705,9 @@ async def handle_webapp_data(db, data: str, chat_id: int):
     if data == "points_log":
         log = await db.get_points_log(chat_id)
         if not log:
-            await send_message(chat_id, "📭 Нет операций с баллами.")
+            await send_message(chat_id, "📪 Нет операций с баллами.")
             return
-        lines = [f"💰 <b>История баллов</b>\n"]
+        lines = [f"🪙 <b>История баллов</b>\n"]
         for entry in log[:20]:
             sign = "+" if entry["amount"] > 0 else ""
             lines.append(f"{sign}{entry['amount']} — {entry.get('description', '') or entry['type']} ({entry['created_at'].strftime('%d.%m.%Y') if entry.get('created_at') else '—'})")
@@ -717,11 +717,11 @@ async def handle_webapp_data(db, data: str, chat_id: int):
     if data == "raffles":
         raffles = await db.get_raffle_results()
         if not raffles:
-            await send_message(chat_id, "📭 Розыгрышей пока нет.")
+            await send_message(chat_id, "📪 Розыгрышей пока нет.")
             return
-        lines = [f"🎰 <b>Результаты розыгрышей</b>\n"]
+        lines = [f"🎯 <b>Результаты розыгрышей</b>\n"]
         for r in raffles[:20]:
-            won = "🏆" if r.get("user_won") else ""
+            won = "🥇" if r.get("user_won") else ""
             lines.append(f"{won} #{r['id']} — {r.get('winner_name', '—')} — {r['prize_amount']} руб.")
         await send_message(chat_id, "\n".join(lines))
         return
@@ -734,16 +734,16 @@ async def handle_webapp_data(db, data: str, chat_id: int):
         prize_id = int(data.split(":", 1)[1])
         prize = await db.get_prize(prize_id)
         if not prize:
-            await send_message(chat_id, "❌ Приз не найден.")
+            await send_message(chat_id, "✖️ Приз не найден.")
             return
         user_row = await db.get_user(chat_id)
         bal = user_row["balance"] if user_row else 0
         await send_message(
             chat_id,
-            f"🎁 <b>Обмен баллов на приз</b>\n\n"
+            f"🎀 <b>Обмен баллов на приз</b>\n\n"
             f"{prize['name']}\n"
-            f"💰 Цена: {prize['price_points']} баллов\n"
-            f"💳 Ваш баланс: {bal} баллов\n\n"
+            f"🪙 Цена: {prize['price_points']} баллов\n"
+            f"💎 Ваш баланс: {bal} баллов\n\n"
             f"Подтвердить обмен?",
             reply_markup=exchange_confirm_keyboard(prize_id),
         )
@@ -754,20 +754,20 @@ async def handle_webapp_data(db, data: str, chat_id: int):
         try:
             amount = int(amount_str)
         except ValueError:
-            await send_message(chat_id, "❌ Неверная сумма.")
+            await send_message(chat_id, "✖️ Неверная сумма.")
             return
         if amount < 1:
-            await send_message(chat_id, "❌ Сумма должна быть больше 0.")
+            await send_message(chat_id, "✖️ Сумма должна быть больше 0.")
             return
         user_row = await db.get_user(chat_id)
         if not user_row or user_row["balance"] < amount:
-            await send_message(chat_id, "❌ Недостаточно баллов для пожертвования.")
+            await send_message(chat_id, "✖️ Недостаточно баллов для пожертвования.")
             return
         await db.add_balance(chat_id, -amount, "donation", f"Пожертвование {amount} баллов")
         await db.create_notification(chat_id, "donation", "Пожертвование", f"Вы пожертвовали {amount} баллов", "shop")
         await send_message(
             chat_id,
-            f"❤️ <b>Спасибо за пожертвование!</b>\n\n"
+            f"💚 <b>Спасибо за пожертвование!</b>\n\n"
             f"Вы пожертвовали <b>{amount} баллов</b>.\n"
             f"Ваши баллы пойдут на добрые дела и поддержку проектов.",
         )
