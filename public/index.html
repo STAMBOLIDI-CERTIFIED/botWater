@@ -115,15 +115,14 @@
         .top-user { display: flex; align-items: center; gap: 12px; cursor: pointer; }
         .top-user:active .top-avatar { animation: avatarGlow .6s ease; }
         .top-avatar {
-            width: 44px; height: 44px; border-radius: 50%;
+            width: 40px; height: 40px; border-radius: 50%;
             background: linear-gradient(135deg, var(--gold), var(--gold-light));
             display: flex; align-items: center; justify-content: center;
-            font-size: 18px; overflow: hidden;
+            font-size: 20px;
             border: 2px solid var(--gold);
-            animation: avatarGlow 3s ease-in-out infinite;
-            transition: transform .2s ease;
+            box-shadow: 0 0 16px rgba(201,168,76,0.15);
+            flex-shrink: 0;
         }
-        .top-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .top-info .top-label { font-size: 12px; color: var(--text-dim); }
         .top-info .top-name { font-size: 17px; font-weight: 700; transition: color .2s; }
         .top-bell {
@@ -559,16 +558,78 @@
         .profile-header {
             text-align: center; padding: 6px 0 20px;
         }
-        .profile-avatar {
-            width: 88px; height: 88px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+        .bottle-avatar {
+            width: 100px; height: 120px;
             margin: 0 auto 14px;
-            display: flex; align-items: center; justify-content: center;
-            font-size: 38px; overflow: hidden;
-            border: 3px solid var(--gold);
-            box-shadow: 0 0 30px rgba(201,168,76,0.15);
+            position: relative;
+            animation: bottleFloat 3s ease-in-out infinite;
         }
-        .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        @keyframes bottleFloat {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+        .bottle-body {
+            position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+            width: 64px; height: 82px;
+            border-radius: 0 0 14px 14px;
+            background: var(--surface-solid);
+            border: 2px solid var(--border);
+            overflow: hidden;
+        }
+        .bottle-neck {
+            position: absolute; bottom: 78px; left: 50%; transform: translateX(-50%);
+            width: 28px; height: 14px;
+            background: var(--surface-solid);
+            border: 2px solid var(--border);
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+        }
+        .bottle-cap {
+            position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+            width: 32px; height: 8px;
+            border-radius: 4px;
+            background: var(--gold);
+            box-shadow: 0 2px 8px rgba(201,168,76,0.3);
+        }
+        .bottle-water {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            border-radius: 0 0 12px 12px;
+            transition: height .8s cubic-bezier(.16,1,.3,1), background .6s ease;
+        }
+        .bottle-label {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 32px; height: 20px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 800;
+            color: var(--text);
+        }
+        .bottle-shine {
+            position: absolute; top: 8px; left: 6px;
+            width: 8px; height: 24px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.08);
+        }
+        .bubble {
+            position: absolute; border-radius: 50%;
+            background: rgba(255,255,255,0.12);
+            animation: bubbleRise 2s ease-in-out infinite;
+        }
+        .bubble:nth-child(2) { width: 5px; height: 5px; left: 30%; bottom: 20%; animation-delay: .4s; }
+        .bubble:nth-child(3) { width: 3px; height: 3px; left: 60%; bottom: 40%; animation-delay: .8s; }
+        .bubble:nth-child(4) { width: 4px; height: 4px; left: 45%; bottom: 60%; animation-delay: 1.2s; }
+        @keyframes bubbleRise {
+            0% { opacity: 0; transform: translateY(0) scale(.8); }
+            30% { opacity: 1; }
+            100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+        }
+        .bottle-avatar .bottle-glow {
+            position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+            width: 50px; height: 6px;
+            border-radius: 50%;
+            background: radial-gradient(ellipse, rgba(201,168,76,0.2), transparent);
+        }
         .profile-name { font-size: 22px; font-weight: 700; }
         .profile-id { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
@@ -1094,9 +1155,7 @@
 <div id="page-menu" class="page active">
     <div class="top-bar">
         <div class="top-user" onclick="openPage('profile')" style="cursor:pointer">
-            <div class="top-avatar" id="top-avatar">
-                <span id="top-avatar-fallback">👤</span>
-            </div>
+            <div class="top-avatar" id="top-avatar">🧊</div>
             <div class="top-info">
                 <div class="top-label">С возвращением</div>
                 <div class="top-name" id="top-name">—</div>
@@ -1197,28 +1256,15 @@
 <div id="page-profile" class="page">
     <button class="back-btn" onclick="openPage('menu')">‹ Назад</button>
     <div class="profile-header">
-        <div class="profile-avatar" id="profile-avatar">
-            <span id="profile-avatar-fallback">👤</span>
-        </div>
+        <div class="bottle-avatar" id="bottle-avatar"></div>
         <div class="profile-name" id="profile-name">Загрузка...</div>
         <div class="profile-id" id="profile-id">—</div>
     </div>
     <div class="profile-list">
         <div class="profile-item">
-            <span class="pi-label">Username</span>
-            <span class="pi-value" id="profile-username">—</span>
-        </div>
-        <div class="profile-item">
-            <span class="pi-label">Телефон</span>
-            <span class="pi-value" id="profile-phone">—</span>
-        </div>
-        <div class="profile-item">
             <span class="pi-label">Баланс</span>
             <span class="pi-value" id="profile-balance">—</span>
         </div>
-    </div>
-    <div id="profile-phone-btn-wrap" style="display:none;margin-bottom:10px">
-        <button class="btn btn-outline" onclick="requestPhone()" style="border-color:rgba(201,168,76,0.3);color:var(--gold)">📱 Поделиться номером</button>
     </div>
     <button class="btn btn-outline" onclick="switchHistoryTab('points'); openPage('history')">💰 История операций</button>
     <div class="terms-box">
@@ -1404,33 +1450,42 @@
 
     var initGiftChecked = false;
 
+    function renderBottleAvatar(uid) {
+        uid = uid || 0;
+        var palette = [
+            {cap:'#C9A84C', water:'#3D9E6A', body:'rgba(61,158,106,0.15)'},
+            {cap:'#A855F7', water:'#8B5CF6', body:'rgba(139,92,246,0.15)'},
+            {cap:'#EF4444', water:'#DC2626', body:'rgba(239,68,68,0.15)'},
+            {cap:'#3B82F6', water:'#2563EB', body:'rgba(37,99,235,0.15)'},
+            {cap:'#EC4899', water:'#DB2777', body:'rgba(219,39,119,0.15)'},
+            {cap:'#F59E0B', water:'#D97706', body:'rgba(217,119,6,0.15)'},
+        ];
+        var p = palette[uid % palette.length];
+        var waterLevel = 30 + (uid * 7 % 50);
+        var label = String.fromCharCode(65 + (uid % 26));
+        var bg = 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, ' + p.body + ' 100%)';
+        document.getElementById('bottle-avatar').innerHTML =
+            '<div class="bottle-glow"></div>'
+            + '<div class="bottle-cap" style="background:' + p.cap + ';box-shadow:0 2px 8px ' + p.cap + '40"></div>'
+            + '<div class="bottle-neck" style="background:' + p.body + ';border-color:' + p.cap + '30"></div>'
+            + '<div class="bottle-body" style="background:' + bg + ';border-color:' + p.cap + '30">'
+            + '<div class="bottle-water" style="height:' + waterLevel + '%;background:linear-gradient(180deg,' + p.water + 'CC,' + p.water + '88);box-shadow:inset 0 4px 12px rgba(255,255,255,0.1)"></div>'
+            + '<div class="bottle-label" style="background:' + p.cap + '20;color:' + p.cap + '">' + label + '</div>'
+            + '<div class="bottle-shine"></div>'
+            + '<div class="bubble"></div><div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>'
+            + '</div>';
+    }
+
     function setUserUI(data) {
         var n = (data && data.name) || user.first_name || 'Пользователь';
         var fullName = user.first_name || '';
         if (user.last_name) fullName += ' ' + user.last_name;
         document.getElementById('top-name').textContent = n;
         document.getElementById('profile-name').textContent = fullName || n;
-        document.getElementById('profile-username').textContent = user.username ? '@' + user.username : (data && data.username ? '@' + data.username : '—');
         document.getElementById('profile-id').textContent = user.id || (data && data.telegram_id ? data.telegram_id : '—');
-        if (data && data.phone) document.getElementById('profile-phone').textContent = data.phone;
-        loadAvatar(data);
+        renderBottleAvatar(user.id || (data && data.telegram_id));
     }
     setUserUI(null);
-
-    function loadAvatar(data) {
-        var uid = getUID();
-        var url = data && data.photo_url;
-        if (!url) url = user.photo_url;
-        if (!url && user.username) url = 'https://t.me/i/userpic/320/' + user.username + '.jpg';
-        if (!url && data && data.username) url = 'https://t.me/i/userpic/320/' + data.username + '.jpg';
-        if (!url && uid) url = 'https://t.me/i/userpic/320/' + uid + '.jpg';
-        if (!url && user.id) url = 'https://t.me/i/userpic/320/' + user.id + '.jpg';
-        if (url) {
-            var html = '<img src="' + url + '" onerror="this.parentElement.innerHTML=\'<span>👤</span>\'">';
-            document.getElementById('top-avatar').innerHTML = html;
-            document.getElementById('profile-avatar').innerHTML = html;
-        }
-    }
 
     async function apiFetch(p) { try { return await (await fetch(API_BASE + p)).json(); } catch(e) { return null; } }
 
@@ -1508,24 +1563,12 @@
                 var displayName = d.name || user.first_name || 'Пользователь';
                 document.getElementById('top-name').textContent = displayName;
                 document.getElementById('profile-name').textContent = displayName;
-                var uname = user.username || d.username || '';
-                document.getElementById('profile-username').textContent = uname ? '@' + uname : '—';
-                document.getElementById('profile-id').textContent = user.id || d.telegram_id || '—';
-                var phoneEl = document.getElementById('profile-phone');
-                phoneEl.textContent = d.phone || '—';
-                document.getElementById('profile-phone-btn-wrap').style.display = d.phone ? 'none' : 'block';
+                document.getElementById('profile-id').textContent = user.id || d.telegram_id || uid || '—';
                 countUp(document.getElementById('stat-balance'), d.balance);
                 countUp(document.getElementById('stat-scans'), d.total_scans);
                 countUp(document.getElementById('card-scans'), d.total_scans);
                 document.getElementById('profile-balance').textContent = d.balance + ' баллов';
-                loadAvatar(d);
-            }
-
-            if (!d || !d.name) {
-                var tgName = user.first_name || '';
-                if (tgName) {
-                    fetch(API_BASE + '/user/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user_id: uid, name: tgName }) }).catch(function(){});
-                }
+                renderBottleAvatar(user.id || d.telegram_id || uid);
             }
             if (t) {
                 document.getElementById('card-tree-level').textContent = t.level || 1;
@@ -1801,23 +1844,6 @@
         inp.style.borderColor = '';
         tg.sendData('donate:' + amount);
         setTimeout(updateNotifBadge, 2000);
-    }
-
-    function requestPhone() {
-        if (tg.requestPhoneNumber) {
-            tg.requestPhoneNumber().then(function(result) {
-                if (result.status === 'sent') {
-                    tg.showAlert('✅ Номер отправлен! Обновите профиль через пару секунд.');
-                    setTimeout(loadUserData, 3000);
-                } else {
-                    tg.showAlert('❌ Вы отменили запрос');
-                }
-            }, function() {
-                tg.showAlert('❌ Ошибка запроса');
-            });
-        } else {
-            tg.showAlert('📱 Отправьте номер через бота: нажмите кнопку «📱 Отправить номер телефона» в чате с ботом');
-        }
     }
 
     setInterval(updateNotifBadge, 30000);
