@@ -665,7 +665,6 @@ async def handle_callback(db, cbd: dict):
         if not user_row or user_row["balance"] < prize["price_points"]:
             await send_message(chat_id, "❌ Недостаточно баллов для обмена.")
             return
-        await db.update_user_balance(chat_id, user_row["balance"] - prize["price_points"])
         await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user_row["id"], prize_id)
         await send_message(
