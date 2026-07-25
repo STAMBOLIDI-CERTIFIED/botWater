@@ -1217,6 +1217,9 @@
             <span class="pi-value" id="profile-balance">—</span>
         </div>
     </div>
+    <div id="profile-phone-btn-wrap" style="display:none;margin-bottom:10px">
+        <button class="btn btn-outline" onclick="requestPhone()" style="border-color:rgba(201,168,76,0.3);color:var(--gold)">📱 Поделиться номером</button>
+    </div>
     <button class="btn btn-outline" onclick="switchHistoryTab('points'); openPage('history')">💰 История операций</button>
     <div class="terms-box">
         <p>Правовая информация</p>
@@ -1497,7 +1500,9 @@
                 document.getElementById('profile-name').textContent = d.name || fullName || 'Пользователь';
                 document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
                 document.getElementById('profile-id').textContent = user.id || d.telegram_id || '—';
-                document.getElementById('profile-phone').textContent = d.phone || '—';
+                var phoneEl = document.getElementById('profile-phone');
+                phoneEl.textContent = d.phone || '—';
+                document.getElementById('profile-phone-btn-wrap').style.display = d.phone ? 'none' : 'block';
                 countUp(document.getElementById('stat-balance'), d.balance);
                 countUp(document.getElementById('stat-scans'), d.total_scans);
                 countUp(document.getElementById('card-scans'), d.total_scans);
@@ -1778,6 +1783,23 @@
         inp.style.borderColor = '';
         tg.sendData('donate:' + amount);
         setTimeout(updateNotifBadge, 2000);
+    }
+
+    function requestPhone() {
+        if (!tg.requestPhoneNumber) {
+            tg.showAlert('Обновите Telegram до последней версии');
+            return;
+        }
+        tg.requestPhoneNumber().then(function(result) {
+            if (result.status === 'sent') {
+                tg.showAlert('✅ Номер отправлен! Обновите профиль через пару секунд.');
+                setTimeout(loadUserData, 3000);
+            } else {
+                tg.showAlert('❌ Вы отменили запрос');
+            }
+        }, function() {
+            tg.showAlert('❌ Ошибка запроса');
+        });
     }
 
     setInterval(updateNotifBadge, 30000);
