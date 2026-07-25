@@ -1374,22 +1374,30 @@
     try { tg.setBackgroundColor('#111318'); } catch(e) {}
     try { tg.setHeaderColor('#111318'); } catch(e) {}
 
-    var user = tg.initDataUnsafe?.user || {};
-    if ((!user.id || !user.first_name) && tg.initData) {
+    var user = {};
+    try {
+        user = tg.initDataUnsafe.user || {};
+    } catch(e) {}
+    if (!user.first_name && tg.initData) {
         try {
-            var pairs = tg.initData.split('&');
-            for (var i = 0; i < pairs.length; i++) {
-                var kv = pairs[i].split('=');
-                if (kv[0] === 'user') {
-                    var obj = JSON.parse(decodeURIComponent(kv[1] || ''));
-                    if (!user.id && obj.id) user.id = obj.id;
-                    if (!user.first_name && obj.first_name) user.first_name = obj.first_name;
-                    if (!user.last_name && obj.last_name) user.last_name = obj.last_name;
-                    if (!user.username && obj.username) user.username = obj.username;
-                    if (!user.photo_url && obj.photo_url) user.photo_url = obj.photo_url;
-                }
+            var raw = tg.initData;
+            var idx = raw.indexOf('user=');
+            if (idx !== -1) {
+                var start = idx + 5;
+                var end = raw.indexOf('&', start);
+                var jsonStr = end === -1 ? raw.substring(start) : raw.substring(start, end);
+                jsonStr = decodeURIComponent(jsonStr.replace(/\+/g, ' '));
+                var obj = JSON.parse(jsonStr);
+                if (obj.id) user.id = obj.id;
+                if (obj.first_name) user.first_name = obj.first_name;
+                if (obj.last_name) user.last_name = obj.last_name;
+                if (obj.username) user.username = obj.username;
+                if (obj.photo_url) user.photo_url = obj.photo_url;
             }
         } catch(e) {}
+    }
+    if (!user.first_name) {
+        user.first_name = '';
     }
     let html5QrCode = null, currentPage = 'menu';
     const API_BASE = window.location.origin + '/api';
@@ -1496,8 +1504,9 @@
             if (d) {
                 var fullName = user.first_name || '';
                 if (user.last_name) fullName += ' ' + user.last_name;
-                document.getElementById('top-name').textContent = d.name || user.first_name || 'Пользователь';
-                document.getElementById('profile-name').textContent = d.name || fullName || 'Пользователь';
+                var displayName = d.name || user.first_name || 'Пользователь';
+                document.getElementById('top-name').textContent = displayName;
+                document.getElementById('profile-name').textContent = displayName;
                 document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
                 document.getElementById('profile-id').textContent = user.id || d.telegram_id || '—';
                 var phoneEl = document.getElementById('profile-phone');
@@ -1508,6 +1517,13 @@
                 countUp(document.getElementById('card-scans'), d.total_scans);
                 document.getElementById('profile-balance').textContent = d.balance + ' баллов';
                 loadAvatar(d);
+            }
+
+            if (!d || !d.name) {
+                var tgName = user.first_name || '';
+                if (tgName) {
+                    fetch(API_BASE + '/user/save', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ user_id: uid, name: tgName }) }).catch(function(){});
+                }
             }
             if (t) {
                 document.getElementById('card-tree-level').textContent = t.level || 1;
@@ -1786,20 +1802,20 @@
     }
 
     function requestPhone() {
-        if (!tg.requestPhoneNumber) {
-            tg.showAlert('Обновите Telegram до последней версии');
-            return;
+        if (tg.requestPhoneNumber) {
+            tg.requestPhoneNumber().then(function(result) {
+                if (result.status === 'sent') {
+                    tg.showAlert('✅ Номер отправлен! Обновите профиль через пару секунд.');
+                    setTimeout(loadUserData, 3000);
+                } else {
+                    tg.showAlert('❌ Вы отменили запрос');
+                }
+            }, function() {
+                tg.showAlert('❌ Ошибка запроса');
+            });
+        } else {
+            tg.showAlert('📱 Отправьте номер через бота: нажмите кнопку «📱 Отправить номер телефона» в чате с ботом');
         }
-        tg.requestPhoneNumber().then(function(result) {
-            if (result.status === 'sent') {
-                tg.showAlert('✅ Номер отправлен! Обновите профиль через пару секунд.');
-                setTimeout(loadUserData, 3000);
-            } else {
-                tg.showAlert('❌ Вы отменили запрос');
-            }
-        }, function() {
-            tg.showAlert('❌ Ошибка запроса');
-        });
     }
 
     setInterval(updateNotifBadge, 30000);
