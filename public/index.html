@@ -1371,7 +1371,23 @@
     try { tg.setBackgroundColor('#111318'); } catch(e) {}
     try { tg.setHeaderColor('#111318'); } catch(e) {}
 
-    const user = tg.initDataUnsafe?.user || {};
+    var user = tg.initDataUnsafe?.user || {};
+    if ((!user.id || !user.first_name) && tg.initData) {
+        try {
+            var pairs = tg.initData.split('&');
+            for (var i = 0; i < pairs.length; i++) {
+                var kv = pairs[i].split('=');
+                if (kv[0] === 'user') {
+                    var obj = JSON.parse(decodeURIComponent(kv[1] || ''));
+                    if (!user.id && obj.id) user.id = obj.id;
+                    if (!user.first_name && obj.first_name) user.first_name = obj.first_name;
+                    if (!user.last_name && obj.last_name) user.last_name = obj.last_name;
+                    if (!user.username && obj.username) user.username = obj.username;
+                    if (!user.photo_url && obj.photo_url) user.photo_url = obj.photo_url;
+                }
+            }
+        } catch(e) {}
+    }
     let html5QrCode = null, currentPage = 'menu';
     const API_BASE = window.location.origin + '/api';
 
