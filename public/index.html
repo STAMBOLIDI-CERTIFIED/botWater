@@ -118,10 +118,9 @@
             width: 40px; height: 40px; border-radius: 50%;
             background: linear-gradient(135deg, var(--gold), var(--gold-light));
             display: flex; align-items: center; justify-content: center;
-            font-size: 20px;
             border: 2px solid var(--gold);
             box-shadow: 0 0 16px rgba(201,168,76,0.15);
-            flex-shrink: 0;
+            flex-shrink: 0; overflow: hidden;
         }
         .top-info .top-label { font-size: 12px; color: var(--text-dim); }
         .top-info .top-name { font-size: 17px; font-weight: 700; transition: color .2s; }
@@ -554,20 +553,7 @@
         }
         .back-btn:active { opacity: .6; }
 
-        /* === PROFILE === */
-        .profile-header {
-            text-align: center; padding: 6px 0 20px;
-        }
-        .bottle-avatar {
-            width: 100px; height: 120px;
-            margin: 0 auto 14px;
-            position: relative;
-            animation: bottleFloat 3s ease-in-out infinite;
-        }
-        @keyframes bottleFloat {
-            0%,100% { transform: translateY(0); }
-            50% { transform: translateY(-6px); }
-        }
+        /* === BOTTLE AVATAR (shared) === */
         .bottle-body {
             position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
             width: 64px; height: 82px;
@@ -624,29 +610,168 @@
             30% { opacity: 1; }
             100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
         }
-        .bottle-avatar .bottle-glow {
-            position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
-            width: 50px; height: 6px;
-            border-radius: 50%;
-            background: radial-gradient(ellipse, rgba(201,168,76,0.2), transparent);
+        @keyframes bottleFloat {
+            0%,100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
         }
-        .profile-name { font-size: 22px; font-weight: 700; }
-        .profile-id { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
-        .profile-list {
+        /* === TOP BAR BOTTLE (mini) === */
+        .top-avatar-bottle {
+            width: 100px; height: 120px;
+            position: relative;
+            transform: scale(0.34);
+            transform-origin: center center;
+        }
+        .top-avatar-bottle .bottle-body {
+            transform-origin: bottom center;
+        }
+        .top-bottle-glow {
+            position: absolute; inset: 0; border-radius: 50%;
+            pointer-events: none;
+        }
+
+        /* === PROFILE === */
+        .profile-page {
+            padding: 0 0 24px;
+        }
+        .profile-header-card {
+            text-align: center;
+            padding: 30px 20px 24px;
+            margin: 0 -20px 20px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+        .profile-header-card::before {
+            content: '';
+            position: absolute; top: -60%; left: 50%; transform: translateX(-50%);
+            width: 280px; height: 280px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .profile-bottle-wrap {
+            width: 110px; height: 130px;
+            margin: 0 auto 16px;
+            position: relative;
+            z-index: 1;
+            animation: bottleFloat 3s ease-in-out infinite;
+            animation-delay: .3s;
+        }
+        .profile-bottle-wrap .bottle-body {
+            width: 72px; height: 92px;
+            border-radius: 0 0 16px 16px;
+        }
+        .profile-bottle-wrap .bottle-neck {
+            bottom: 88px; width: 32px; height: 16px;
+        }
+        .profile-bottle-wrap .bottle-cap {
+            bottom: 102px; width: 36px; height: 9px;
+            border-radius: 5px;
+        }
+        .profile-bottle-wrap .bottle-label {
+            width: 36px; height: 22px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .profile-bottle-wrap .bottle-shine {
+            top: 10px; left: 8px;
+            width: 9px; height: 28px;
+        }
+        .profile-bottle-glow {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%,-50%);
+            width: 140px; height: 140px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: profileGlowPulse 3s ease-in-out infinite;
+        }
+        @keyframes profileGlowPulse {
+            0%,100% { opacity: .5; transform: translate(-50%,-50%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%,-50%) scale(1.1); }
+        }
+        .profile-name-wrap {
+            position: relative; z-index: 1;
+        }
+        .profile-name-grad {
+            font-size: 24px; font-weight: 800;
+            background: linear-gradient(135deg, var(--gold), var(--gold-light), #FFF8E7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.3px;
+        }
+        .profile-id-label {
+            font-size: 12px; color: var(--text-dim);
+            margin-top: 3px;
+            font-weight: 500;
+        }
+        .profile-id-label span {
+            color: var(--text-secondary);
+        }
+
+        .profile-stats {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .profile-stat-card {
             background: var(--surface-solid);
             border: 1px solid var(--border);
             border-radius: var(--radius-lg);
-            overflow: hidden;
+            padding: 18px 16px;
+            text-align: center;
+            transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s ease;
+            animation: slideUp .6s cubic-bezier(.16,1,.3,1) both;
         }
-        .profile-item {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 16px 18px;
-            border-bottom: 1px solid var(--border);
+        .profile-stat-card:active {
+            transform: scale(.97);
         }
-        .profile-item:last-child { border-bottom: none; }
-        .profile-item .pi-label { font-size: 13px; color: var(--text-secondary); }
-        .profile-item .pi-value { font-size: 14px; font-weight: 600; color: var(--text); }
+        .profile-stat-card .ps-icon {
+            font-size: 22px; margin-bottom: 6px;
+        }
+        .profile-stat-card .ps-value {
+            font-size: 26px; font-weight: 800;
+            color: var(--text);
+            line-height: 1.2;
+        }
+        .profile-stat-card .ps-label {
+            font-size: 12px; color: var(--text-dim);
+            margin-top: 2px;
+        }
+        .profile-stat-card.ps-gold {
+            border-color: rgba(201,168,76,0.2);
+        }
+        .profile-stat-card.ps-gold .ps-value {
+            background: linear-gradient(135deg, var(--gold), var(--gold-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .profile-actions {
+            display: flex; flex-direction: column; gap: 10px;
+            margin-bottom: 24px;
+        }
+        .profile-action-btn {
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            width: 100%;
+            padding: 16px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            background: var(--surface-solid);
+            color: var(--text);
+            font-size: 15px; font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: transform .3s cubic-bezier(.16,1,.3,1), box-shadow .3s ease, border-color .3s ease;
+            animation: slideUp .6s cubic-bezier(.16,1,.3,1) .15s both;
+        }
+        .profile-action-btn:active {
+            transform: scale(.97);
+            border-color: var(--gold);
+        }
 
         /* === SCANNER === */
         .scan-zone {
@@ -1155,7 +1280,7 @@
 <div id="page-menu" class="page active">
     <div class="top-bar">
         <div class="top-user" onclick="openPage('profile')" style="cursor:pointer">
-            <div class="top-avatar" id="top-avatar">🧊</div>
+            <div class="top-avatar" id="top-avatar"><div class="top-avatar-bottle" id="top-bottle"></div></div>
             <div class="top-info">
                 <div class="top-label">С возвращением</div>
                 <div class="top-name" id="top-name">—</div>
@@ -1253,20 +1378,36 @@
 </div>
 
 <!-- ПРОФИЛЬ -->
-<div id="page-profile" class="page">
+<div id="page-profile" class="page profile-page">
     <button class="back-btn" onclick="openPage('menu')">‹ Назад</button>
-    <div class="profile-header">
-        <div class="bottle-avatar" id="bottle-avatar"></div>
-        <div class="profile-name" id="profile-name">Загрузка...</div>
-        <div class="profile-id" id="profile-id">—</div>
-    </div>
-    <div class="profile-list">
-        <div class="profile-item">
-            <span class="pi-label">Баланс</span>
-            <span class="pi-value" id="profile-balance">—</span>
+    <div class="profile-header-card">
+        <div class="profile-bottle-glow" id="profile-bottle-glow"></div>
+        <div class="profile-bottle-wrap" id="profile-bottle-wrap"></div>
+        <div class="profile-name-wrap">
+            <div class="profile-name-grad" id="profile-name">Загрузка...</div>
+            <div class="profile-id-label" id="profile-id">ID: <span>—</span></div>
         </div>
     </div>
-    <button class="btn btn-outline" onclick="switchHistoryTab('points'); openPage('history')">💰 История операций</button>
+
+    <div class="profile-stats">
+        <div class="profile-stat-card ps-gold" style="--i:0">
+            <div class="ps-icon">💎</div>
+            <div class="ps-value" id="profile-balance">—</div>
+            <div class="ps-label">баллов</div>
+        </div>
+        <div class="profile-stat-card" style="--i:1">
+            <div class="ps-icon">🎯</div>
+            <div class="ps-value" id="profile-scans">—</div>
+            <div class="ps-label">сканирований</div>
+        </div>
+    </div>
+
+    <div class="profile-actions">
+        <button class="profile-action-btn" onclick="switchHistoryTab('points'); openPage('history')">
+            <span>📋</span> История операций
+        </button>
+    </div>
+
     <div class="terms-box">
         <p>Правовая информация</p>
         <div class="terms-links">
@@ -1450,7 +1591,7 @@
 
     var initGiftChecked = false;
 
-    function renderBottleAvatar(uid) {
+    function bottleHTML(uid) {
         uid = uid || 0;
         var palette = [
             {cap:'#C9A84C', water:'#3D9E6A', body:'rgba(61,158,106,0.15)'},
@@ -1464,16 +1605,29 @@
         var waterLevel = 30 + (uid * 7 % 50);
         var label = String.fromCharCode(65 + (uid % 26));
         var bg = 'linear-gradient(180deg, rgba(255,255,255,0.03) 0%, ' + p.body + ' 100%)';
-        document.getElementById('bottle-avatar').innerHTML =
-            '<div class="bottle-glow"></div>'
-            + '<div class="bottle-cap" style="background:' + p.cap + ';box-shadow:0 2px 8px ' + p.cap + '40"></div>'
-            + '<div class="bottle-neck" style="background:' + p.body + ';border-color:' + p.cap + '30"></div>'
-            + '<div class="bottle-body" style="background:' + bg + ';border-color:' + p.cap + '30">'
-            + '<div class="bottle-water" style="height:' + waterLevel + '%;background:linear-gradient(180deg,' + p.water + 'CC,' + p.water + '88);box-shadow:inset 0 4px 12px rgba(255,255,255,0.1)"></div>'
-            + '<div class="bottle-label" style="background:' + p.cap + '20;color:' + p.cap + '">' + label + '</div>'
-            + '<div class="bottle-shine"></div>'
-            + '<div class="bubble"></div><div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>'
-            + '</div>';
+        var glow = 'radial-gradient(ellipse at center, ' + p.cap + '20 0%, transparent 70%)';
+        return {
+            glow: glow,
+            html:
+                '<div class="bottle-cap" style="background:' + p.cap + ';box-shadow:0 2px 8px ' + p.cap + '40"></div>'
+                + '<div class="bottle-neck" style="background:' + p.body + ';border-color:' + p.cap + '30"></div>'
+                + '<div class="bottle-body" style="background:' + bg + ';border-color:' + p.cap + '30">'
+                + '<div class="bottle-water" style="height:' + waterLevel + '%;background:linear-gradient(180deg,' + p.water + 'CC,' + p.water + '88);box-shadow:inset 0 4px 12px rgba(255,255,255,0.1)"></div>'
+                + '<div class="bottle-label" style="background:' + p.cap + '20;color:' + p.cap + '">' + label + '</div>'
+                + '<div class="bottle-shine"></div>'
+                + '<div class="bubble"></div><div class="bubble"></div><div class="bubble"></div><div class="bubble"></div>'
+                + '</div>'
+        };
+    }
+
+    function renderAllBottles(uid) {
+        var b = bottleHTML(uid);
+        var topEl = document.getElementById('top-bottle');
+        var profileWrap = document.getElementById('profile-bottle-wrap');
+        var glowEl = document.getElementById('profile-bottle-glow');
+        if (topEl) topEl.innerHTML = b.html;
+        if (profileWrap) profileWrap.innerHTML = b.html;
+        if (glowEl) glowEl.style.background = b.glow;
     }
 
     function setUserUI(data) {
@@ -1482,8 +1636,8 @@
         if (user.last_name) fullName += ' ' + user.last_name;
         document.getElementById('top-name').textContent = n;
         document.getElementById('profile-name').textContent = fullName || n;
-        document.getElementById('profile-id').textContent = user.id || (data && data.telegram_id ? data.telegram_id : '—');
-        renderBottleAvatar(user.id || (data && data.telegram_id));
+        document.getElementById('profile-id').innerHTML = 'ID: <span>' + (user.id || (data && data.telegram_id ? data.telegram_id : '—')) + '</span>';
+        renderAllBottles(user.id || (data && data.telegram_id));
     }
     setUserUI(null);
 
@@ -1563,12 +1717,13 @@
                 var displayName = d.name || user.first_name || 'Пользователь';
                 document.getElementById('top-name').textContent = displayName;
                 document.getElementById('profile-name').textContent = displayName;
-                document.getElementById('profile-id').textContent = user.id || d.telegram_id || uid || '—';
+                document.getElementById('profile-id').innerHTML = 'ID: <span>' + (user.id || d.telegram_id || uid || '—') + '</span>';
                 countUp(document.getElementById('stat-balance'), d.balance);
+                countUp(document.getElementById('profile-balance'), d.balance);
                 countUp(document.getElementById('stat-scans'), d.total_scans);
+                countUp(document.getElementById('profile-scans'), d.total_scans);
                 countUp(document.getElementById('card-scans'), d.total_scans);
-                document.getElementById('profile-balance').textContent = d.balance + ' баллов';
-                renderBottleAvatar(user.id || d.telegram_id || uid);
+                renderAllBottles(user.id || d.telegram_id || uid);
             }
             if (t) {
                 document.getElementById('card-tree-level').textContent = t.level || 1;
