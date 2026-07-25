@@ -179,7 +179,10 @@ class Database:
         return {"balance": user.get("balance") or 0, "total_scans": len(bottles)}
 
     async def search_users(self, query: str) -> list[dict]:
-        rows = await self._fetch("users", f"select=*&or=(name.ilike.*{query}*,phone.ilike.*{query}*)&order=id.desc")
+        filters = [f"name.ilike.*{query}*", f"phone.ilike.*{query}*"]
+        if query.isdigit():
+            filters.append(f"telegram_id.eq.{query}")
+        rows = await self._fetch("users", f"select=*&or=({','.join(filters)})&order=id.desc")
         return rows
 
     # ─── QR Codes ───────────────────────────────────────
