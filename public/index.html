@@ -1383,23 +1383,24 @@
         if (user.last_name) fullName += ' ' + user.last_name;
         document.getElementById('top-name').textContent = n;
         document.getElementById('profile-name').textContent = fullName || n;
-        document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
-        document.getElementById('profile-id').textContent = user.id || '—';
+        document.getElementById('profile-username').textContent = user.username ? '@' + user.username : (data && data.username ? '@' + data.username : '—');
+        document.getElementById('profile-id').textContent = user.id || (data && data.telegram_id ? data.telegram_id : '—');
         if (data && data.phone) document.getElementById('profile-phone').textContent = data.phone;
-        loadAvatar();
+        loadAvatar(data);
     }
     setUserUI(null);
 
-    function loadAvatar() {
+    function loadAvatar(data) {
+        var uid = getUID();
         var url = user.photo_url;
-        if (!url && user.username) {
-            url = 'https://t.me/i/userpic/320/' + user.username + '.jpg';
-        }
+        if (!url && user.username) url = 'https://t.me/i/userpic/320/' + user.username + '.jpg';
+        if (!url && data && data.photo_url) url = data.photo_url;
+        if (!url && uid) url = 'https://t.me/i/userpic/320/' + uid + '.jpg';
+        if (!url && user.id) url = 'https://t.me/i/userpic/320/' + user.id + '.jpg';
         if (url) {
-            var img1 = document.getElementById('top-avatar');
-            var img2 = document.getElementById('profile-avatar');
-            img1.innerHTML = '<img src="' + url + '" onerror="this.parentElement.innerHTML=\'<span>👤</span>\'">';
-            img2.innerHTML = img1.innerHTML;
+            var html = '<img src="' + url + '" onerror="this.parentElement.innerHTML=\'<span>👤</span>\'">';
+            document.getElementById('top-avatar').innerHTML = html;
+            document.getElementById('profile-avatar').innerHTML = html;
         }
     }
 
@@ -1478,12 +1479,14 @@
                 if (user.last_name) fullName += ' ' + user.last_name;
                 document.getElementById('top-name').textContent = d.name || user.first_name || 'Пользователь';
                 document.getElementById('profile-name').textContent = d.name || fullName || 'Пользователь';
+                document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
+                document.getElementById('profile-id').textContent = user.id || d.telegram_id || '—';
                 document.getElementById('profile-phone').textContent = d.phone || '—';
                 countUp(document.getElementById('stat-balance'), d.balance);
                 countUp(document.getElementById('stat-scans'), d.total_scans);
                 countUp(document.getElementById('card-scans'), d.total_scans);
                 document.getElementById('profile-balance').textContent = d.balance + ' баллов';
-                loadAvatar();
+                loadAvatar(d);
             }
             if (t) {
                 document.getElementById('card-tree-level').textContent = t.level || 1;
