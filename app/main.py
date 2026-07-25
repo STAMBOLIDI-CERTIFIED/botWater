@@ -351,6 +351,11 @@ async def api_scan(request: Request):
     tree = await db.get_tree_state(user_id)
     return {"ok": True, "balance": stats["balance"], "total_scans": stats["total_scans"], "xp": tree["xp"], "level": tree["level"]}
 
+@app.get("/api/settings")
+async def api_settings():
+    splash_logo_url = await db.get_setting("splash_logo_url")
+    return {"splash_logo_url": splash_logo_url or ""}
+
 # ─── Admin Auth ────────────────────────────────────────
 
 _ADMIN_TOKENS: dict[str, dict] = {}
@@ -487,6 +492,8 @@ async def admin_panel(request: Request, page: str = "dashboard"):
                 ctx["bottles"] = await db.get_bottles(batch, sort, dir_, limit, offset)
                 ctx["total"] = await db.count_bottles(batch=batch)
             ctx["batches"] = await db.get_bottle_batches()
+        elif page == "settings":
+            ctx["splash_logo_url"] = await db.get_setting("splash_logo_url") or ""
         elif page == "admins":
             ctx["admins"] = await db.get_admins()
             ctx["superadmin_id"] = s["SUPERADMIN_ID"]
@@ -694,6 +701,30 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
             if await db.remove_admin(tg_id):
                 return r(f"Администратор {tg_id} удалён")
             return r("Ошибка при удалении")
+
+    elif page == "settings":
+        if "save_logo" in form:
+            file = form.get("logo_image")
+            if file and hasattr(file, "filename") and file.filename:
+                upload_dir = BASE_DIR / "public" / "uploads" / "brand"
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                ext = Path(file.filename).suffix.lower()
+                if ext in (".png", ".jpg", ".jpeg", ".webp", ".svg"):
+                    filename = f"logo_splash{ext}"
+                    content = await file.read()
+                    (upload_dir / filename).write_bytes(content)
+                    logo_url = f"/uploads/brand/{filename}"
+                    await db.set_setting("splash_logo_url", logo_url)
+                    return r("Логотип сохранён!")
+            return r("Ошибка: файл не выбран или неверный формат")
+        if "remove_logo" in form:
+            current = await db.get_setting("splash_logo_url")
+            if current:
+                img_path = BASE_DIR / "public" / current.lstrip("/")
+                if img_path.exists():
+                    img_path.unlink()
+            await db.set_setting("splash_logo_url", "")
+            return r("Логотип удалён")
 
     return None
 
