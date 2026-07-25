@@ -722,3 +722,16 @@ class Database:
             await self._fetch("admin_codes", f"id=eq.{rows[0]['id']}", "PATCH", {"used": 1})
             return True
         return False
+
+    # ─── Settings ────────────────────────────────────────
+
+    async def get_setting(self, key: str) -> str | None:
+        row = await self._fetch_one("settings", f"key=eq.{key}&select=value")
+        return row["value"] if row else None
+
+    async def set_setting(self, key: str, value: str):
+        existing = await self._fetch_one("settings", f"key=eq.{key}&select=key")
+        if existing:
+            await self._fetch("settings", f"key=eq.{key}", "PATCH", {"value": value, "updated_at": datetime.utcnow().isoformat()})
+        else:
+            await self._fetch("settings", method="POST", json_data={"key": key, "value": value})

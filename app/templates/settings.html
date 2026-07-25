@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>⚙️ Настройки приложения</h2>
+<div class="sub">Управление оформлением и конфигурацией мини-приложения</div>
+
+<div class="table-wrap">
+    <div class="table-header"><h3>🎨 Логотип загрузочного экрана</h3></div>
+    <div style="padding:24px">
+        <p style="font-size:13px;color:var(--dim);margin-bottom:16px;line-height:1.6">
+            Этот логотип отображается при запуске мини-приложения (splash screen).<br>
+            Рекомендуемый размер: <strong>512×512 px</strong>, формат PNG или WebP с прозрачностью.
+        </p>
+
+        {% if splash_logo_url %}
+        <div style="margin-bottom:20px;text-align:center">
+            <div style="display:inline-block;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px">
+                <img src="{{ splash_logo_url }}" style="width:120px;height:120px;border-radius:20px;object-fit:contain;background:#111318;box-shadow:0 8px 32px rgba(0,0,0,0.3)" alt="Текущий логотип">
+            </div>
+            <p style="font-size:12px;color:var(--dim);margin-top:8px">Текущий логотип</p>
+        </div>
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data" style="max-width:400px">
+            <div class="form-group">
+                <label>Загрузить новый логотип</label>
+                <input type="file" name="logo_image" accept=".png,.jpg,.jpeg,.webp,.svg" class="form-input" style="padding:10px;font-size:13px">
+            </div>
+            <div class="btn-group">
+                <button type="submit" name="save_logo" class="btn btn-primary">💾 Сохранить логотип</button>
+                {% if splash_logo_url %}
+                <button type="submit" name="remove_logo" class="btn btn-danger" onclick="return confirm('Удалить логотип? Будет использоваться стандартный.')">🗑️ Удалить</button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if not splash_logo_url %}
+<div class="table-wrap">
+    <div class="table-header"><h3>ℹ️ Текущее состояние</h3></div>
+    <div style="padding:24px">
+        <p style="font-size:13px;color:var(--dim);line-height:1.6">
+            Сейчас используется <strong>стандартный логотип</strong> — иконка дерева из набора приложения.<br>
+            Загрузите свой логотип выше, чтобы заменить его.
+        </p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
