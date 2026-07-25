@@ -134,11 +134,14 @@ async def api_user(user_id: int = 0):
         return JSONResponse(None)
     stats = await db.get_user_stats(user_id)
     user = await db.get_user(user_id)
+    if not user:
+        return None
     return {
         "balance": stats["balance"],
         "total_scans": stats["total_scans"],
-        "phone": user.get("phone") if user else None,
-        "name": user.get("name") if user else None,
+        "telegram_id": user.get("telegram_id"),
+        "phone": user.get("phone"),
+        "name": user.get("name") or "",
     }
 
 @app.get("/api/prizes")
