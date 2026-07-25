@@ -439,6 +439,7 @@ class Database:
                 "type": "conversion",
                 "description": "Конвертация выигрыша в баллы",
             })
+            await self.create_notification(user["telegram_id"], "points", "Конвертация выигрыша", f"+{points} баллов за конвертацию выигрыша", "history")
             await self._fetch("raffles", f"id=eq.{raffle_id}", "PATCH", {
                 "payout_status": "converted",
                 "payout_choice": "points",

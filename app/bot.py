@@ -440,6 +440,7 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
         await db.activate_qr_code(chat_id, bottle_id)
         await db.add_balance(chat_id, 10, "scan", f"Сканирование бутылки {bottle_id}")
         await db.add_tree_xp(chat_id, 10)
+        await db.create_notification(chat_id, "scan", "Сканирование", f"+10 баллов за бутылку {bottle_id}", "history")
 
         s = get_settings()
         app_url = s["WEBAPP_URL"]
@@ -667,6 +668,7 @@ async def handle_callback(db, cbd: dict):
             return
         await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user_row["id"], prize_id)
+        await db.create_notification(chat_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
         await send_message(
             chat_id,
             f"🎉 <b>Заказ оформлен!</b>\n\n"
@@ -744,6 +746,30 @@ async def handle_webapp_data(db, data: str, chat_id: int):
             f"💳 Ваш баланс: {bal} баллов\n\n"
             f"Подтвердить обмен?",
             reply_markup=exchange_confirm_keyboard(prize_id),
+        )
+        return
+
+    if data.startswith("donate:"):
+        amount_str = data.split(":", 1)[1]
+        try:
+            amount = int(amount_str)
+        except ValueError:
+            await send_message(chat_id, "❌ Неверная сумма.")
+            return
+        if amount < 1:
+            await send_message(chat_id, "❌ Сумма должна быть больше 0.")
+            return
+        user_row = await db.get_user(chat_id)
+        if not user_row or user_row["balance"] < amount:
+            await send_message(chat_id, "❌ Недостаточно баллов для пожертвования.")
+            return
+        await db.add_balance(chat_id, -amount, "donation", f"Пожертвование {amount} баллов")
+        await db.create_notification(chat_id, "donation", "Пожертвование", f"Вы пожертвовали {amount} баллов", "shop")
+        await send_message(
+            chat_id,
+            f"❤️ <b>Спасибо за пожертвование!</b>\n\n"
+            f"Вы пожертвовали <b>{amount} баллов</b>.\n"
+            f"Ваши баллы пойдут на добрые дела и поддержку проектов.",
         )
         return
 
