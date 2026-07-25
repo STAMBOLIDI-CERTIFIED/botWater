@@ -614,12 +614,14 @@ class Database:
             ids.append(bottle_id)
         return ids
 
-    async def get_bottles(self, batch: str = "", sort: str = "id", direction: str = "DESC",
+    async def get_bottles(self, batch: str = "", year: str = "", sort: str = "id", direction: str = "DESC",
                           limit: int = 200, offset: int = 0) -> list[dict]:
         allowed_sort = {"id", "bottle_id", "year", "batch", "assigned_to", "created_at"}
         sort_col = sort if sort in allowed_sort else "id"
         dir_ = ".desc" if direction.upper() == "DESC" else ".asc"
         params = f"select=*&order={sort_col}{dir_}&limit={limit}&offset={offset}"
+        if year:
+            params += f"&year=eq.{year}"
         if batch:
             params += f"&batch=eq.{batch}"
         return await self._fetch("bottles", params)
@@ -653,8 +655,10 @@ class Database:
             batches[key] = batches.get(key, 0) + 1
         return [{"year": k[0], "batch": k[1], "count": v} for k, v in sorted(batches.items(), reverse=True)]
 
-    async def count_bottles(self, batch: str = "", search: str = "") -> int:
+    async def count_bottles(self, batch: str = "", year: str = "", search: str = "") -> int:
         params = "select=id"
+        if year:
+            params += f"&year=eq.{year}"
         if batch:
             params += f"&batch=eq.{batch}"
         if search:
