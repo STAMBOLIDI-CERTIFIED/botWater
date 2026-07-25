@@ -69,6 +69,7 @@
             <td>{% if b.assigned_to %}✅ {{ b.assigned_to }}{% else %}🔓{% endif %}</td>
             <td>{{ b.created_at[:10] if b.created_at else '—' }}</td>
             <td class="actions-cell">
+                <button class="btn btn-sm btn-primary" onclick="showQR('{{ b.bottle_id }}')">👁️ QR</button>
                 <a href="/admin/download/single?id={{ b.bottle_id }}" class="btn btn-sm btn-primary">🖼️ PNG</a>
                 <form method="POST" style="display:inline">
                     <input type="hidden" name="bottle_id" value="{{ b.bottle_id }}">
@@ -83,4 +84,41 @@
     </table>
     </div>
 </div>
+
+<div class="modal-overlay" id="qrModal">
+    <div class="modal" style="max-width:360px;text-align:center">
+        <h3 id="qrModalTitle">QR-код</h3>
+        <img id="qrModalImg" src="" alt="QR" style="width:240px;height:240px;display:block;margin:12px auto;border-radius:8px;background:#fff;padding:8px;">
+        <p id="qrModalId" style="font-size:12px;color:var(--dim);word-break:break-all;margin-bottom:12px;"></p>
+        <div class="modal-actions">
+            <a id="qrDownloadLink" class="btn btn-primary" download>⬇ Скачать PNG</a>
+            <button class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--dim);" onclick="hideQR()">Закрыть</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let qrModal = document.getElementById('qrModal');
+let qrImg = document.getElementById('qrModalImg');
+let qrTitle = document.getElementById('qrModalTitle');
+let qrId = document.getElementById('qrModalId');
+let qrDownload = document.getElementById('qrDownloadLink');
+
+function showQR(bottleId) {
+    qrTitle.textContent = 'QR-код';
+    qrImg.src = '/admin/view/qr/' + encodeURIComponent(bottleId);
+    qrId.textContent = bottleId;
+    qrDownload.href = '/admin/download/single?id=' + encodeURIComponent(bottleId);
+    qrModal.classList.add('show');
+}
+
+function hideQR() {
+    qrModal.classList.remove('show');
+    qrImg.src = '';
+}
+
+qrModal.addEventListener('click', function(e) {
+    if (e.target === qrModal) hideQR();
+});
+</script>
 {% endblock %}

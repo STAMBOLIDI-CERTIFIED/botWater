@@ -764,6 +764,37 @@ async def _handle_admin_post(page: str, form, admin_id: int) -> RedirectResponse
 
     return None
 
+# ─── QR generation helpers ────────────────────────────
+
+def _make_qr_img(data: str) -> bytes:
+    import qrcode
+    from io import BytesIO
+    img = qrcode.make(data)
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+def _make_qr_b64(data: str) -> str:
+    return base64.b64encode(_make_qr_img(data)).decode()
+
+def _make_qr_link(bottle_id: str) -> str:
+    s = get_settings()
+    return f"https://t.me/{s['BOT_USERNAME']}?start=bottle_{bottle_id}"
+
+# ─── QR view (inline, for modal) ─────────────────────
+
+@app.get("/admin/view/qr/{bottle_id}")
+async def admin_view_qr(bottle_id: str, request: Request):
+    admin_id = await require_admin(request)
+    if not admin_id:
+        raise HTTPException(403)
+    bottle = await db.get_bottle_by_code(bottle_id)
+    if not bottle:
+        raise HTTPException(404)
+    link = _make_qr_link(bottle_id)
+    png = _make_qr_img(link)
+    return Response(content=png, media_type="image/png")
+
 # ─── Downloads ─────────────────────────────────────────
 
 @app.get("/admin/download/{dl_type}")
@@ -778,21 +809,36 @@ async def admin_download(dl_type: str, request: Request):
     s = get_settings()
     params = dict(request.query_params)
 
+    # ── Single QR PNG ──────────────────────────────────
     if dl_type == "single" and params.get("id"):
         bottle_id = params["id"]
         bottle = await db.get_bottle_by_code(bottle_id)
         if not bottle:
             raise HTTPException(404)
-        link = f"https://t.me/{s['BOT_USERNAME']}?start=bottle_{bottle_id}"
-        img = qrcode.make(link)
-        buf = BytesIO()
-        img.save(buf, format="PNG")
+        link = _make_qr_link(bottle_id)
+        png = _make_qr_img(link)
         return Response(
-            content=buf.getvalue(),
+            content=png,
             media_type="image/png",
             headers={"Content-Disposition": f'attachment; filename="{bottle_id}.png"'},
         )
 
+    # ── PDF ────────────────────────────────────────────
+    if dl_type == "pdf" and params.get("batch"):
+        year_val = params["batch"]
+        batch_val = params.get("sub", "")
+        bottles = await db.get_bottles(batch=batch_val, year=year_val, limit=10000)
+        if not bottles:
+            raise HTTPException(404)
+        pdf = _build_pdf(bottles)
+        filename = f"bottles_{year_val}{'_' + batch_val if batch_val else ''}.pdf"
+        return Response(
+            content=pdf,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # ── ZIP (PNGs + PDF) ──────────────────────────────
     if dl_type == "qr_zip" and params.get("batch"):
         year_val = params["batch"]
         batch_val = params.get("sub", "")
@@ -802,11 +848,11 @@ async def admin_download(dl_type: str, request: Request):
         buf = BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
             for b in bottles:
-                link = f"https://t.me/{s['BOT_USERNAME']}?start=bottle_{b['bottle_id']}"
-                img = qrcode.make(link)
-                img_buf = BytesIO()
-                img.save(img_buf, format="PNG")
-                zf.writestr(f"{b['bottle_id']}.png", img_buf.getvalue())
+                link = _make_qr_link(b["bottle_id"])
+                png = _make_qr_img(link)
+                zf.writestr(f"{b['bottle_id']}.png", png)
+            pdf = _build_pdf(bottles)
+            zf.writestr(f"bottles_{year_val}{'_' + batch_val if batch_val else ''}.pdf", pdf)
         buf.seek(0)
         filename = f"bottles_{year_val}{'_' + batch_val if batch_val else ''}.zip"
         return Response(
@@ -815,61 +861,45 @@ async def admin_download(dl_type: str, request: Request):
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
 
-    if dl_type == "pdf" and params.get("batch"):
-        try:
-            from weasyprint import HTML as WeasyprintHTML
-        except ImportError:
-            raise HTTPException(500, "weasyprint not installed")
-        year_val = params["batch"]
-        batch_val = params.get("sub", "")
-        bottles = await db.get_bottles(batch=batch_val, year=year_val, limit=10000)
-        if not bottles:
-            raise HTTPException(404)
-        pdf_html = _build_pdf_html(bottles)
-        pdf = WeasyprintHTML(string=pdf_html).write_pdf()
-        filename = f"bottles_{batch_val}{'_' + sub if sub else ''}.pdf"
-        return Response(
-            content=pdf,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-        )
-
     raise HTTPException(400)
 
-def _build_pdf_html(bottles: list) -> str:
-    import qrcode
+# ─── PDF builder (fpdf2) ─────────────────────────────
+
+def _build_pdf(bottles: list) -> bytes:
+    from fpdf import FPDF
     from io import BytesIO
 
     s = get_settings()
-    cols = 8
-    per_page = 80
-    html_ = """<html><head><meta charset="UTF-8"><style>
-        @page { margin: 5mm; size: A4 landscape; }
-        body { margin: 0; padding: 0; font-family: sans-serif; }
-        table { width: 100%; border-collapse: collapse; page-break-after: always; }
-        td { width: """ + str(100 / cols) + """%; text-align: center; vertical-align: middle; padding: 2mm 1mm; }
-        td img { width: 14mm; height: 14mm; display: block; margin: 0 auto; }
-        td .label { font-size: 5.5pt; text-align: center; margin-top: 1mm; word-break: break-all; line-height: 1.2; color: #222; }
-    </style></head><body>"""
+    qr_mm = 18
+    cols = 10
+    rows = 7
+    per_page = cols * rows
+    margin = 8
+    gap_x = 3
+    gap_y = 5
+    label_h = 4
+
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=False)
+
     for chunk in [bottles[i:i + per_page] for i in range(0, len(bottles), per_page)]:
-        html_ += '<table cellspacing="0" cellpadding="0">'
-        for row_i in range(0, len(chunk), cols):
-            html_ += "<tr>"
-            for c in range(cols):
-                if row_i + c < len(chunk):
-                    b = chunk[row_i + c]
-                    link = f"https://t.me/{s['BOT_USERNAME']}?start=bottle_{b['bottle_id']}"
-                    img = qrcode.make(link)
-                    buf = BytesIO()
-                    img.save(buf, format="PNG")
-                    b64 = base64.b64encode(buf.getvalue()).decode()
-                    html_ += f'<td><img src="data:image/png;base64,{b64}" alt="QR"><div class="label">{html_mod.escape(b["bottle_id"])}</div></td>'
-                else:
-                    html_ += "<td></td>"
-            html_ += "</tr>"
-        html_ += "</table>"
-    html_ += "</body></html>"
-    return html_
+        pdf.add_page()
+        for idx, b in enumerate(chunk):
+            col = idx % cols
+            row = idx // cols
+            x = margin + col * (qr_mm + gap_x)
+            y = margin + row * (qr_mm + gap_y + label_h)
+
+            link = _make_qr_link(b["bottle_id"])
+            png_bytes = _make_qr_img(link)
+            buf = BytesIO(png_bytes)
+
+            pdf.image(buf, x=x, y=y, w=qr_mm, h=qr_mm)
+            pdf.set_xy(x, y + qr_mm + 0.5)
+            pdf.set_font("Courier", size=5)
+            pdf.cell(qr_mm, label_h, text=b["bottle_id"], align="C")
+
+    return pdf.output()
 
 # ─── Health ─────────────────────────────────────────────
 
