@@ -1614,6 +1614,225 @@
             0% { transform: translate(0, 0) scale(1); opacity: 1; }
             100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
         }
+        /* === BOTTLE SHELF === */
+        .shelf-page {
+            padding-bottom: 24px;
+        }
+        .shelf-header {
+            text-align: center;
+            padding: 6px 0 16px;
+            animation: slideUp .4s cubic-bezier(.16,1,.3,1);
+        }
+        .shelf-header .sh-count {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+        .shelf-empty {
+            text-align: center;
+            padding: 60px 24px;
+            animation: fadeIn .5s cubic-bezier(.16,1,.3,1);
+        }
+        .shelf-empty .se-ico {
+            width: 80px;
+            height: 80px;
+            border-radius: 24px;
+            background: var(--surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin: 0 auto 16px;
+        }
+        .shelf-empty .se-t {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .shelf-empty .se-d {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+        .shelf-container {
+            padding: 0 4px;
+        }
+        .shelf-unit {
+            margin-bottom: 28px;
+            animation: slideUp .5s cubic-bezier(.16,1,.3,1) both;
+            position: relative;
+        }
+        .shelf-board {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            padding: 16px 8px 8px;
+            background: linear-gradient(180deg, rgba(60,40,20,0.08) 0%, rgba(60,40,20,0.03) 100%);
+            border-radius: 6px 6px 12px 12px;
+            border-bottom: 3px solid rgba(60,40,20,0.15);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.03);
+            min-height: 130px;
+        }
+        .shelf-board::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -3px;
+            height: 8px;
+            background: linear-gradient(180deg, rgba(60,40,20,0.12), rgba(60,40,20,0.06));
+            border-radius: 0 0 6px 6px;
+        }
+        .shelf-board::after {
+            content: '';
+            position: absolute;
+            left: 8px;
+            right: 8px;
+            bottom: -3px;
+            height: 1px;
+            background: rgba(255,255,255,0.04);
+        }
+        .shelf-bottle-wrap {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 4px;
+            transition: transform .3s ease;
+            cursor: pointer;
+            flex: 1;
+            max-width: 110px;
+        }
+        .shelf-bottle-wrap:active {
+            transform: scale(0.92);
+        }
+        .shelf-bottle {
+            width: 48px;
+            height: 68px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .shelf-bottle .sb-cap {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 8px;
+            border-radius: 3px 3px 1px 1px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        .shelf-bottle .sb-neck {
+            position: absolute;
+            top: 7px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 16px;
+            height: 12px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-top: none;
+            border-radius: 0 0 3px 3px;
+            z-index: 1;
+        }
+        .shelf-bottle .sb-body {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 52px;
+            border-radius: 32% 32% 8% 8% / 28% 28% 8% 8%;
+            background: rgba(255,255,255,0.04);
+            border: 1.2px solid rgba(255,255,255,0.07);
+            overflow: hidden;
+        }
+        .shelf-bottle .sb-water {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            border-radius: 0 0 7px 7px;
+            transition: height .8s ease;
+        }
+        .shelf-bottle .sb-shine {
+            position: absolute;
+            top: 8px;
+            left: 6px;
+            width: 4px;
+            height: 14px;
+            border-radius: 2px;
+            background: rgba(255,255,255,0.07);
+        }
+        .shelf-bottle .sb-shine2 {
+            position: absolute;
+            top: 14px;
+            right: 4px;
+            width: 2px;
+            height: 8px;
+            border-radius: 1px;
+            background: rgba(255,255,255,0.04);
+        }
+        .shelf-bottle .sb-bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            animation: sbBubble 2.5s ease-in-out infinite;
+        }
+        @keyframes sbBubble {
+            0%, 100% { opacity: 0; transform: translateY(0) scale(0.8); }
+            30% { opacity: 0.5; }
+            70% { opacity: 0.3; }
+        }
+        .shelf-bottle .sb-label {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 30px;
+            height: 14px;
+            border-radius: 2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.5);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        .shelf-id {
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-dim);
+            font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+            letter-spacing: 0.2px;
+            text-align: center;
+            word-break: break-all;
+            max-width: 110px;
+            line-height: 1.3;
+            padding: 0 2px;
+            transition: color .3s;
+        }
+        .shelf-bottle-wrap:hover .shelf-id {
+            color: var(--gold);
+        }
+        .shelf-bottle-wrap .sb-date {
+            font-size: 9px;
+            color: rgba(255,255,255,0.2);
+            margin-top: 1px;
+        }
+        .shelf-bottle-anim {
+            animation: bottleShelfIn 0.6s cubic-bezier(.16,1,.3,1) both;
+        }
+        @keyframes bottleShelfIn {
+            0% { opacity: 0; transform: translateY(-20px) scale(0.8); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
     </style>
 </head>
 <body>
@@ -1698,13 +1917,13 @@
             <div class="tree-particle" style="left:80%;bottom:40%"></div>
             <div class="tree-particle" style="left:65%;bottom:35%"></div>
         </div>
-        <div class="card card-history anim-in" onclick="openPage('history')" style="--i:1">
+        <div class="card card-history anim-in" onclick="openPage('bottles')" style="--i:1">
             <div class="card-top">
-                <div class="card-label">История</div>
+                <div class="card-label">Мои бутылки</div>
                 <div class="card-arrow">›</div>
             </div>
             <div class="card-value" id="card-scans">0</div>
-            <div class="card-unit">сканирований</div>
+            <div class="card-unit">на полке</div>
         </div>
         <div class="card card-full card-shop anim-in" onclick="openPage('shop')" style="--i:2">
             <div class="card-left" style="flex:1">
@@ -1899,6 +2118,14 @@
     <div class="gift-opening-text" id="gift-opening-text">Открываем подарок...</div>
 </div>
 
+<!-- МОИ БУТЫЛКИ -->
+<div id="page-bottles" class="page shelf-page">
+    <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
+    <div id="bottles-content">
+        <div class="empty-state"><div class="empty-ico">icon('drop')</div><div class="empty-t">Загрузка...</div></div>
+    </div>
+</div>
+
 <!-- ДЕРЕВО -->
 <div id="page-tree" class="page">
     <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
@@ -1917,6 +2144,10 @@
     <button class="nav-item" data-page="scanner" onclick="openPage('scanner')">
         <span class="nav-icon">icon('camera')</span>
         <span class="nav-label">Сканер</span>
+    </button>
+    <button class="nav-item" data-page="bottles" onclick="openPage('bottles')">
+        <span class="nav-icon">icon('drop')</span>
+        <span class="nav-label">Бутылки</span>
     </button>
     <button class="nav-item" data-page="tree" onclick="openPage('tree')">
         <span class="nav-icon">icon('tree')</span>
@@ -2313,6 +2544,7 @@
         if (page === 'shop') loadShop();
         if (page === 'raffles') loadRaffles();
         if (page === 'tree') loadTree();
+        if (page === 'bottles') renderBottles();
         if (page === 'gift') {} // gift page is static
     }
 
@@ -2648,6 +2880,61 @@
             p.style.animationDelay = (Math.random() * 0.3) + 's';
             container.appendChild(p);
         }
+    }
+
+    function shelfBottleHTML(code, scanned_at, accent, waterColor) {
+        var seed = 0, i;
+        for (i = 0; i < code.length; i++) { seed = ((seed << 5) - seed) + code.charCodeAt(i); seed |= 0; }
+        var idx = Math.abs(seed);
+        var wl = 35 + (idx % 45);
+        var capColors = ['#2B7BE4','#1E90FF','#4169E1','#1877F2','#0066CC','#3B82F6','#0D6EFD','#6366F1','#7C3AED','#8B5CF6','#EC4899','#EF4444','#F59E0B','#10B981','#14B8A6','#06B6D4'];
+        var waterColors = ['rgba(30,144,255,0.35)','rgba(65,105,225,0.3)','rgba(24,119,242,0.35)','rgba(99,102,241,0.3)','rgba(124,58,237,0.3)','rgba(139,92,246,0.3)','rgba(236,72,153,0.3)','rgba(16,185,129,0.3)'];
+        var cc = capColors[idx % capColors.length];
+        var wc = waterColors[idx % waterColors.length];
+        var dateStr = scanned_at ? new Date(scanned_at).toLocaleDateString('ru-RU', {day:'numeric',month:'short',year:'numeric'}) : '';
+        var animDelay = (idx % 10) * 0.05;
+        return '<div class="shelf-bottle-wrap" style="animation-delay:' + animDelay + 's" onclick="tg.showAlert(\'' + esc(code) + '\n' + esc(dateStr) + '\')">'
+            + '<div class="shelf-bottle">'
+            + '<div class="sb-cap" style="background:' + cc + '"></div>'
+            + '<div class="sb-neck"></div>'
+            + '<div class="sb-body">'
+            + '<div class="sb-water" style="height:' + wl + '%;background:linear-gradient(180deg,' + wc + ' 0%,' + wc + '80 100%)"></div>'
+            + '<div class="sb-shine"></div><div class="sb-shine2"></div>'
+            + '<div class="sb-bubble" style="width:4px;height:4px;left:25%;bottom:15%;animation-delay:0s"></div>'
+            + '<div class="sb-bubble" style="width:3px;height:3px;left:60%;bottom:40%;animation-delay:.8s"></div>'
+            + '<div class="sb-label">' + String.fromCharCode(65 + (idx % 26)) + '</div>'
+            + '</div></div>'
+            + '<div class="shelf-id">' + esc(code) + '</div>'
+            + '<div class="sb-date">' + esc(dateStr) + '</div>'
+            + '</div>';
+    }
+
+    async function renderBottles() {
+        var c = document.getElementById('bottles-content');
+        var uid = getUID();
+        if (!uid) { c.innerHTML = '<div class="shelf-empty"><div class="se-ico">' + icon('drop') + '</div><div class="se-t">Нет данных</div></div>'; return; }
+        var d = await apiFetch('/history?user_id=' + uid);
+        if (!d || !d.length) {
+            c.innerHTML = '<div class="shelf-empty"><div class="se-ico">' + icon('drop') + '</div><div class="se-t">Здесь пока пусто</div><div class="se-d">Отсканируй свою первую бутылку<br>и она появится на этой полке!</div></div>';
+            return;
+        }
+        var perShelf = 3;
+        var shelves = [];
+        for (var i = 0; i < d.length; i += perShelf) {
+            shelves.push(d.slice(i, i + perShelf));
+        }
+        var html = '<div class="shelf-header"><div class="section-title" style="margin-bottom:2px">' + icon('drop') + ' Мои бутылки</div><div class="sh-count">' + d.length + ' ' + (d.length === 1 ? 'бутылка' : (d.length < 5 ? 'бутылки' : 'бутылок')) + ' на полке</div></div><div class="shelf-container">';
+        for (var s = 0; s < shelves.length; s++) {
+            var shelfBottles = shelves[s];
+            html += '<div class="shelf-unit" style="animation-delay:' + (s * 0.1) + 's"><div class="shelf-board">';
+            for (var b = 0; b < shelfBottles.length; b++) {
+                var item = shelfBottles[b];
+                html += shelfBottleHTML(item.code, item.scanned_at);
+            }
+            html += '</div></div>';
+        }
+        html += '</div>';
+        c.innerHTML = html;
     }
 
     async function loadTree() {
