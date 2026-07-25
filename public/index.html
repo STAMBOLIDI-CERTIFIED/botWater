@@ -1379,17 +1379,29 @@
 
     function setUserUI(data) {
         var n = (data && data.name) || user.first_name || 'Пользователь';
+        var fullName = user.first_name || '';
+        if (user.last_name) fullName += ' ' + user.last_name;
         document.getElementById('top-name').textContent = n;
-        document.getElementById('profile-name').textContent = n;
+        document.getElementById('profile-name').textContent = fullName || n;
         document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
         document.getElementById('profile-id').textContent = user.id || '—';
         if (data && data.phone) document.getElementById('profile-phone').textContent = data.phone;
-        if (user.photo_url) {
-            document.getElementById('top-avatar').innerHTML = '<img src="' + user.photo_url + '">';
-            document.getElementById('profile-avatar').innerHTML = '<img src="' + user.photo_url + '">';
-        }
+        loadAvatar();
     }
     setUserUI(null);
+
+    function loadAvatar() {
+        var url = user.photo_url;
+        if (!url && user.username) {
+            url = 'https://t.me/i/userpic/320/' + user.username + '.jpg';
+        }
+        if (url) {
+            var img1 = document.getElementById('top-avatar');
+            var img2 = document.getElementById('profile-avatar');
+            img1.innerHTML = '<img src="' + url + '" onerror="this.parentElement.innerHTML=\'<span>👤</span>\'">';
+            img2.innerHTML = img1.innerHTML;
+        }
+    }
 
     async function apiFetch(p) { try { return await (await fetch(API_BASE + p)).json(); } catch(e) { return null; } }
 
@@ -1462,13 +1474,16 @@
             try { t = await apiFetch('/tree?user_id=' + uid); } catch(e) {}
 
             if (d) {
+                var fullName = user.first_name || '';
+                if (user.last_name) fullName += ' ' + user.last_name;
                 document.getElementById('top-name').textContent = d.name || user.first_name || 'Пользователь';
-                document.getElementById('profile-name').textContent = d.name || user.first_name || 'Пользователь';
-                if (d.phone) document.getElementById('profile-phone').textContent = d.phone;
+                document.getElementById('profile-name').textContent = d.name || fullName || 'Пользователь';
+                document.getElementById('profile-phone').textContent = d.phone || '—';
                 countUp(document.getElementById('stat-balance'), d.balance);
                 countUp(document.getElementById('stat-scans'), d.total_scans);
                 countUp(document.getElementById('card-scans'), d.total_scans);
                 document.getElementById('profile-balance').textContent = d.balance + ' баллов';
+                loadAvatar();
             }
             if (t) {
                 document.getElementById('card-tree-level').textContent = t.level || 1;
