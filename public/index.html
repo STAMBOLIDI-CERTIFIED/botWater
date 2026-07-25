@@ -1419,9 +1419,10 @@
 
     function loadAvatar(data) {
         var uid = getUID();
-        var url = user.photo_url;
+        var url = data && data.photo_url;
+        if (!url) url = user.photo_url;
         if (!url && user.username) url = 'https://t.me/i/userpic/320/' + user.username + '.jpg';
-        if (!url && data && data.photo_url) url = data.photo_url;
+        if (!url && data && data.username) url = 'https://t.me/i/userpic/320/' + data.username + '.jpg';
         if (!url && uid) url = 'https://t.me/i/userpic/320/' + uid + '.jpg';
         if (!url && user.id) url = 'https://t.me/i/userpic/320/' + user.id + '.jpg';
         if (url) {
@@ -1507,7 +1508,8 @@
                 var displayName = d.name || user.first_name || 'Пользователь';
                 document.getElementById('top-name').textContent = displayName;
                 document.getElementById('profile-name').textContent = displayName;
-                document.getElementById('profile-username').textContent = user.username ? '@' + user.username : '—';
+                var uname = user.username || d.username || '';
+                document.getElementById('profile-username').textContent = uname ? '@' + uname : '—';
                 document.getElementById('profile-id').textContent = user.id || d.telegram_id || '—';
                 var phoneEl = document.getElementById('profile-phone');
                 phoneEl.textContent = d.phone || '—';
