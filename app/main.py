@@ -305,6 +305,12 @@ async def api_gift_open(request: Request):
         "nearest_prize": nearest,
     }
 
+@app.get("/api/check-admin")
+async def api_check_admin(user_id: int = 0):
+    if not user_id:
+        return {"is_admin": False}
+    return {"is_admin": await db.is_admin(user_id)}
+
 @app.get("/api/nearest_prize")
 async def api_nearest_prize(user_id: int = 0):
     if not user_id:
