@@ -515,6 +515,7 @@ async def admin_panel(request: Request, page: str = "dashboard"):
             ctx["orders"] = await db.get_pending_orders()
         elif page == "bottles":
             batch = request.query_params.get("batch", "")
+            year = request.query_params.get("year", "")
             search = request.query_params.get("search", "")
             sort = request.query_params.get("sort", "id")
             dir_ = request.query_params.get("dir", "DESC")
@@ -524,8 +525,8 @@ async def admin_panel(request: Request, page: str = "dashboard"):
                 ctx["bottles"] = await db.search_bottles(search, sort, dir_, limit, offset)
                 ctx["total"] = await db.count_bottles(search=search)
             else:
-                ctx["bottles"] = await db.get_bottles(batch, sort, dir_, limit, offset)
-                ctx["total"] = await db.count_bottles(batch=batch)
+                ctx["bottles"] = await db.get_bottles(batch, year, sort, dir_, limit, offset)
+                ctx["total"] = await db.count_bottles(batch=batch, year=year)
             ctx["batches"] = await db.get_bottle_batches()
         elif page == "settings":
             ctx["splash_logo_url"] = await db.get_setting("splash_logo_url") or ""
@@ -793,10 +794,9 @@ async def admin_download(dl_type: str, request: Request):
         )
 
     if dl_type == "qr_zip" and params.get("batch"):
-        batch_val = params["batch"]
-        sub = params.get("sub", "")
-        batch_key = f"{batch_val}-{sub}" if sub else batch_val
-        bottles = await db.get_bottles(batch_key if sub else batch_val)
+        year_val = params["batch"]
+        batch_val = params.get("sub", "")
+        bottles = await db.get_bottles(batch=batch_val, year=year_val, limit=10000)
         if not bottles:
             raise HTTPException(404)
         buf = BytesIO()
@@ -808,7 +808,7 @@ async def admin_download(dl_type: str, request: Request):
                 img.save(img_buf, format="PNG")
                 zf.writestr(f"{b['bottle_id']}.png", img_buf.getvalue())
         buf.seek(0)
-        filename = f"bottles_{batch_val}{'_' + sub if sub else ''}.zip"
+        filename = f"bottles_{year_val}{'_' + batch_val if batch_val else ''}.zip"
         return Response(
             content=buf.getvalue(),
             media_type="application/zip",
@@ -820,10 +820,9 @@ async def admin_download(dl_type: str, request: Request):
             from weasyprint import HTML as WeasyprintHTML
         except ImportError:
             raise HTTPException(500, "weasyprint not installed")
-        batch_val = params["batch"]
-        sub = params.get("sub", "")
-        batch_key = f"{batch_val}-{sub}" if sub else batch_val
-        bottles = await db.get_bottles(batch_key if sub else batch_val)
+        year_val = params["batch"]
+        batch_val = params.get("sub", "")
+        bottles = await db.get_bottles(batch=batch_val, year=year_val, limit=10000)
         if not bottles:
             raise HTTPException(404)
         pdf_html = _build_pdf_html(bottles)

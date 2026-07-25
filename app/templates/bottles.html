@@ -25,7 +25,7 @@
             <td>{{ b.batch }}</td>
             <td><b>{{ b.count }}</b></td>
             <td class="actions-cell">
-                <a href="/admin?page=bottles&batch={{ b.batch }}" class="btn btn-sm btn-primary">👁️</a>
+                <a href="/admin?page=bottles&year={{ b.year }}&batch={{ b.batch }}" class="btn btn-sm btn-primary">👁️</a>
                 <a href="/admin/download/qr_zip?batch={{ b.year }}&sub={{ b.batch }}" class="btn btn-sm btn-success">📦 ZIP</a>
                 <a href="/admin/download/pdf?batch={{ b.year }}&sub={{ b.batch }}" class="btn btn-sm btn-success">📄 PDF</a>
                 <form method="POST" style="display:inline">
