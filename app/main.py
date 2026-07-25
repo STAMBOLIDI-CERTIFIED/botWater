@@ -144,6 +144,20 @@ async def api_user(user_id: int = 0):
         "name": user.get("name") or "",
     }
 
+@app.post("/api/user/save")
+async def api_user_save(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    name = body.get("name", "")
+    if not user_id:
+        return JSONResponse({"ok": False}, status_code=400)
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+    if name and not user.get("name"):
+        await db.update_user_name(user_id, name)
+    return {"ok": True}
+
 @app.get("/api/prizes")
 async def api_prizes():
     return await db.get_prizes()
