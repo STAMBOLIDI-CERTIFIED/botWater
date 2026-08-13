@@ -1,73 +1,255 @@
-import httpx
 import logging
-import json
+import re
 from datetime import datetime, timedelta
+
+import asyncpg
 
 logger = logging.getLogger(__name__)
 
-SUPABASE_REST = "/rest/v1"
+_FILTER_RE = re.compile(r"^([a-z_0-9]+)=(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^&]+)$")
+_DOT_FILTER_RE = re.compile(r"^([a-z_0-9]+)\.(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^,(]+)$")
 
 
 class Database:
     def __init__(self):
-        self.client = None
-        self.url = ""
-        self.key = ""
+        self.pool: asyncpg.Pool | None = None
+        self._col_cache: dict[str, dict[str, str]] = {}
+
+    # ─── Connection ───────────────────────────────────────
 
     async def connect(self):
         from .config import get_settings
+
         s = get_settings()
-        self.url = s["SUPABASE_URL"]
-        self.key = s["SUPABASE_KEY"]
-        if not self.url or not self.key:
-            raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set")
-        self.client = httpx.AsyncClient(
-            base_url=self.url,
-            headers={
-                "apikey": self.key,
-                "Authorization": f"Bearer {self.key}",
-                "Content-Type": "application/json",
-                "Prefer": "return=representation",
-            },
-            timeout=30,
-        )
-        logger.info("Supabase REST connected")
+        dsn = (s.get("DATABASE_URL") or "").strip()
+        if not dsn:
+            dsn = (
+                f"postgresql://{s['DB_USER']}:{s['DB_PASS']}"
+                f"@{s['DB_HOST']}:{s['DB_PORT']}/{s['DB_NAME']}"
+            )
+        self.pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=10)
+        logger.info("Postgres connected")
 
     async def close(self):
-        if self.client:
-            await self.client.aclose()
+        if self.pool:
+            await self.pool.close()
+            self.pool = None
+
+    # ─── Query builder (Supabase-REST-like → SQL) ────────
+
+    async def _get_columns(self, conn, table: str) -> dict[str, str]:
+        cached = self._col_cache.get(table)
+        if cached:
+            return cached
+        rows = await conn.fetch(
+            "SELECT column_name, data_type FROM information_schema.columns WHERE table_name=$1",
+            table,
+        )
+        types = {r["column_name"]: r["data_type"] for r in rows}
+        self._col_cache[table] = types
+        return types
+
+    def _typed_value(self, raw: str, coltype: str | None):
+        v = raw
+        if coltype in ("smallint", "integer", "bigint", "serial", "smallserial", "bigserial"):
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return v
+        if coltype in ("numeric", "real", "double precision", "money"):
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return v
+        if coltype == "boolean":
+            return v.lower() in ("true", "t", "1")
+        if coltype in ("timestamp with time zone", "timestamp without time zone"):
+            try:
+                return datetime.fromisoformat(v.replace("Z", "+00:00"))
+            except ValueError:
+                return v
+        return v
+
+    def _parse_params(self, params: str, col_types: dict[str, str] | None = None):
+        select = "*"
+        where: list[str] = []
+        values: list = []
+        order_by = ""
+        limit = None
+        offset = None
+        if not params:
+            return select, where, values, order_by, limit, offset
+
+        for chunk in params.split("&"):
+            if not chunk:
+                continue
+            key, _, value = chunk.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if key == "select":
+                select = value
+            elif key == "order":
+                col, _, direction = value.partition(".")
+                order_by = f"{col} {'DESC' if direction.lower() == 'desc' else 'ASC'}"
+            elif key == "limit":
+                try:
+                    limit = int(value)
+                except ValueError:
+                    pass
+            elif key == "offset":
+                try:
+                    offset = int(value)
+                except ValueError:
+                    pass
+            elif key == "or":
+                inner = value.strip("()")
+                or_frags = []
+                for cond in (x.strip() for x in inner.split(",") if x.strip()):
+                    # inside or() the format is col.op.val (no '='); normalize
+                    m = _DOT_FILTER_RE.match(cond)
+                    if m:
+                        cond = f"{m.group(1)}={m.group(2)}.{m.group(3)}"
+                    frag = self._build_filter(values, cond, col_types)
+                    if frag:
+                        or_frags.append(frag)
+                if or_frags:
+                    where.append("(" + " OR ".join(or_frags) + ")")
+            else:
+                frag = self._build_filter(values, f"{key}={value}", col_types)
+                if frag:
+                    where.append(frag)
+        return select, where, values, order_by, limit, offset
+
+    def _build_filter(self, values: list, cond: str, col_types: dict[str, str] | None = None) -> str | None:
+        m = _FILTER_RE.match(cond)
+        if not m:
+            return None
+        col, op, raw = m.group(1), m.group(2), m.group(3)
+        n = len(values) + 1
+
+        if op == "is" and raw == "null":
+            return f"{col} IS NULL"
+        if op == "not.is" and raw == "null":
+            return f"{col} IS NOT NULL"
+        if op == "ilike":
+            pattern = raw[1:-1] if raw.startswith("*") and raw.endswith("*") else raw
+            values.append(f"%{pattern}%")
+            return f"{col} ILIKE ${n}"
+
+        sql_op = {
+            "eq": "=", "neq": "<>", "gt": ">", "gte": ">=", "lt": "<", "lte": "<=",
+        }.get(op)
+        if sql_op is None:
+            return None
+
+        cast = ""
+        if op in ("gt", "gte", "lt", "lte") and col_types and col_types.get(col) in (
+            "timestamp with time zone", "timestamp without time zone",
+        ):
+            cast = "::timestamptz"
+        values.append(self._typed_value(raw, col_types.get(col) if col_types else None))
+        return f"{col} {sql_op} ${n}{cast}"
+
+    @staticmethod
+    def _looks_like_datetime(value: str) -> bool:
+        return bool(re.search(r"\d{4}-\d{2}-\d{2}", value)) and ":" in value
+
+    # ─── Core access ──────────────────────────────────────
+
+    _TS_COLUMNS = {
+        "scheduled_at", "payout_deadline", "expires_at", "created_at", "updated_at",
+        "activated_at", "scanned_at", "assigned_at",
+    }
+
+    @classmethod
+    def _conv_write(cls, data: dict) -> dict:
+        out = dict(data)
+        for col, val in out.items():
+            if col in cls._TS_COLUMNS and isinstance(val, str) and val:
+                try:
+                    out[col] = datetime.fromisoformat(val.replace("Z", "+00:00"))
+                except ValueError:
+                    pass
+        return out
 
     async def _fetch(self, table: str, params: str = "", method: str = "GET", json_data=None) -> list[dict]:
-        path = f"{SUPABASE_REST}/{table}"
-        if params:
-            path += f"?{params}"
-        if method == "GET":
-            r = await self.client.get(path)
-        elif method == "POST":
-            r = await self.client.post(path, json=json_data)
-        elif method == "PATCH":
-            r = await self.client.patch(path, json=json_data)
-        elif method == "DELETE":
-            r = await self.client.delete(path)
-        else:
-            return []
-        r.raise_for_status()
-        data = r.json()
-        if isinstance(data, list):
-            return data
-        return [data] if data else []
+        async with self.pool.acquire() as conn:
+            if method in ("GET",):
+                col_types = await self._get_columns(conn, table)
+                select, where, values, order_by, limit, offset = self._parse_params(params, col_types)
+                sql = f'SELECT {select} FROM "{table}"'
+                if where:
+                    sql += " WHERE " + " AND ".join(where)
+                if order_by:
+                    sql += f" ORDER BY {order_by}"
+                if limit is not None:
+                    sql += f" LIMIT {limit}"
+                if offset is not None:
+                    sql += f" OFFSET {offset}"
+                rows = await conn.fetch(sql, *values)
+                return [dict(r) for r in rows]
+
+            if method == "POST":
+                data = self._conv_write(json_data or {})
+                cols = list(data.keys())
+                if not cols:
+                    rows = await conn.fetch(f'INSERT INTO "{table}" DEFAULT VALUES RETURNING *')
+                else:
+                    placeholders = ", ".join(f"${i + 1}" for i in range(len(cols)))
+                    sql = (
+                        f'INSERT INTO "{table}" ({", ".join(cols)}) '
+                        f"VALUES ({placeholders}) RETURNING *"
+                    )
+                    rows = await conn.fetch(sql, *[data[c] for c in cols])
+                return [dict(r) for r in rows]
+
+            if method == "PATCH":
+                data = self._conv_write(json_data or {})
+                cols = list(data.keys())
+                if not cols:
+                    return []
+                _, where, values, _, _, _ = self._parse_params(params, await self._get_columns(conn, table))
+                set_list = ", ".join(f"{c} = ${i + 1}" for i, c in enumerate(cols))
+                sql = f'UPDATE "{table}" SET {set_list}'
+                args = [data[c] for c in cols]
+                if where:
+                    where_sql = []
+                    for frag in where:
+                        frag = re.sub(
+                            r"\$\d+",
+                            lambda m: f"${int(m.group(0)[1:]) + len(cols)}",
+                            frag,
+                        )
+                        where_sql.append(frag)
+                    sql += " WHERE " + " AND ".join(where_sql)
+                    args.extend(values)
+                sql += " RETURNING *"
+                rows = await conn.fetch(sql, *args)
+                return [dict(r) for r in rows]
+
+            if method == "DELETE":
+                _, where, values, _, _, _ = self._parse_params(params, await self._get_columns(conn, table))
+                sql = f'DELETE FROM "{table}"'
+                if where:
+                    sql += " WHERE " + " AND ".join(where)
+                sql += " RETURNING *"
+                rows = await conn.fetch(sql, *values)
+                return [dict(r) for r in rows]
 
     async def _fetch_one(self, table: str, params: str = "") -> dict | None:
         rows = await self._fetch(table, params)
         return rows[0] if rows else None
 
     async def _rpc(self, fn: str, params: dict = None) -> any:
-        path = f"{SUPABASE_REST}/rpc/{fn}"
-        r = await self.client.post(path, json=params or {})
-        r.raise_for_status()
-        return r.json()
+        logger.warning(f"RPC not supported on Postgres backend: {fn}")
+        return None
 
-    # ─── Migrate (via RPC) ───────────────────────────────
+    async def _delete_rows(self, table: str, params: str) -> int:
+        rows = await self._fetch(table, params, method="DELETE")
+        return len(rows)
+
+    # ─── Migrate (schema is applied via SQL editor) ───────
+
     async def _migrate(self):
         pass
 
@@ -401,6 +583,8 @@ class Database:
             "prize_amount": prize_amount,
             "status": "completed",
             "payout_deadline": deadline,
+            "winner_name": winner.get("name", ""),
+            "winning_code": code["code"],
         })
         raffle = raffles[0] if raffles else {}
         return {
@@ -469,8 +653,11 @@ class Database:
                     expired.append(r)
         count = 0
         for raffle in expired:
-            scan = raffle.get("scans", {})
-            user_id = scan.get("user_id") if isinstance(scan, dict) else None
+            scan = raffle.get("scans") or {}
+            if not isinstance(scan, dict) or not scan.get("user_id"):
+                scan_rows = await self._fetch("scans", f"id=eq.{raffle.get('winner_scan_id')}&select=user_id")
+                scan = scan_rows[0] if scan_rows else {}
+            user_id = scan.get("user_id")
             if not user_id:
                 continue
             points = raffle["prize_amount"] * 5
@@ -637,15 +824,10 @@ class Database:
         return await self._fetch("bottles", f"select=*&or=(bottle_id.ilike.*{query}*,batch.ilike.*{query}*,year.ilike.*{query}*)&order={sort_col}{dir_}&limit={limit}&offset={offset}")
 
     async def delete_bottle(self, bottle_id: str) -> bool:
-        r = await self.client.delete(f"{SUPABASE_REST}/bottles?bottle_id=eq.{bottle_id}")
-        return r.status_code == 200
+        return await self._delete_rows("bottles", f"bottle_id=eq.{bottle_id}") > 0
 
     async def delete_batch(self, year: str, batch: str) -> int:
-        r = await self.client.delete(f"{SUPABASE_REST}/bottles?year=eq.{year}&batch=eq.{batch}")
-        if r.status_code == 200:
-            data = r.json()
-            return len(data) if isinstance(data, list) else 1
-        return 0
+        return await self._delete_rows("bottles", f"year=eq.{year}&batch=eq.{batch}")
 
     async def get_bottle_batches(self) -> list[dict]:
         all_bottles = await self._fetch("bottles", "select=year,batch")
@@ -706,8 +888,7 @@ class Database:
             return False
 
     async def remove_admin(self, telegram_id: int) -> bool:
-        r = await self.client.delete(f"{SUPABASE_REST}/admins?telegram_id=eq.{telegram_id}")
-        return r.status_code == 200
+        return await self._delete_rows("admins", f"telegram_id=eq.{telegram_id}") > 0
 
     # ─── Admin Codes ────────────────────────────────────
 
