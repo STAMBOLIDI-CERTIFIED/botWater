@@ -135,6 +135,25 @@
             transition: background .2s, transform .2s;
         }
         .top-bell:active { transform: scale(0.9); background: var(--surface-hover); }
+        .top-right {
+            display: flex; align-items: center; gap: 8px;
+            animation: slideInRight .5s cubic-bezier(.16,1,.3,1) both;
+        }
+        .top-balance {
+            min-width: 72px; height: 40px; padding: 0 11px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, rgba(201,168,76,0.12), rgba(201,168,76,0.06));
+            border: 1px solid rgba(201,168,76,0.16);
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            color: var(--gold); font-size: 13px; font-weight: 800;
+            box-shadow: 0 4px 16px rgba(201,168,76,0.06);
+            white-space: nowrap;
+        }
+        .top-balance .tb-icon { width: 16px; height: 16px; display: inline-flex; align-items:center; justify-content:center; }
+        .top-balance .tb-icon svg { width: 16px; height: 16px; }
+        .top-balance-value { transition: transform .3s ease; }
+        .top-balance:active .top-balance-value { transform: scale(1.08); }
+        .top-balance-label { color: var(--text-secondary); font-size: 10px; font-weight: 600; }
         .top-bell:hover { background: var(--surface-hover); }
         .top-bell.ring { animation: bellRing .6s ease; }
         .bell-badge {
@@ -206,6 +225,33 @@
             background: rgba(255,255,255,0.08);
             display: flex; align-items: center; justify-content: center;
             color: #fff; font-size: 14px; position: relative; z-index: 1;
+            flex-shrink: 0;
+        }
+        .hero-banner {
+            min-height: 104px;
+            padding: 22px 20px;
+            margin-bottom: 24px;
+            background: radial-gradient(circle at 85% 20%, rgba(61,158,106,0.22), transparent 38%),
+                        linear-gradient(135deg, #1A1D24 0%, #1B2B23 52%, #1A1D24 100%);
+            border-color: rgba(61,158,106,0.18);
+            box-shadow: inset 0 0 40px rgba(61,158,106,0.04), 0 10px 28px rgba(0,0,0,0.14);
+        }
+        .hero-banner .banner-icon {
+            width: 48px; height: 48px; border-radius: 14px;
+            display:flex; align-items:center; justify-content:center;
+            background: rgba(61,158,106,0.14); color: #6FCF97;
+            flex-shrink:0;
+        }
+        .hero-banner .banner-title { font-size: 17px; line-height: 1.25; }
+        .hero-banner .banner-sub { line-height: 1.4; max-width: 250px; }
+        .hero-banner .banner-arrow { background: rgba(61,158,106,0.14); color:#6FCF97; }
+        @media (max-width: 380px) {
+            .top-balance { min-width: 64px; padding: 0 8px; gap: 4px; }
+            .top-balance-label { display:none; }
+            .top-right { gap: 6px; }
+            .hero-banner { padding: 18px 16px; }
+            .hero-banner .banner-title { font-size: 15px; }
+            .hero-banner .banner-sub { font-size: 11px; }
         }
 
         /* === SECTION === */
@@ -1679,7 +1725,7 @@
             position: absolute;
             left: -3px; right: -3px; bottom: 12px;
             height: 2px;
-            background: linear-gradient(90deg, 
+            background: linear-gradient(90deg,
                 rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 10%, rgba(0,0,0,0.25) 30%,
                 rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.25) 70%, rgba(0,0,0,0.15) 90%, rgba(0,0,0,0) 100%);
         }
@@ -1955,9 +2001,16 @@
                 <div class="top-name" id="top-name">—</div>
             </div>
         </div>
-        <div class="top-bell" id="top-bell" onclick="toggleNotif(event)">
-            icon('bell')
-            <span class="bell-badge" id="bell-badge"></span>
+        <div class="top-right">
+            <div class="top-balance" title="Баланс игрока">
+                <span class="tb-icon">icon('coin')</span>
+                <span class="top-balance-value" id="top-balance">0</span>
+                <span class="top-balance-label">баллов</span>
+            </div>
+            <div class="top-bell" id="top-bell" onclick="toggleNotif(event)">
+                icon('bell')
+                <span class="bell-badge" id="bell-badge"></span>
+            </div>
         </div>
     </div>
     <div class="notif-dropdown" id="notif-dropdown">
@@ -1965,47 +2018,20 @@
         <div class="notif-list" id="notif-list"><div class="notif-loading">Загрузка...</div></div>
     </div>
 
-    <div class="stats-row">
-        <div class="stat-pill anim-in" style="--i:0; animation: slideUp .5s cubic-bezier(.16,1,.3,1) .1s both;">
-            <div class="sp-icon">icon('coin')</div>
-            <div class="sp-val" id="stat-balance">0</div>
-            <div class="sp-label">баллов</div>
+    <div class="banner hero-banner" onclick="openPage('scanner')">
+        <div class="banner-left">
+            <div class="banner-icon">icon('drop')</div>
+            <div class="banner-text">
+                <div class="banner-title">Сканируй бутылки — получай баллы</div>
+                <div class="banner-sub">Каждый новый скан приближает к призам в магазине</div>
+            </div>
         </div>
-        <div class="stat-pill anim-in" style="--i:1; animation: slideUp .5s cubic-bezier(.16,1,.3,1) .2s both;">
-            <div class="sp-icon">icon('target')</div>
-            <div class="sp-val" id="stat-scans">0</div>
-            <div class="sp-label">сканов</div>
-        </div>
-        <div class="stat-pill anim-in" style="--i:2; animation: slideUp .5s cubic-bezier(.16,1,.3,1) .3s both;">
-            <div class="sp-icon">icon('calendar')</div>
-            <div class="sp-val" style="font-size:13px">Пт 20:00</div>
-            <div class="sp-label">розыгрыш</div>
-        </div>
+        <div class="banner-arrow">›</div>
     </div>
 
     <div class="section-title">Меню</div>
     <div class="card-grid">
-        <div class="card card-tree anim-in" onclick="openPage('tree')" style="--i:0">
-            <div class="card-top">
-                <div class="card-label">Моё дерево</div>
-                <div class="card-arrow">›</div>
-            </div>
-            <div class="card-value" id="card-tree-level">1</div>
-            <div class="card-unit">уровень</div>
-            <div class="tree-emoji">icon('tree')</div>
-            <div class="tree-particle" style="left:75%;bottom:20%"></div>
-            <div class="tree-particle" style="left:80%;bottom:40%"></div>
-            <div class="tree-particle" style="left:65%;bottom:35%"></div>
-        </div>
-        <div class="card card-history anim-in" onclick="openPage('bottles')" style="--i:1">
-            <div class="card-top">
-                <div class="card-label">Мои бутылки</div>
-                <div class="card-arrow">›</div>
-            </div>
-            <div class="card-value" id="card-scans">0</div>
-            <div class="card-unit">на полке</div>
-        </div>
-        <div class="card card-full card-shop anim-in" onclick="openPage('shop')" style="--i:2">
+        <div class="card card-full card-shop anim-in" onclick="openPage('shop')" style="--i:0">
             <div class="card-left" style="flex:1">
                 <div class="card-tag" style="color:#A855F7">Магазин</div>
                 <div class="card-label">Обмен баллов на призы</div>
@@ -2015,17 +2041,7 @@
             <div class="shop-sparkle" style="top:8px;right:80px"></div>
             <div class="shop-sparkle" style="top:25px;right:50px"></div>
         </div>
-        <div class="card card-full card-raffles anim-in" onclick="openPage('raffles')" style="--i:3">
-            <div class="card-left">
-                <div class="card-tag">Розыгрыши</div>
-                <div class="card-label">Итоги конкурсов</div>
-                <div class="card-desc">Следите за результатами розыгрышей</div>
-                <button class="card-btn">Подробнее</button>
-            </div>
-            <div class="card-img">icon('raffle')</div>
-            <div class="corner-cut"></div>
-        </div>
-        <div class="card card-full card-admin anim-in" id="card-admin" onclick="openAdmin()" style="--i:4;display:none">
+        <div class="card card-full card-admin anim-in" id="card-admin" onclick="openAdmin()" style="--i:1;display:none">
             <div class="card-left" style="flex:1">
                 <div class="card-tag" style="color:#EF4444">Админка</div>
                 <div class="card-label">Панель управления</div>
@@ -2229,10 +2245,6 @@
         <span class="nav-icon">icon('drop')</span>
         <span class="nav-label">Бутылки</span>
     </button>
-    <button class="nav-item" data-page="tree" onclick="openPage('tree')">
-        <span class="nav-icon">icon('tree')</span>
-        <span class="nav-label">Дерево</span>
-    </button>
 </nav>
 
 <script>
@@ -2277,39 +2289,39 @@
     var initGiftChecked = false;
 
     const ICONS = {
-        bell:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bell)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset="1" stop-color="#E8A33D"/></linearGradient></defs><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
-        coin:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-coin)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-coin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#FFA000"/></linearGradient></defs><circle cx="12" cy="12" r="10"/><path d="M12 6v2m0 8v2m-4-5h4a2 2 0 1 0 0-4H9m0 0H8m1 0h3"/></svg>',
-        target:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-target)" stroke-width="1.8"><defs><linearGradient id="ig-target" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#90CAF9"/><stop offset="1" stop-color="#42A5F5"/></linearGradient></defs><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="url(#ig-target)"/></svg>',
-        calendar:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-calendar)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-calendar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A80"/><stop offset="1" stop-color="#E53935"/></linearGradient></defs><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
-        tree:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#ig-tree)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-tree" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#66BB6A"/><stop offset="1" stop-color="#2E9E5B"/></linearGradient></defs><path d="M12 2v20M8 6l4-4 4 4"/><path d="M6 14l6-6 6 6"/><path d="M8 20l4-4 4 4"/></svg>',
-        gift:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#ig-gift)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-gift" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F48FB1"/><stop offset="1" stop-color="#EC407A"/></linearGradient></defs><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M8 5a2 2 0 0 1 4 0 2 2 0 0 1 4 0"/><path d="M3 12h18v9H3z"/></svg>',
-        raffle:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#ig-raffle)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-raffle" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#F57C00"/></linearGradient></defs><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M8 10h8M8 14h6"/></svg>',
-        drop:'<svg width="20" height="24" viewBox="0 0 16 20" fill="none" stroke="url(#ig-drop)" stroke-width="1.6" stroke-linecap="round"><defs><linearGradient id="ig-drop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1E88E5"/></linearGradient></defs><path d="M8 18c-3.3 0-6-2.3-6-5.5C2 8.5 8 2 8 2s6 6.5 6 10.5c0 3.2-2.7 5.5-6 5.5z"/></svg>',
-        camera:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-camera)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-camera" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26C6DA"/><stop offset="1" stop-color="#0288D1"/></linearGradient></defs><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>',
-        diamond:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-diamond)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-diamond" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DD0E1"/><stop offset="1" stop-color="#7E57C2"/></linearGradient></defs><path d="M12 2L2 12l10 10 10-10L12 2z"/><path d="M2 12h20"/><path d="M12 2v20"/></svg>',
-        clipboard:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-clipboard)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-clipboard" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#78909C"/></linearGradient></defs><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M15 2H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1z"/></svg>',
-        heart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-heart)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-heart" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A80"/><stop offset="1" stop-color="#E53935"/></linearGradient></defs><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
-        shield:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-shield)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-shield" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DB6AC"/><stop offset="1" stop-color="#00897B"/></linearGradient></defs><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>',
-        bolt:'<svg width="20" height="22" viewBox="0 0 20 24" fill="none" stroke="url(#ig-bolt)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-bolt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF59D"/><stop offset="1" stop-color="#FBC02D"/></linearGradient></defs><path d="M13 2L3 14h6l-2 8 10-12h-6l2-8z"/></svg>',
-        check:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-check)" stroke-width="2.2" stroke-linecap="round"><defs><linearGradient id="ig-check" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#66BB6A"/><stop offset="1" stop-color="#43A047"/></linearGradient></defs><path d="M20 6L9 17l-5-5"/></svg>',
-        trophy:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-trophy)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-trophy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD54F"/><stop offset="1" stop-color="#FF8F00"/></linearGradient></defs><path d="M6 9H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h2"/><path d="M18 9h2a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-2"/><path d="M6 3h12v6a6 6 0 0 1-12 0V3z"/><path d="M12 15v6"/><path d="M8 21h8"/></svg>',
-        home:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-home)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-home" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#64B5F6"/><stop offset="1" stop-color="#1E88E5"/></linearGradient></defs><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 0 0 1 1h3m10-11l2 2m-2-2v10a1 1 0 0 1-1 1h-3m-6 0a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1"/></svg>',
-        store:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-store)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-store" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#CE93D8"/><stop offset="1" stop-color="#AB47BC"/></linearGradient></defs><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
-        star:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-star)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-star" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#FFB300"/></linearGradient></defs><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-        lock:'<svg width="18" height="20" viewBox="0 0 18 22" fill="none" stroke="url(#ig-lock)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-lock" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#78909C"/></linearGradient></defs><rect x="3" y="10" width="12" height="10" rx="2"/><path d="M6 10V6a3 3 0 0 1 6 0v4"/></svg>',
-        history:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-history)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-history" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#90CAF9"/><stop offset="1" stop-color="#42A5F5"/></linearGradient></defs><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
-        party:'<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#ig-party)" stroke-width="1.6" stroke-linecap="round"><defs><linearGradient id="ig-party" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F48FB1"/><stop offset="1" stop-color="#EC407A"/></linearGradient></defs><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
-        scanner:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-scanner)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-scanner" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26C6DA"/><stop offset="1" stop-color="#00ACC1"/></linearGradient></defs><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>',
-        cart:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-cart)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-cart" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#CE93D8"/><stop offset="1" stop-color="#8E24AA"/></linearGradient></defs><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>',
-        giftopen:'<svg width="32" height="32" viewBox="0 0 40 40" fill="none" stroke="url(#ig-giftopen)" stroke-width="1.5" stroke-linecap="round"><defs><linearGradient id="ig-giftopen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F48FB1"/><stop offset="1" stop-color="#D81B60"/></linearGradient></defs><rect x="5" y="12" width="30" height="6" rx="2"/><path d="M20 18v16"/><path d="M13 8a3 3 0 0 1 7 0 3 3 0 0 1 7 0"/><path d="M5 18h30v16H5z"/></svg>',
-        document:'<svg width="16" height="18" viewBox="0 0 18 22" fill="none" stroke="url(#ig-document)" stroke-width="1.6" stroke-linecap="round"><defs><linearGradient id="ig-document" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#90A4AE"/></linearGradient></defs><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><path d="M10 10h3M10 14h3M7 10h.01M7 14h.01"/></svg>',
-        privacy:'<svg width="16" height="18" viewBox="0 0 20 22" fill="none" stroke="url(#ig-privacy)" stroke-width="1.6" stroke-linecap="round"><defs><linearGradient id="ig-privacy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DB6AC"/><stop offset="1" stop-color="#00897B"/></linearGradient></defs><rect x="3" y="8" width="14" height="12" rx="2"/><path d="M6 8V5a4 4 0 0 1 8 0v3"/></svg>',
-        sparkles:'<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="url(#ig-sparkles)" stroke-width="1.6" stroke-linecap="round"><defs><linearGradient id="ig-sparkles" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#FFC107"/></linearGradient></defs><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/><path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8L18 16z"/><path d="M6 16l.8 2.2L9 19l-2.2.8L6 22l-.8-2.2L3 19l2.2-.8L6 16z"/></svg>',
-        hourglass:'<svg width="20" height="20" viewBox="0 0 20 22" fill="none" stroke="url(#ig-hourglass)" stroke-width="1.6" stroke-linecap="round"><defs><linearGradient id="ig-hourglass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#EF6C00"/></linearGradient></defs><path d="M5 2h10v4c0 3-2 5-5 5s-5-2-5-5V2z"/><path d="M5 20h10v-4c0-3-2-5-5-5s-5 2-5 5v4z"/><path d="M5 2h10"/></svg>',
-        question:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-question)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-question" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#78909C"/></linearGradient></defs><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
-        chart:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-chart)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-chart" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#66BB6A"/><stop offset="1" stop-color="#2E9E5B"/></linearGradient></defs><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>',
-        sprout:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-sprout)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-sprout" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#81C784"/><stop offset="1" stop-color="#2E9E5B"/></linearGradient></defs><path d="M12 22V12"/><path d="M12 12c-2-2-4-3-6-3 0 2 1 4 3 6"/><path d="M12 12c2-2 4-3 6-3 0 2-1 4-3 6"/></svg>',
-        warning:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#ig-warning)" stroke-width="1.8" stroke-linecap="round"><defs><linearGradient id="ig-warning" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#F57C00"/></linearGradient></defs><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+        bell:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bell)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset="1" stop-color="#E8A33D"/></linearGradient></defs><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>',
+        bolt:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bolt)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bolt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF59D"/><stop offset="1" stop-color="#FBC02D"/></linearGradient></defs><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11" /></svg>',
+        bottle:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bottle)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bottle" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1E88E5"/></linearGradient></defs><path d="M10 5h4v-2a1 1 0 0 0 -1 -1h-2a1 1 0 0 0 -1 1v2" /><path d="M14 3.5c0 1.626 .507 3.212 1.45 4.537l.05 .07a8.093 8.093 0 0 1 1.5 4.694v6.199a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-6.2c0 -1.682 .524 -3.322 1.5 -4.693l.05 -.07a7.823 7.823 0 0 0 1.45 -4.537" /><path d="M7 14.803a2.4 2.4 0 0 0 1 -.803a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 1 -.805" /></svg>',
+        calendar:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-calendar)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-calendar" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A80"/><stop offset="1" stop-color="#E53935"/></linearGradient></defs><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /><path d="M11 15h1" /><path d="M12 15v3" /></svg>',
+        camera:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-camera)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-camera" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26C6DA"/><stop offset="1" stop-color="#0288D1"/></linearGradient></defs><path d="M5 12h14" /><path d="M3 7v-2a2 2 0 0 1 2 -2h2" /><path d="M3 17v2a2 2 0 0 0 2 2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M17 21h2a2 2 0 0 0 2 -2v-2" /></svg>',
+        cart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-cart)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-cart" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#CE93D8"/><stop offset="1" stop-color="#8E24AA"/></linearGradient></defs><path d="M4 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17h-11v-14h-2" /><path d="M6 5l14 1l-1 7h-13" /></svg>',
+        chart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-chart)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-chart" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#66BB6A"/><stop offset="1" stop-color="#2E9E5B"/></linearGradient></defs><path d="M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -6" /><path d="M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -10" /><path d="M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -14" /><path d="M4 20h14" /></svg>',
+        check:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-check)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-check" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#66BB6A"/><stop offset="1" stop-color="#43A047"/></linearGradient></defs><path d="M5 12l5 5l10 -10" /></svg>',
+        clipboard:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-clipboard)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-clipboard" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#78909C"/></linearGradient></defs><path d="M9 5h-2a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-2" /><path d="M9 5a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2a2 2 0 0 1 -2 2h-2a2 2 0 0 1 -2 -2" /></svg>',
+        coin:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-coin)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-coin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#FFA000"/></linearGradient></defs><path d="M9 14c0 1.657 2.686 3 6 3s6 -1.343 6 -3s-2.686 -3 -6 -3s-6 1.343 -6 3" /><path d="M9 14v4c0 1.656 2.686 3 6 3s6 -1.344 6 -3v-4" /><path d="M3 6c0 1.072 1.144 2.062 3 2.598s4.144 .536 6 0c1.856 -.536 3 -1.526 3 -2.598c0 -1.072 -1.144 -2.062 -3 -2.598s-4.144 -.536 -6 0c-1.856 .536 -3 1.526 -3 2.598" /><path d="M3 6v10c0 .888 .772 1.45 2 2" /><path d="M3 11c0 .888 .772 1.45 2 2" /></svg>',
+        diamond:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-diamond)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-diamond" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DD0E1"/><stop offset="1" stop-color="#7E57C2"/></linearGradient></defs><path d="M6 5h12l3 5l-8.5 9.5a.7 .7 0 0 1 -1 0l-8.5 -9.5l3 -5" /><path d="M10 12l-2 -2.2l.6 -1" /></svg>',
+        document:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-document)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-document" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#90A4AE"/></linearGradient></defs><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" /><path d="M9 9l1 0" /><path d="M9 13l6 0" /><path d="M9 17l6 0" /></svg>',
+        drop:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-drop)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-drop" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1E88E5"/></linearGradient></defs><path d="M7.502 19.423c2.602 2.105 6.395 2.105 8.996 0c2.602 -2.105 3.262 -5.708 1.566 -8.546l-4.89 -7.26c-.42 -.625 -1.287 -.803 -1.936 -.397a1.376 1.376 0 0 0 -.41 .397l-4.893 7.26c-1.695 2.838 -1.035 6.441 1.567 8.546" /></svg>',
+        gift:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-gift)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-gift" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F48FB1"/><stop offset="1" stop-color="#EC407A"/></linearGradient></defs><path d="M3 9a1 1 0 0 1 1 -1h16a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-16a1 1 0 0 1 -1 -1l0 -2" /><path d="M12 8l0 13" /><path d="M19 12v7a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-7" /><path d="M7.5 8a2.5 2.5 0 0 1 0 -5a4.8 8 0 0 1 4.5 5a4.8 8 0 0 1 4.5 -5a2.5 2.5 0 0 1 0 5" /></svg>',
+        heart:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-heart)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-heart" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF8A80"/><stop offset="1" stop-color="#E53935"/></linearGradient></defs><path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" /></svg>',
+        history:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-history)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-history" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#90CAF9"/><stop offset="1" stop-color="#42A5F5"/></linearGradient></defs><path d="M12 8l0 4l2 2" /><path d="M3.05 11a9 9 0 1 1 .5 4m-.5 5v-5h5" /></svg>',
+        home:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-home)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-home" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#64B5F6"/><stop offset="1" stop-color="#1E88E5"/></linearGradient></defs><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>',
+        hourglass:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-hourglass)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-hourglass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#EF6C00"/></linearGradient></defs><path d="M6.5 7h11" /><path d="M6.5 17h11" /><path d="M6 20v-2a6 6 0 1 1 12 0v2a1 1 0 0 1 -1 1h-10a1 1 0 0 1 -1 -1" /><path d="M6 4v2a6 6 0 1 0 12 0v-2a1 1 0 0 0 -1 -1h-10a1 1 0 0 0 -1 1" /></svg>',
+        lock:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-lock)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-lock" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#78909C"/></linearGradient></defs><path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6" /><path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" /><path d="M8 11v-4a4 4 0 1 1 8 0v4" /></svg>',
+        party:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-party)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-party" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F48FB1"/><stop offset="1" stop-color="#EC407A"/></linearGradient></defs><path d="M4 5h2" /><path d="M5 4v2" /><path d="M11.5 4l-.5 2" /><path d="M18 5h2" /><path d="M19 4v2" /><path d="M15 9l-1 1" /><path d="M18 13l2 -.5" /><path d="M18 19h2" /><path d="M19 18v2" /><path d="M14 16.518l-6.518 -6.518l-4.39 9.58a1 1 0 0 0 1.329 1.329l9.579 -4.39" /></svg>',
+        privacy:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-privacy)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-privacy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DB6AC"/><stop offset="1" stop-color="#00897B"/></linearGradient></defs><path d="M12 3a12 12 0 0 0 8.5 3a12 12 0 0 1 -8.5 15a12 12 0 0 1 -8.5 -15a12 12 0 0 0 8.5 -3" /><path d="M11 11a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M12 12l0 2.5" /></svg>',
+        question:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-question)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-question" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B0BEC5"/><stop offset="1" stop-color="#78909C"/></linearGradient></defs><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 17l0 .01" /><path d="M12 13.5a1.5 1.5 0 0 1 1 -1.5a2.6 2.6 0 1 0 -3 -4" /></svg>',
+        raffle:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-raffle)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-raffle" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#F57C00"/></linearGradient></defs><path d="M15 5l0 2" /><path d="M15 11l0 2" /><path d="M15 17l0 2" /><path d="M5 5h14a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-3a2 2 0 0 0 0 -4v-3a2 2 0 0 1 2 -2" /></svg>',
+        scanner:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-scanner)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-scanner" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#26C6DA"/><stop offset="1" stop-color="#00ACC1"/></linearGradient></defs><path d="M4 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M7 17l0 .01" /><path d="M14 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M7 7l0 .01" /><path d="M4 15a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1l0 -4" /><path d="M17 7l0 .01" /><path d="M14 14l3 0" /><path d="M20 14l0 .01" /><path d="M14 14l0 3" /><path d="M14 20l3 0" /><path d="M17 17l3 0" /><path d="M20 17l0 3" /></svg>',
+        shield:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-shield)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-shield" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4DB6AC"/><stop offset="1" stop-color="#00897B"/></linearGradient></defs><path d="M11.46 20.846a12 12 0 0 1 -7.96 -14.846a12 12 0 0 0 8.5 -3a12 12 0 0 0 8.5 3a12 12 0 0 1 -.09 7.06" /><path d="M15 19l2 2l4 -4" /></svg>',
+        sparkles:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-sparkles)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-sparkles" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#FFC107"/></linearGradient></defs><path d="M17.8 19.817l-2.172 1.138a.392 .392 0 0 1 -.568 -.41l.415 -2.411l-1.757 -1.707a.389 .389 0 0 1 .217 -.665l2.428 -.352l1.086 -2.193a.392 .392 0 0 1 .702 0l1.086 2.193l2.428 .352a.39 .39 0 0 1 .217 .665l-1.757 1.707l.414 2.41a.39 .39 0 0 1 -.567 .411l-2.172 -1.138" /><path d="M6.2 19.817l-2.172 1.138a.392 .392 0 0 1 -.568 -.41l.415 -2.411l-1.757 -1.707a.389 .389 0 0 1 .217 -.665l2.428 -.352l1.086 -2.193a.392 .392 0 0 1 .702 0l1.086 2.193l2.428 .352a.39 .39 0 0 1 .217 .665l-1.757 1.707l.414 2.41a.39 .39 0 0 1 -.567 .411l-2.172 -1.138" /><path d="M12 9.817l-2.172 1.138a.392 .392 0 0 1 -.568 -.41l.415 -2.411l-1.757 -1.707a.389 .389 0 0 1 .217 -.665l2.428 -.352l1.086 -2.193a.392 .392 0 0 1 .702 0l1.086 2.193l2.428 .352a.39 .39 0 0 1 .217 .665l-1.757 1.707l.414 2.41a.39 .39 0 0 1 -.567 .411l-2.172 -1.138" /></svg>',
+        sprout:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-sprout)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-sprout" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#81C784"/><stop offset="1" stop-color="#2E9E5B"/></linearGradient></defs><path d="M7 15h10v4a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-4" /><path d="M12 9a6 6 0 0 0 -6 -6h-3v2a6 6 0 0 0 6 6h3" /><path d="M12 11a6 6 0 0 1 6 -6h3v1a6 6 0 0 1 -6 6h-3" /><path d="M12 15l0 -6" /></svg>',
+        star:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-star)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-star" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#FFB300"/></linearGradient></defs><path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245" /></svg>',
+        store:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-store)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-store" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#CE93D8"/><stop offset="1" stop-color="#AB47BC"/></linearGradient></defs><path d="M3 21l18 0" /><path d="M3 7v1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1m0 1a3 3 0 0 0 6 0v-1h-18l2 -4h14l2 4" /><path d="M5 21l0 -10.15" /><path d="M19 21l0 -10.15" /><path d="M9 21v-4a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v4" /></svg>',
+        target:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-target)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-target" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#90CAF9"/><stop offset="1" stop-color="#42A5F5"/></linearGradient></defs><path d="M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M12 7a5 5 0 1 0 5 5" /><path d="M13 3.055a9 9 0 1 0 7.941 7.945" /><path d="M15 6v3h3l3 -3h-3v-3l-3 3" /><path d="M15 9l-3 3" /></svg>',
+        tree:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-tree)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-tree" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#66BB6A"/><stop offset="1" stop-color="#2E9E5B"/></linearGradient></defs><path d="M12 13l-2 -2" /><path d="M12 12l2 -2" /><path d="M12 21v-13" /><path d="M9.824 16a3 3 0 0 1 -2.743 -3.69a3 3 0 0 1 .304 -4.833a3 3 0 0 1 4.615 -3.707a3 3 0 0 1 4.614 3.707a3 3 0 0 1 .305 4.833a3 3 0 0 1 -2.919 3.695h-4l-.176 -.005" /></svg>',
+        trophy:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-trophy)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-trophy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD54F"/><stop offset="1" stop-color="#FF8F00"/></linearGradient></defs><path d="M8 21l8 0" /><path d="M12 17l0 4" /><path d="M7 4l10 0" /><path d="M17 4v8a5 5 0 0 1 -10 0v-8" /><path d="M3 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /></svg>',
+        warning:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-warning)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-warning" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#F57C00"/></linearGradient></defs><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0" /><path d="M12 16h.01" /></svg>',
     };
     function icon(name, cls) {
         var svg = ICONS[name] || '';
@@ -2491,9 +2503,8 @@
         try {
             var rawD = await fetch(API_BASE + '/user?user_id=' + uid);
             var txt = await rawD.text();
-            var d = null, t = null;
+            var d = null;
             try { d = JSON.parse(txt); } catch(e) {}
-            try { t = await apiFetch('/tree?user_id=' + uid); } catch(e) {}
 
             if (d) {
                 var fullName = user.first_name || '';
@@ -2502,17 +2513,11 @@
                 document.getElementById('top-name').textContent = displayName;
                 document.getElementById('profile-name').textContent = displayName;
                 document.getElementById('profile-id').innerHTML = 'ID: <span>' + (user.id || d.telegram_id || uid || '—') + '</span>';
-                countUp(document.getElementById('stat-balance'), d.balance);
+                countUp(document.getElementById('top-balance'), d.balance);
                 countUp(document.getElementById('profile-balance'), d.balance);
-                countUp(document.getElementById('stat-scans'), d.total_scans);
                 countUp(document.getElementById('profile-scans'), d.total_scans);
-                countUp(document.getElementById('card-scans'), d.total_scans);
                 renderAllBottles(user.id || d.telegram_id || uid);
             }
-            if (t) {
-                document.getElementById('card-tree-level').textContent = t.level || 1;
-            }
-
             if (!initGiftChecked) {
                 initGiftChecked = true;
                 await checkGift();
@@ -2750,9 +2755,7 @@
                 const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: uid, bottle_id: data }) });
                 const res = await r.json();
                 if (res.ok) {
-                    document.getElementById('stat-balance').textContent = res.balance;
-                    document.getElementById('stat-scans').textContent = res.total_scans;
-                    document.getElementById('card-scans').textContent = res.total_scans;
+                    document.getElementById('top-balance').textContent = res.balance;
                     document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
                 } else {
                     document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' ' + (res.error || 'Ошибка');
