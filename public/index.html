@@ -2398,23 +2398,29 @@
         };
     }
 
+    function setAvatarPhoto(photoUrl) {
+        if (!photoUrl) return;
+        var photoEl = document.getElementById('top-avatar-photo');
+        var topBottle = document.getElementById('top-bottle');
+        var profilePhotoEl = document.getElementById('profile-photo');
+        var profileWrap = document.getElementById('profile-bottle-wrap');
+        if (photoEl) {
+            photoEl.src = photoUrl;
+            photoEl.style.display = 'block';
+            if (topBottle) topBottle.style.display = 'none';
+        }
+        if (profilePhotoEl) {
+            profilePhotoEl.src = photoUrl;
+            profilePhotoEl.style.display = 'block';
+            if (profileWrap) profileWrap.style.display = 'none';
+        }
+    }
+
     function renderAllBottles(uid) {
         var b = bottleHTML(uid);
         var topEl = document.getElementById('top-bottle');
         var profileWrap = document.getElementById('profile-bottle-wrap');
         var glowEl = document.getElementById('profile-bottle-glow');
-        var photoEl = document.getElementById('top-avatar-photo');
-        var profilePhotoEl = document.getElementById('profile-photo');
-        if (photoEl && user.photo_url) {
-            photoEl.src = user.photo_url;
-            photoEl.style.display = 'block';
-            if (topEl) topEl.style.display = 'none';
-        }
-        if (profilePhotoEl && user.photo_url) {
-            profilePhotoEl.src = user.photo_url;
-            profilePhotoEl.style.display = 'block';
-            if (profileWrap) profileWrap.style.display = 'none';
-        }
         if (topEl) topEl.innerHTML = b.html;
         if (profileWrap) profileWrap.innerHTML = b.html;
         if (glowEl) glowEl.style.background = b.glow;
@@ -2541,6 +2547,19 @@
                 countUp(document.getElementById('profile-balance'), d.balance);
                 countUp(document.getElementById('profile-scans'), d.total_scans);
                 renderAllBottles(user.id || d.telegram_id || uid);
+                if (d.photo_url) {
+                    setAvatarPhoto(d.photo_url);
+                } else if (user.photo_url) {
+                    setAvatarPhoto(user.photo_url);
+                } else {
+                    try {
+                        var photoResp = await fetch(API_BASE + '/user-photo?user_id=' + uid);
+                        var photoData = await photoResp.json();
+                        if (photoData && photoData.photo_url) {
+                            setAvatarPhoto(photoData.photo_url);
+                        }
+                    } catch(e) {}
+                }
             }
             if (!initGiftChecked) {
                 initGiftChecked = true;
