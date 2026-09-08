@@ -157,15 +157,23 @@ async def api_user(user_id: int = 0):
                     name = tg_name
                     await db.update_user_name(user_id, tg_name)
                 username = chat.get("username", "") or ""
-                photo = chat.get("photo")
-                if photo and photo.get("big_file_id"):
-                    fr = await client.post(
-                        f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getFile",
-                        json={"file_id": photo["big_file_id"]}, timeout=10
-                    )
-                    fd = fr.json()
-                    if fd.get("ok") and fd.get("result", {}).get("file_path"):
-                        photo_url = f"https://api.telegram.org/file/bot{s['BOT_TOKEN']}/{fd['result']['file_path']}"
+            if not photo_url:
+                up = await client.post(
+                    f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getUserProfilePhotos",
+                    json={"user_id": user_id, "limit": 1}, timeout=10
+                )
+                up_data = up.json()
+                if up_data.get("ok"):
+                    photos = up_data.get("result", {}).get("photos", [])
+                    if photos:
+                        biggest = photos[0][-1]
+                        fr = await client.post(
+                            f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getFile",
+                            json={"file_id": biggest["file_id"]}, timeout=10
+                        )
+                        fd = fr.json()
+                        if fd.get("ok") and fd.get("result", {}).get("file_path"):
+                            photo_url = f"https://api.telegram.org/file/bot{s['BOT_TOKEN']}/{fd['result']['file_path']}"
     except Exception:
         pass
     return {
