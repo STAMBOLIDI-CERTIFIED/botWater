@@ -11,6 +11,14 @@ if (!window.Telegram || !window.Telegram.WebApp) {
     tg.ready(); tg.expand();
     try { tg.setBackgroundColor('#111318'); } catch(e) {}
     try { tg.setHeaderColor('#111318'); } catch(e) {}
+    try { tg.disableVerticalSwipes(); } catch(e) {}
+    document.documentElement.style.colorScheme = 'dark';
+    document.body.style.background = '#111318';
+    tg.onEvent('themeChanged', function() {
+        try { tg.setBackgroundColor('#111318'); } catch(e) {}
+        try { tg.setHeaderColor('#111318'); } catch(e) {}
+        document.body.style.background = '#111318';
+    });
 
     var user = {};
     try {
