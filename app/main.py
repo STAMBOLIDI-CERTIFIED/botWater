@@ -23,8 +23,10 @@ app = FastAPI(title="WaterPrize")
 class NoCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        if "text/html" in response.headers.get("content-type", ""):
-            if not request.url.path.startswith("/admin"):
+        ct = response.headers.get("content-type", "")
+        path = request.url.path
+        if "text/html" in ct or path.endswith(".js") or path.endswith(".css"):
+            if not path.startswith("/admin"):
                 response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
                 response.headers["Pragma"] = "no-cache"
                 response.headers["Expires"] = "0"
@@ -32,6 +34,20 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(NoCacheMiddleware)
+
+# ─── Health (before everything) ─────────────────────────
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "time": datetime.now().isoformat()}
+
+
+@app.get("/")
+async def root():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/index.html")
+
 
 # ─── Include routers ───────────────────────────────────
 
@@ -87,25 +103,11 @@ async def _setup_bot_commands():
         logger.info(f"Webhook set to {webhook_url}")
         logger.info("Bot commands and menu button set")
 
-# ─── Health ─────────────────────────────────────────────
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok", "time": datetime.now().isoformat()}
-
 # ─── Static Files (after all routes) ──────────────────
 
 static_dir = BASE_DIR / "public"
 if static_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
-
-    @app.get("/index.html")
-    async def index_html():
-        file_path = static_dir / "index.html"
-        if file_path.exists():
-            return HTMLResponse(content=file_path.read_text(encoding="utf-8"))
-        return HTMLResponse(content="Not found", status_code=404)
 
 # ─── Entry ─────────────────────────────────────────────
 
