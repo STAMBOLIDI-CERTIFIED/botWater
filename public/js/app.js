@@ -462,6 +462,7 @@ function stopScanner() {
         if (page === 'profile') loadUserData();
         if (page === 'history') switchHistoryTab('scans');
         if (page === 'shop') loadShop();
+        if (page === 'partners') loadPartners();
         if (page === 'raffles') loadRaffles();
         if (page === 'tree') loadTree();
         if (page === 'bottles') renderBottles();
@@ -546,6 +547,103 @@ async function loadShop() {
                 + (ok
                     ? '<button class="shop-prize-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
                     : '<button class="shop-prize-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
+                + '</div></div>';
+        }).join('');
+    }
+
+    // ═══════════════════════════════════════════
+// PAGE: PARTNERS
+// ═══════════════════════════════════════════
+
+var partnersData = { categories: [], balance: 0 };
+
+async function loadPartners() {
+        var uid = getUID();
+        if (!uid) return;
+        var d = await apiFetch('/user?user_id=' + uid);
+        partnersData.balance = d ? d.balance : 0;
+        document.getElementById('partners-balance').textContent = partnersData.balance;
+
+        var maxPoints = 5000;
+        var pct = Math.min(100, (partnersData.balance / maxPoints) * 100);
+        document.getElementById('partners-bar').style.width = pct + '%';
+
+        var nextMilestone = Math.ceil(partnersData.balance / 500) * 500;
+        if (nextMilestone <= partnersData.balance) nextMilestone += 500;
+        var needed = Math.max(0, nextMilestone - partnersData.balance);
+        document.getElementById('partners-hint').textContent = 'До следующего уровня: ' + needed + ' баллов';
+
+        var cats = await apiFetch('/shop/categories');
+        if (!cats) cats = [];
+        partnersData.categories = cats.filter(function(c) {
+            return c.is_active && c.subtitle && c.subtitle.toLowerCase().indexOf('партнёр') !== -1;
+        });
+
+        var g = document.getElementById('partners-categories');
+        var itemsGrid = document.getElementById('partners-items');
+        itemsGrid.style.display = 'none';
+
+        if (!partnersData.categories.length) {
+            g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Партнёры пока отсутствуют</div><div class="empty-d">Скоро здесь появятся товары от партнёров</div></div>';
+            return;
+        }
+
+        g.innerHTML = partnersData.categories.map(function(c, i) {
+            var accent = c.color || '#0EA5E9';
+            return '<div class="partner-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openPartnerCategory(' + c.id + ')">'
+                + '<div class="partner-cat-icon" style="background:' + accent + '18">'
+                + (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>') + '</div>'
+                + '<div class="partner-cat-info"><div class="partner-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
+                + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div></div>'
+                + '<div class="partner-cat-arrow">›</div></div>';
+        }).join('');
+    }
+
+    async function openPartnerCategory(catId) {
+        var g = document.getElementById('partners-categories');
+        var itemsGrid = document.getElementById('partners-items');
+        var itemsContainer = document.getElementById('partners-items-grid');
+
+        g.innerHTML = '<div class="empty-state" style="padding:10px 0"><div class="empty-ico" style="width:40px;height:40px;font-size:20px;margin-bottom:6px">' + icon('hourglass') + '</div><div class="empty-t" style="font-size:13px">Загрузка...</div></div>';
+        itemsGrid.style.display = 'none';
+
+        var data = await apiFetch('/shop/categories/' + catId);
+        if (!data || !data.category) {
+            g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('question') + '</div><div class="empty-t">Категория не найдена</div></div>';
+            return;
+        }
+
+        var cat = data.category;
+        var items = data.items || [];
+        var bal = partnersData.balance;
+
+        var headerHtml = '<div class="partner-back-btn" onclick="loadPartners()"><span class="bb-icon">‹</span> Назад</div>'
+            + '<div style="text-align:center;padding:6px 0 14px;animation:fadeIn .4s var(--ease-out)">'
+            + (cat.image_url ? '<img src="' + esc(cat.image_url) + '" style="width:72px;height:72px;border-radius:20px;object-fit:cover;margin-bottom:10px;border:2px solid ' + (cat.color || '#0EA5E9') + ';box-shadow:0 0 30px ' + (cat.color || '#0EA5E9') + '20">'
+                : '<div style="font-size:40px;margin-bottom:8px;animation:emojiBounce .6s ease">' + esc(cat.icon) + '</div>')
+            + '<div style="font-size:22px;font-weight:800;color:' + (cat.color || '#0EA5E9') + '">' + esc(cat.title) + '</div>'
+            + '<div style="font-size:13px;color:var(--text-dim);margin-top:4px">' + esc(cat.subtitle) + '</div></div>';
+
+        g.innerHTML = headerHtml;
+
+        if (!items.length) {
+            itemsGrid.style.display = 'block';
+            itemsContainer.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-ico" style="font-size:36px">' + esc(cat.icon) + '</div><div class="empty-t">Товаров пока нет</div><div class="empty-d">Скоро здесь появятся товары</div></div>';
+            return;
+        }
+
+        itemsGrid.style.display = 'grid';
+        itemsContainer.innerHTML = items.map(function(p, i) {
+            var ok = bal >= p.price_points;
+            var missing = Math.max(0, p.price_points - bal);
+            return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's">'
+                + (p.image_url ? '<img class="partner-item-img" src="' + esc(p.image_url) + '" onerror="this.style.display=\'none\'">' : '')
+                + '<div class="partner-item-body"><div class="partner-item-name">' + esc(p.name) + '</div>'
+                + '<div class="partner-item-desc">' + esc(p.description) + '</div>'
+                + '<div class="partner-item-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
+                + (ok
+                    ? '<button class="partner-item-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                    : '<button class="partner-item-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
     }
