@@ -1,0 +1,117 @@
+.bottle-card {
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
+    transition: all .3s cubic-bezier(.16,1,.3,1);
+    animation: slideUp .4s cubic-bezier(.16,1,.3,1) both;
+    position: relative;
+    overflow: hidden;
+}
+.bottle-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--bottle-accent);
+    opacity: .5;
+    border-radius: 0 3px 3px 0;
+}
+.bottle-card:hover {
+    border-color: var(--bottle-accent);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    transform: translateX(3px);
+}
+.bottle-card:active {
+    transform: scale(0.97);
+}
+.bc-bottle {
+    width: 36px;
+    height: 52px;
+    position: relative;
+    flex-shrink: 0;
+}
+.bc-cap {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 6px;
+    border-radius: 2px 2px 1px 1px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.bc-neck {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-top: none;
+    border-radius: 0 0 2px 2px;
+}
+.bc-body {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 38px;
+    border-radius: 30% 30% 6% 6% / 28% 28% 6% 6%;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    overflow: hidden;
+}
+.bc-water {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0 0 5px 5px;
+    transition: height .6s ease;
+}
+.bc-bubble {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.1);
+    animation: bcBubbleRise 2.5s ease-in-out infinite;
+}
+.bc-shine {
+    position: absolute;
+    top: 6px;
+    left: 5px;
+    width: 3px;
+    height: 10px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+}
+.bc-info {
+    flex: 1;
+    min-width: 0;
+}
+.bc-id {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--bottle-accent);
+    font-family: 'SF Mono', 'Monaco', 'Menlo', monospace;
+    letter-spacing: 0.3px;
+    word-break: break-all;
+    line-height: 1.3;
+    margin-bottom: 2px;
+}
+.bc-date {
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.2px;
+}
