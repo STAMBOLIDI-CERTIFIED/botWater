@@ -34,6 +34,17 @@
     position: relative; z-index: 1;
     animation: bottleFloat 3.5s ease-in-out infinite;
 }
+.profile-photo-placeholder {
+    width: 96px; height: 96px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    margin: 0 auto 16px;
+    border: 3px solid var(--gold);
+    box-shadow: 0 0 24px rgba(201,168,76,0.2);
+    position: relative; z-index: 1;
+    display: none; align-items: center; justify-content: center;
+    color: #fff; font-size: 36px;
+    animation: bottleFloat 3.5s ease-in-out infinite;
+}
 .profile-bottle-wrap .bottle-body {
     width: 72px; height: 106px;
     border-radius: 42% 42% 12% 12% / 34% 34% 12% 12%;

@@ -167,39 +167,29 @@ function bottleHTML(uid) {
 function setAvatarPhoto(photoUrl) {
         if (!photoUrl) return;
         var photoEl = document.getElementById('top-avatar-photo');
-        var topBottle = document.getElementById('top-bottle');
+        var topPlaceholder = document.getElementById('top-placeholder');
         var profilePhotoEl = document.getElementById('profile-photo');
-        var profileWrap = document.getElementById('profile-bottle-wrap');
+        var profilePlaceholder = document.getElementById('profile-placeholder');
         if (photoEl) {
             photoEl.onerror = function() {
                 console.warn('[avatar] photo failed to load:', photoUrl);
                 photoEl.style.display = 'none';
-                if (topBottle) topBottle.style.display = '';
+                if (topPlaceholder) topPlaceholder.style.display = 'flex';
             };
             photoEl.src = photoUrl;
             photoEl.style.display = 'block';
-            if (topBottle) topBottle.style.display = 'none';
+            if (topPlaceholder) topPlaceholder.style.display = 'none';
         }
         if (profilePhotoEl) {
             profilePhotoEl.onerror = function() {
                 console.warn('[avatar] profile photo failed to load:', photoUrl);
                 profilePhotoEl.style.display = 'none';
-                if (profileWrap) profileWrap.style.display = '';
+                if (profilePlaceholder) profilePlaceholder.style.display = 'flex';
             };
             profilePhotoEl.src = photoUrl;
             profilePhotoEl.style.display = 'block';
-            if (profileWrap) profileWrap.style.display = 'none';
+            if (profilePlaceholder) profilePlaceholder.style.display = 'none';
         }
-    }
-
-    function renderAllBottles(uid) {
-        var b = bottleHTML(uid);
-        var topEl = document.getElementById('top-bottle');
-        var profileWrap = document.getElementById('profile-bottle-wrap');
-        var glowEl = document.getElementById('profile-bottle-glow');
-        if (topEl) topEl.innerHTML = b.html;
-        if (profileWrap) profileWrap.innerHTML = b.html;
-        if (glowEl) glowEl.style.background = b.glow;
     }
 
     // ═══════════════════════════════════════════
@@ -213,7 +203,6 @@ function setUserUI(data) {
         document.getElementById('top-name').textContent = n;
         document.getElementById('profile-name').textContent = fullName || n;
         document.getElementById('profile-id').innerHTML = 'ID: <span>' + (user.id || (data && data.telegram_id ? data.telegram_id : '—')) + '</span>';
-        renderAllBottles(user.id || (data && data.telegram_id));
     }
     setUserUI(null);
     setTimeout(checkAdmin, 100);
@@ -338,7 +327,6 @@ function openAdmin() {
                 countUp(document.getElementById('top-balance'), d.balance);
                 countUp(document.getElementById('profile-balance'), d.balance);
                 countUp(document.getElementById('profile-scans'), d.total_scans);
-                renderAllBottles(user.id || d.telegram_id || uid);
                 if (d.photo_url) {
                     console.log('[avatar] photo_url from API:', d.photo_url);
                     setAvatarPhoto(d.photo_url);
