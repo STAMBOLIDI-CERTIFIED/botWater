@@ -8,53 +8,82 @@ body {
     padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 }
 
-/* ===== Bottom nav ===== */
+/* === BOTTOM NAV === */
 .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    background: rgba(17, 19, 24, 0.92);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-top: 1px solid rgba(255,255,255,0.06);
-    padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+    position: fixed; bottom: 12px; left: 0; right: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(1.4);
+    -webkit-backdrop-filter: blur(24px) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    display: flex; justify-content: center; gap: 0;
+    width: calc(100% - 24px);
+    margin: 0 auto;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
     z-index: 100;
-    transition: transform .4s cubic-bezier(.16,1,.3,1);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.3);
 }
-.bottom-nav.nav-hidden { transform: translateY(115%); }
-.bottom-nav .nav-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    background: none;
+.bottom-nav.nav-hidden {
+    display: none;
+}
+.nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    flex: 1; padding: 10px 0;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all .3s ease;
+    background: transparent;
     border: none;
-    padding: 9px 16px;
-    color: var(--text-dim, #5C5854);
-    -webkit-tap-highlight-color: transparent;
+    font-family: inherit;
+    color: var(--text-dim);
+    position: relative;
 }
-.bottom-nav .nav-icon {
-    display: flex;
-    transition: transform .4s cubic-bezier(.34,1.56,.64,1), filter .3s ease;
-    filter: grayscale(1) opacity(.55);
+.nav-item.active {
+    background: var(--gold-glow);
+    color: var(--gold);
 }
-.bottom-nav .nav-label {
-    font-size: 11px;
-    font-weight: 600;
-    opacity: .55;
-    transition: opacity .3s ease, transform .3s ease, color .3s ease;
+.nav-item.active .nav-icon { animation: navPop .35s cubic-bezier(.16,1,.3,1); }
+@keyframes navPop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+.nav-item:active { transform: scale(0.88); }
+.nav-item .nav-icon { font-size: 22px; line-height: 1; transition: transform .3s ease; }
+.nav-item .nav-label { font-size: 10px; font-weight: 600; margin-top: 2px; }
+
+/* === BACK === */
+.back-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-secondary); cursor: pointer;
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: var(--radius-md);
+    padding: 10px 16px 10px 12px;
+    margin: 12px 0 8px;
+    font-family: inherit;
+    transition: transform .3s cubic-bezier(.16,1,.3,1), background .3s ease, border-color .3s ease, box-shadow .3s ease;
+    position: relative;
+    overflow: hidden;
 }
-.bottom-nav .nav-item.active .nav-icon {
-    transform: translateY(-3px) scale(1.1);
-    filter: grayscale(0) opacity(1) drop-shadow(0 2px 6px rgba(201,168,76,.3));
+.back-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(201,168,76,0.05), transparent);
+    opacity: 0;
+    transition: opacity .3s ease;
+    pointer-events: none;
 }
-.bottom-nav .nav-item.active .nav-label {
+.back-btn:active {
+    transform: scale(.96);
+    border-color: rgba(201,168,76,0.15);
+}
+.back-btn:active::before {
     opacity: 1;
-    color: #C9A84C;
-    transform: translateY(-1px);
 }
-.bottom-nav .nav-item:active .nav-icon { transform: scale(.85); }
+.back-btn .bb-icon {
+    font-size: 18px;
+    transition: transform .3s ease;
+}
+.back-btn:active .bb-icon {
+    transform: translateX(-3px);
+}
