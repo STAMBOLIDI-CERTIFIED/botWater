@@ -2405,11 +2405,21 @@
         var profilePhotoEl = document.getElementById('profile-photo');
         var profileWrap = document.getElementById('profile-bottle-wrap');
         if (photoEl) {
+            photoEl.onerror = function() {
+                console.warn('[avatar] photo failed to load:', photoUrl);
+                photoEl.style.display = 'none';
+                if (topBottle) topBottle.style.display = '';
+            };
             photoEl.src = photoUrl;
             photoEl.style.display = 'block';
             if (topBottle) topBottle.style.display = 'none';
         }
         if (profilePhotoEl) {
+            profilePhotoEl.onerror = function() {
+                console.warn('[avatar] profile photo failed to load:', photoUrl);
+                profilePhotoEl.style.display = 'none';
+                if (profileWrap) profileWrap.style.display = '';
+            };
             profilePhotoEl.src = photoUrl;
             profilePhotoEl.style.display = 'block';
             if (profileWrap) profileWrap.style.display = 'none';
@@ -2548,14 +2558,18 @@
                 countUp(document.getElementById('profile-scans'), d.total_scans);
                 renderAllBottles(user.id || d.telegram_id || uid);
                 if (d.photo_url) {
+                    console.log('[avatar] photo_url from API:', d.photo_url);
                     setAvatarPhoto(d.photo_url);
                 } else if (user.photo_url) {
+                    console.log('[avatar] photo_url from TG initData:', user.photo_url);
                     setAvatarPhoto(user.photo_url);
                 } else {
+                    console.log('[avatar] no photo_url, trying fallback');
                     try {
                         var photoResp = await fetch(API_BASE + '/user-photo?user_id=' + uid);
                         var photoData = await photoResp.json();
                         if (photoData && photoData.photo_url) {
+                            console.log('[avatar] photo_url from fallback:', photoData.photo_url);
                             setAvatarPhoto(photoData.photo_url);
                         }
                     } catch(e) {}
