@@ -40,15 +40,7 @@ app.add_middleware(NoCacheMiddleware)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "time": datetime.now().isoformat()}
-
-
-@app.get("/")
-async def root():
-    file_path = BASE_DIR / "public" / "index.html"
-    if file_path.exists():
-        return HTMLResponse(content=file_path.read_text(encoding="utf-8"))
-    return HTMLResponse(content="ok")
+    return {"status": "ok"}
 
 
 # ─── Include routers ───────────────────────────────────
@@ -108,8 +100,16 @@ async def _setup_bot_commands():
 # ─── Static Files (after all routes) ──────────────────
 
 static_dir = BASE_DIR / "public"
-if static_dir.exists():
-    app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
+
+
+@app.get("/{full_path:path}")
+async def serve_static(full_path: str):
+    if static_dir.exists():
+        file_path = static_dir / full_path
+        if file_path.exists() and file_path.is_file():
+            from starlette.responses import FileResponse
+            return FileResponse(str(file_path))
+    return HTMLResponse(content="Not found", status_code=404)
 
 # ─── Entry ─────────────────────────────────────────────
 
