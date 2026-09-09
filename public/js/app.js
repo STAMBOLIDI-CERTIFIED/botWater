@@ -496,7 +496,9 @@ async function loadShop() {
         const cats = await apiFetch('/shop/categories');
         const g = document.getElementById('shop-categories');
         if (!cats || !cats.length) { g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Категории пока пусты</div></div>'; return; }
-        g.innerHTML = cats.filter(c => c.is_active).map(function(c, i) {
+        var shopCats = cats.filter(c => c.is_active && c.title === 'Истокъ');
+        if (!shopCats.length) { g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Товары пока отсутствуют</div></div>'; return; }
+        g.innerHTML = shopCats.map(function(c, i) {
             var accent = c.color || '#C9A84C';
             return '<div class="shop-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openShopCategory(' + c.id + ')">'
                 + '<div class="shop-cat-icon-wrap" style="background:' + accent + '18">'
