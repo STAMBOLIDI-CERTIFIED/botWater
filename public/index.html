@@ -65,7 +65,7 @@
                 <div class="card-label">Обмен баллов на призы</div>
                 <div class="card-desc">Выбирайте призы и обменивайте баллы</div>
             </div>
-            <div class="shop-emoji" style="position:static;font-size:40px;filter:drop-shadow(0 4px 8px rgba(168,85,247,0.3));animation:shopEmojiWiggle 2.5s ease-in-out infinite">icon('gift')</div>
+            <div class="shop-emoji" style="position:static;font-size:40px;filter:drop-shadow(0 4px 8px rgba(168,85,247,0.3));animation:shopEmojiWiggle 2.5s ease-in-out infinite">icon('cart')</div>
             <div class="shop-sparkle" style="top:8px;right:80px"></div>
             <div class="shop-sparkle" style="top:25px;right:50px"></div>
         </div>
@@ -87,7 +87,7 @@
     <div class="section-title" style="margin-bottom:4px">Сканирование</div>
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px">Наведи камеру на QR-код с бутылки</p>
     <div class="scan-zone" id="scan-zone">
-        <div class="sz-icon">icon('drop')</div>
+        <div class="sz-icon">icon('camera')</div>
         <p>Камера не активна</p>
     </div>
     <div id="reader"></div>
@@ -114,8 +114,8 @@
 
     <div class="profile-stats">
         <div class="profile-stat-card ps-gold">
-            <div class="ps-bg-icon">icon('diamond')</div>
-            <div class="ps-icon">icon('diamond')</div>
+            <div class="ps-bg-icon">icon('coin')</div>
+            <div class="ps-icon">icon('coin')</div>
             <div class="ps-value" id="profile-balance">—</div>
             <div class="ps-label">баллов</div>
         </div>
@@ -129,7 +129,7 @@
 
     <div class="profile-actions">
         <button class="profile-action-btn" onclick="switchHistoryTab('points'); openPage('history')">
-            <span class="pab-icon">icon('clipboard')</span>
+            <span class="pab-icon">icon('history')</span>
             <span class="pab-text">История операций</span>
             <span class="pab-arrow">›</span>
         </button>
@@ -154,7 +154,7 @@
         <button class="tab-btn" id="tab-points" onclick="switchHistoryTab('points')">icon('coin') Баллы</button>
     </div>
     <div id="history-list">
-        <div class="empty-state"><div class="empty-ico">icon('drop')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="empty-state"><div class="empty-ico">icon('hourglass')</div><div class="empty-t">Загрузка...</div></div>
     </div>
 </div>
 
@@ -231,7 +231,7 @@
     </div>
 
     <div class="post-gift-buttons">
-        <button class="btn btn-primary" onclick="openPage('menu')">icon('gift') Магазин призов</button>
+        <button class="btn btn-primary" onclick="openPage('menu')">icon('store') Магазин призов</button>
         <button class="btn btn-outline" onclick="openPage('scanner')">icon('camera') Сканировать следующую бутылку</button>
     </div>
 </div>
@@ -247,7 +247,7 @@
 <div id="page-bottles" class="page shelf-page">
     <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
     <div id="bottles-content">
-        <div class="empty-state"><div class="empty-ico">icon('drop')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="empty-state"><div class="empty-ico">icon('bottle')</div><div class="empty-t">Загрузка...</div></div>
     </div>
 </div>
 
@@ -267,11 +267,11 @@
         <span class="nav-label">Главная</span>
     </button>
     <button class="nav-item" data-page="scanner" onclick="openPage('scanner')">
-        <span class="nav-icon">icon('camera')</span>
+        <span class="nav-icon">icon('scanner')</span>
         <span class="nav-label">Сканер</span>
     </button>
     <button class="nav-item" data-page="bottles" onclick="openPage('bottles')">
-        <span class="nav-icon">icon('drop')</span>
+        <span class="nav-icon">icon('bottle')</span>
         <span class="nav-label">Бутылки</span>
     </button>
 </nav>
