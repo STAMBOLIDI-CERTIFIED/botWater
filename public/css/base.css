@@ -1,6 +1,6 @@
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 body {
-    background: var(--bg);
+    background: var(--bg) !important;
     color: var(--text);
     font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
     min-height: 100vh;
