@@ -151,6 +151,7 @@ async def api_user(user_id: int = 0):
                     json={"chat_id": user_id}, timeout=10
                 )
                 d = r.json()
+                print(f"[avatar] getChat user_id={user_id} ok={d.get('ok')} keys={list(d.get('result', {}).keys()) if d.get('ok') else d.get('description')}")
                 if d.get("ok"):
                     chat = d["result"]
                     tg_name = chat.get("first_name", "")
@@ -158,29 +159,34 @@ async def api_user(user_id: int = 0):
                         name = tg_name
                         await db.update_user_name(user_id, tg_name)
                     username = chat.get("username", "") or ""
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[avatar] getChat error: {e}")
             try:
                 up = await client.post(
                     f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getUserProfilePhotos",
                     json={"user_id": user_id, "limit": 1}, timeout=10
                 )
                 up_data = up.json()
+                total = up_data.get("result", {}).get("total_count", 0)
+                print(f"[avatar] getUserProfilePhotos user_id={user_id} ok={up_data.get('ok')} total_count={total}")
                 if up_data.get("ok"):
                     photos = up_data.get("result", {}).get("photos", [])
                     if photos:
                         biggest = photos[0][-1]
+                        print(f"[avatar] file_id={biggest['file_id'][:30]}...")
                         fr = await client.post(
                             f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getFile",
                             json={"file_id": biggest["file_id"]}, timeout=10
                         )
                         fd = fr.json()
+                        print(f"[avatar] getFile ok={fd.get('ok')} file_path={fd.get('result', {}).get('file_path')}")
                         if fd.get("ok") and fd.get("result", {}).get("file_path"):
                             photo_url = f"https://api.telegram.org/file/bot{s['BOT_TOKEN']}/{fd['result']['file_path']}"
-            except Exception:
-                pass
-    except Exception:
-        pass
+                            print(f"[avatar] photo_url={photo_url[:80]}...")
+            except Exception as e:
+                print(f"[avatar] getUserProfilePhotos error: {e}")
+    except Exception as e:
+        print(f"[avatar] outer error: {e}")
     return {
         "balance": stats["balance"],
         "total_scans": stats["total_scans"],
