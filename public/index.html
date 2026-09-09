@@ -69,7 +69,15 @@
             <div class="shop-sparkle" style="top:8px;right:80px"></div>
             <div class="shop-sparkle" style="top:25px;right:50px"></div>
         </div>
-        <div class="card card-full card-admin anim-in" id="card-admin" onclick="openAdmin()" style="--i:1;display:none">
+        <div class="card card-full anim-in" onclick="openPage('tree')" style="--i:1;background:linear-gradient(135deg,var(--glass-bg),rgba(61,158,106,0.06));border-color:rgba(61,158,106,0.2)">
+            <div class="card-left" style="flex:1">
+                <div class="card-tag" style="color:var(--green)">Дерево</div>
+                <div class="card-label">Моё дерево</div>
+                <div class="card-desc">Расти вместе с деревом</div>
+            </div>
+            <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(61,158,106,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('tree')</div>
+        </div>
+        <div class="card card-full card-admin anim-in" id="card-admin" onclick="openAdmin()" style="--i:2;display:none">
             <div class="card-left" style="flex:1">
                 <div class="card-tag" style="color:#EF4444">Админка</div>
                 <div class="card-label">Панель управления</div>
