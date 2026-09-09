@@ -77,7 +77,15 @@
             </div>
             <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(61,158,106,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('tree')</div>
         </div>
-        <div class="card card-full card-admin anim-in" id="card-admin" onclick="openAdmin()" style="--i:2;display:none">
+        <div class="card card-full anim-in" onclick="openPage('partners')" style="--i:2;background:linear-gradient(135deg,var(--glass-bg),rgba(14,165,233,0.06));border-color:rgba(14,165,233,0.2)">
+            <div class="card-left" style="flex:1">
+                <div class="card-tag" style="color:#0EA5E9">Партнёры</div>
+                <div class="card-label">Товары партнёров</div>
+                <div class="card-desc">Обменивайте баллы на товары от партнёров</div>
+            </div>
+            <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(14,165,233,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('store')</div>
+        </div>
+        <div class="card card-full card-admin anim-in" id="card-admin" onclick="openAdmin()" style="--i:3;display:none">
             <div class="card-left" style="flex:1">
                 <div class="card-tag" style="color:#EF4444">Админка</div>
                 <div class="card-label">Панель управления</div>
@@ -266,6 +274,30 @@
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Сканируй бутылки и расти</p>
     <div id="tree-container">
         <div class="empty-state"><div class="empty-ico">icon('tree')</div><div class="empty-t">Загрузка...</div></div>
+    </div>
+</div>
+
+<!-- ПАРТНЁРЫ -->
+<div id="page-partners" class="page">
+    <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
+    <div class="section-title" style="margin-bottom:4px">Товары партнёров</div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Обменивайте баллы на товары от партнёров</p>
+
+    <div class="partners-balance">
+        <div class="pb-info">
+            <span class="pb-label">Ваш баланс</span>
+            <span class="pb-value" id="partners-balance">—</span>
+            <span class="pb-unit">баллов</span>
+        </div>
+        <div class="pb-bar-wrap">
+            <div class="pb-bar" id="partners-bar" style="width:0%"></div>
+        </div>
+        <div class="pb-hint" id="partners-hint">Загрузка...</div>
+    </div>
+
+    <div id="partners-categories" style="display:flex;flex-direction:column;gap:12px"></div>
+    <div id="partners-items" style="display:none">
+        <div id="partners-items-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
     </div>
 </div>
 
