@@ -1,0 +1,22 @@
+:root {
+    --bg: #111318;
+    --surface: rgba(255,255,255,0.06);
+    --surface-solid: #1A1D24;
+    --surface-hover: rgba(255,255,255,0.08);
+    --border: rgba(201,168,76,0.12);
+    --border-light: rgba(255,255,255,0.06);
+    --text: #F0EDE8;
+    --text-secondary: #9A9590;
+    --text-dim: #5C5854;
+    --gold: #C9A84C;
+    --gold-light: #E0C46A;
+    --gold-glow: rgba(201,168,76,0.12);
+    --green: #3D9E6A;
+    --green-dark: #1A3D2A;
+    --green-glow: rgba(61,158,106,0.12);
+    --glass-bg: rgba(26, 29, 36, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --radius-sm: 14px;
+    --radius-md: 20px;
+    --radius-lg: 28px;
+}

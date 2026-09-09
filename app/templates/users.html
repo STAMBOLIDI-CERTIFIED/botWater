@@ -63,21 +63,5 @@
         <div class="modal-actions"><button class="btn btn-sm" onclick="document.getElementById('userModal').classList.remove('show')" style="background:var(--surface);border:1px solid var(--border);">Закрыть</button></div>
     </div>
 </div>
-<script>
-function showUserModal(id, name, tg_id, balance, phone, fio, snumber, inn) {
-    document.getElementById('modalTitle').textContent = '👤 ' + (name || 'Без имени');
-    document.getElementById('modalBody').innerHTML =
-        '<div style="font-size:13px;line-height:1.8;">' +
-        '<b>ID:</b> ' + id + '<br>' +
-        '<b>Telegram ID:</b> <code>' + tg_id + '</code><br>' +
-        '<b>Баланс:</b> ' + balance + ' баллов<br>' +
-        '<b>Телефон:</b> ' + (phone || '—') + '<br>' +
-        (fio ? '<hr style="border-color:var(--border);margin:8px 0;"><b>ФИО:</b> ' + fio + '<br><b>Паспорт:</b> ' + snumber + '<br><b>ИНН:</b> ' + inn : '') +
-        '</div>';
-    document.getElementById('modalTgId').value = tg_id;
-    document.getElementById('modalTgId2').value = tg_id;
-    document.getElementById('userModal').classList.add('show');
-}
-document.getElementById('userModal').addEventListener('click', function(e) { if(e.target === this) this.classList.remove('show'); });
-</script>
+<!-- JS handled by admin.js -->
 {% endblock %}

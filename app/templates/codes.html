@@ -52,8 +52,5 @@
         </form>
     </div>
 </div>
-<script>
-function showMarkWon(codeId) { document.getElementById('wonCodeId').value = codeId; document.getElementById('markWonModal').classList.add('show'); }
-document.getElementById('markWonModal').addEventListener('click', function(e) { if(e.target === this) this.classList.remove('show'); });
-</script>
+<!-- JS handled by admin.js -->
 {% endblock %}
