@@ -102,6 +102,14 @@ async def _setup_bot_commands():
 static_dir = BASE_DIR / "public"
 
 
+@app.get("/")
+async def serve_index():
+    file_path = BASE_DIR / "public" / "index.html"
+    if file_path.exists():
+        return HTMLResponse(content=file_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="Not found", status_code=404)
+
+
 @app.get("/{full_path:path}")
 async def serve_static(full_path: str):
     if static_dir.exists():
@@ -109,6 +117,9 @@ async def serve_static(full_path: str):
         if file_path.exists() and file_path.is_file():
             from starlette.responses import FileResponse
             return FileResponse(str(file_path))
+    file_path = static_dir / "index.html"
+    if file_path.exists():
+        return HTMLResponse(content=file_path.read_text(encoding="utf-8"))
     return HTMLResponse(content="Not found", status_code=404)
 
 # ─── Entry ─────────────────────────────────────────────
