@@ -21,7 +21,7 @@ def _load_dotenv():
             key = key.strip()
             val = val.strip().strip("\"'")
             if key:
-                os.environ[key] = val
+                os.environ.setdefault(key, val)
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         for line in env_path.read_text().splitlines():
@@ -31,8 +31,8 @@ def _load_dotenv():
             key, _, val = line.partition("=")
             key = key.strip()
             val = val.strip().strip("\"'")
-            if key and not os.environ.get(key):
-                os.environ[key] = val
+            if key:
+                os.environ.setdefault(key, val)
     _load_dotenv_done = True
 
 
@@ -42,7 +42,7 @@ def get_settings():
     bot_token = os.environ.get("BOT_TOKEN") or os.environ.get("API_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN") or ""
     domain = os.environ.get("DOMAIN", "localhost:8080")
     parsed = urlparse(domain)
-    scheme = "https" if parsed.scheme == "https" else ("https" if "trycloudflare" in domain or "bothost" in domain or "waterprize" in domain else "http")
+    scheme = "https" if parsed.scheme == "https" else ("https" if "trycloudflare" in domain or "bothost" in domain or "waterprize" in domain or "ngrok" in domain or "loca.lt" in domain else "http")
     if not domain.startswith("http"):
         domain = f"{scheme}://{domain}"
     index_path = Path(__file__).parent.parent / "public" / "index.html"
