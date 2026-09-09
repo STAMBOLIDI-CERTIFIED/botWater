@@ -45,8 +45,10 @@ async def health():
 
 @app.get("/")
 async def root():
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/index.html")
+    file_path = BASE_DIR / "public" / "index.html"
+    if file_path.exists():
+        return HTMLResponse(content=file_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="ok")
 
 
 # ─── Include routers ───────────────────────────────────
