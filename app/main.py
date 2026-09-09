@@ -145,19 +145,22 @@ async def api_user(user_id: int = 0):
         import httpx
         s = get_settings()
         async with httpx.AsyncClient() as client:
-            r = await client.post(
-                f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getChat",
-                json={"chat_id": user_id}, timeout=10
-            )
-            d = r.json()
-            if d.get("ok"):
-                chat = d["result"]
-                tg_name = chat.get("first_name", "")
-                if tg_name and not name:
-                    name = tg_name
-                    await db.update_user_name(user_id, tg_name)
-                username = chat.get("username", "") or ""
-            if not photo_url:
+            try:
+                r = await client.post(
+                    f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getChat",
+                    json={"chat_id": user_id}, timeout=10
+                )
+                d = r.json()
+                if d.get("ok"):
+                    chat = d["result"]
+                    tg_name = chat.get("first_name", "")
+                    if tg_name and not name:
+                        name = tg_name
+                        await db.update_user_name(user_id, tg_name)
+                    username = chat.get("username", "") or ""
+            except Exception:
+                pass
+            try:
                 up = await client.post(
                     f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getUserProfilePhotos",
                     json={"user_id": user_id, "limit": 1}, timeout=10
@@ -174,6 +177,8 @@ async def api_user(user_id: int = 0):
                         fd = fr.json()
                         if fd.get("ok") and fd.get("result", {}).get("file_path"):
                             photo_url = f"https://api.telegram.org/file/bot{s['BOT_TOKEN']}/{fd['result']['file_path']}"
+            except Exception:
+                pass
     except Exception:
         pass
     return {
