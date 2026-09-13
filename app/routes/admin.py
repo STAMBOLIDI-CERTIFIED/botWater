@@ -154,6 +154,7 @@ async def admin_panel(request: Request, page: str = "dashboard"):
     ctx["error_msg"] = ""
     ctx["splash_logo_url"] = ""
     ctx["superadmin_id"] = ""
+    ctx["search"] = ""
 
     try:
         if page == "dashboard":
