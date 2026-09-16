@@ -1,31 +1,33 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>💰 Баллы и Опыт</h2>
-<p class="sub">Управление баллами и опытом деревьев пользователей</p>
-<div class="table-wrap">
-    <div class="table-header"><h3>Начисление / списание баллов</h3></div>
-    <div style="padding:16px 20px">
+<div class="page-header">
+    <h2>💰 Баллы и Опыт</h2>
+    <p class="sub">Управление баллами и опытом деревьев пользователей</p>
+</div>
+<div class="card mb-3">
+    <div class="card-header"><h3>Начисление / списание баллов</h3></div>
+    <div class="card-body">
         <form method="POST" class="form-inline">
-            <div class="form-group"><label>Telegram ID</label><input type="number" name="telegram_id" class="form-input form-input-sm" required placeholder="Telegram ID"></div>
-            <div class="form-group"><label>Количество</label><input type="number" name="amount" class="form-input form-input-sm" required placeholder="+100 или -50"></div>
-            <div class="form-group"><label>Причина</label><input type="text" name="reason" class="form-input form-input-sm" placeholder="Корректировка администратором"></div>
+            <div class="form-group"><label>Telegram ID</label><input type="number" name="telegram_id" class="form-input" required placeholder="Telegram ID"></div>
+            <div class="form-group"><label>Количество</label><input type="number" name="amount" class="form-input" required placeholder="+100 или -50"></div>
+            <div class="form-group"><label>Причина</label><input type="text" name="reason" class="form-input" placeholder="Корректировка администратором"></div>
             <button type="submit" name="adjust_points" class="btn btn-primary">💾 Применить</button>
         </form>
     </div>
 </div>
-<div class="table-wrap">
-    <div class="table-header"><h3>🌳 Начисление опыта дерева</h3></div>
-    <div style="padding:16px 20px">
+<div class="card mb-3">
+    <div class="card-header"><h3>🌳 Начисление опыта дерева</h3></div>
+    <div class="card-body">
         <form method="POST" class="form-inline">
-            <div class="form-group"><label>Telegram ID</label><input type="number" name="telegram_id_xp" class="form-input form-input-sm" required placeholder="Telegram ID"></div>
-            <div class="form-group"><label>Опыт (XP)</label><input type="number" name="xp_amount" class="form-input form-input-sm" required placeholder="+500"></div>
-            <div class="form-group"><label>Причина</label><input type="text" name="xp_reason" class="form-input form-input-sm" placeholder="Начисление опыта"></div>
+            <div class="form-group"><label>Telegram ID</label><input type="number" name="telegram_id_xp" class="form-input" required placeholder="Telegram ID"></div>
+            <div class="form-group"><label>Опыт (XP)</label><input type="number" name="xp_amount" class="form-input" required placeholder="+500"></div>
+            <div class="form-group"><label>Причина</label><input type="text" name="xp_reason" class="form-input" placeholder="Начисление опыта"></div>
             <button type="submit" name="adjust_xp" class="btn btn-primary">🌳 Начислить XP</button>
         </form>
     </div>
 </div>
-<div class="table-wrap">
-    <div class="table-header"><h3>Пользователи</h3></div>
+<div class="card">
+    <div class="card-header"><h3>Пользователи</h3></div>
     <div class="table-scroll">
     <table>
         <thead><tr><th>ID</th><th>Telegram ID</th><th>Имя</th><th>Баланс</th><th>XP</th><th>Ур.</th></tr></thead>
@@ -40,7 +42,7 @@
             <td>{{ u.tree_level or 1 }}</td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="empty">Нет пользователей</td></tr>
+        <tr><td colspan="6" class="empty"><div class="empty-icon">💰</div><p>Нет пользователей</p></td></tr>
         {% endfor %}
         </tbody>
     </table>
