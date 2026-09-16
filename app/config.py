@@ -48,7 +48,6 @@ def get_settings():
     index_path = Path(__file__).parent.parent / "public" / "index.html"
     v = str(int(index_path.stat().st_mtime)) if index_path.exists() else "1"
     webapp_url = os.environ.get("WEBAPP_URL", f"{domain}/index.html?v={v}")
-    admin_panel_url = os.environ.get("ADMIN_PANEL_URL", f"{domain}/admin?v={v}")
     bot_username = os.environ.get("BOT_USERNAME", "WaterPrizeBot")
     admin_ids_str = os.environ.get("ADMIN_IDS", "818439646")
     admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip()]
@@ -63,7 +62,6 @@ def get_settings():
         "DB_PASS": os.environ.get("DB_PASS", ""),
         "DOMAIN": domain,
         "WEBAPP_URL": webapp_url,
-        "ADMIN_PANEL_URL": admin_panel_url,
         "BOT_USERNAME": bot_username,
         "ADMIN_IDS": admin_ids,
         "SUPERADMIN_ID": 818439646,

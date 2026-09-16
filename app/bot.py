@@ -62,7 +62,6 @@ BTN_OPEN_APP = "📲 Открыть приложение"
 BTN_BALANCE = "🪙 Баланс"
 BTN_STATS = "📈 Статистика"
 BTN_RAFFLE = "🎯 Розыгрыши"
-BTN_ADMIN = "🛡️ Админ-панель"
 
 
 def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0) -> dict:
@@ -80,11 +79,6 @@ def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: i
         [{"text": BTN_BALANCE}, {"text": BTN_STATS}],
         [{"text": BTN_RAFFLE}],
     ]
-
-    if is_admin:
-        s = get_settings()
-        # web_app buttons must be alone in their row
-        rows.append([{"text": BTN_ADMIN, "web_app": {"url": s["ADMIN_PANEL_URL"]}}])
 
     return {
         "keyboard": rows,
@@ -362,18 +356,6 @@ async def handle_message(db, msg: dict):
     # ── Commands ──
     if text == "/profile":
         await show_profile(db, chat_id, user)
-        return
-
-    if text == "/admin":
-        if user and await db.is_admin(chat_id):
-            s = get_settings()
-            await send_message(
-                chat_id,
-                f"🛡️ <b>Админ-панель</b>\n\nНажмите кнопку ниже для входа:",
-                reply_markup={"inline_keyboard": [[{"text": "🛡️ Админ-панель", "web_app": {"url": s["ADMIN_PANEL_URL"]}}]]},
-            )
-        else:
-            await send_message(chat_id, "🚫 Доступ запрещён.")
         return
 
     if text == "/terms":

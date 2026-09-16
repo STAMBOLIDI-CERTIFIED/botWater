@@ -205,7 +205,6 @@ function setUserUI(data) {
         document.getElementById('profile-id').innerHTML = 'ID: <span>' + (user.id || (data && data.telegram_id ? data.telegram_id : '—')) + '</span>';
     }
     setUserUI(null);
-    setTimeout(checkAdmin, 100);
 
     // ═══════════════════════════════════════════
 // API HELPERS
@@ -259,35 +258,6 @@ function countUp(el, target, duration) {
     // ═══════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════
-
-function openAdmin() {
-        var uid = getUID();
-        if (!uid) return;
-        fetch(window.location.origin + '/admin/auto-login', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({telegram_id: uid})
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            if (d.token) {
-                var url = '/admin?page=dashboard&token=' + d.token;
-                if (tg.openLink) { tg.openLink(url); }
-                else { window.location.href = url; }
-            }
-        })
-        .catch(function() {});
-    }
-
-    async function checkAdmin() {
-        var uid = getUID();
-        if (!uid) return;
-        try {
-            var d = await apiFetch('/check-admin?user_id=' + uid);
-            var el = document.getElementById('card-admin');
-            if (el) el.style.display = d && d.is_admin ? '' : 'none';
-        } catch(e) {}
-    }
 
     async function updateNotifBadge() {
         var uid = getUID();
@@ -351,7 +321,6 @@ function openAdmin() {
             }
 
             await updateNotifBadge();
-            await checkAdmin();
         } catch(e) {}
     }
     loadUserData();

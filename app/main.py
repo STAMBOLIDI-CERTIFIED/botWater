@@ -12,7 +12,6 @@ from .config import get_settings
 from .deps import db, BASE_DIR
 from .routes.webhook import router as webhook_router
 from .routes.api import router as api_router
-from .routes.admin import router as admin_router
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -24,10 +23,9 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         if "text/html" in response.headers.get("content-type", ""):
-            if not request.url.path.startswith("/admin"):
-                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
-                response.headers["Pragma"] = "no-cache"
-                response.headers["Expires"] = "0"
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         return response
 
 
@@ -37,7 +35,6 @@ app.add_middleware(NoCacheMiddleware)
 
 app.include_router(webhook_router)
 app.include_router(api_router)
-app.include_router(admin_router)
 
 # ─── Startup / Shutdown ─────────────────────────────────
 
@@ -71,7 +68,6 @@ async def _setup_bot_commands():
             "commands": [
                 {"command": "start", "description": "🚀 Главное меню"},
                 {"command": "profile", "description": "👤 Мой профиль"},
-                {"command": "admin", "description": "🔐 Админ-панель"},
                 {"command": "terms", "description": "📄 Пользовательское соглашение"},
             ],
         })
