@@ -243,36 +243,6 @@
 }
 .card-full:hover .card-img { transform: scale(1.1) rotate(8deg); }
 
-.card-admin {
-    border-color: rgba(239,68,68,0.15) !important;
-    position: relative;
-    background: linear-gradient(135deg, var(--glass-bg) 0%, rgba(239,68,68,0.04) 100%);
-}
-.card-admin:hover {
-    border-color: rgba(239,68,68,0.3) !important;
-    box-shadow: 0 8px 32px rgba(239,68,68,0.15);
-}
-.card-admin .card-tag {
-    color: #EF4444 !important;
-}
-.card-admin .card-img {
-    font-size: 36px;
-    transition: transform var(--transition-normal);
-}
-.card-admin:hover .card-img {
-    transform: scale(1.1) rotate(-6deg);
-}
-.card-admin .admin-shield {
-    position: absolute; top: 8px; right: 12px;
-    width: 32px; height: 32px;
-    background: rgba(239,68,68,0.1);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px;
-    animation: adminShieldPulse 2s ease-in-out infinite;
-    border: 1px solid rgba(239,68,68,0.15);
-}
-
 .activity-card {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
