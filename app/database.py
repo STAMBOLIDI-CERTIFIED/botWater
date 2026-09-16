@@ -370,7 +370,14 @@ class Database:
     # ─── QR Codes ───────────────────────────────────────
 
     async def get_all_codes(self) -> list[dict]:
-        return await self._fetch("qr_codes", "select=*&order=id.desc")
+        rows = await self._fetch("qr_codes", "select=*&order=id.desc")
+        for c in rows:
+            if c.get("winner_id"):
+                user = await self._fetch_one("users", f"id=eq.{c['winner_id']}&select=name,telegram_id")
+                if user:
+                    c["winner_name"] = user.get("name", "")
+                    c["winner_tg"] = user.get("telegram_id", "")
+        return rows
 
     async def get_active_codes_count(self) -> int:
         rows = await self._fetch("qr_codes", "select=id&status=eq.active")
@@ -540,7 +547,17 @@ class Database:
         return rows[0]["id"] if rows else 0
 
     async def get_pending_orders(self) -> list[dict]:
-        return await self._fetch("orders", "select=*&status=eq.pending&order=created_at.desc")
+        rows = await self._fetch("orders", "select=*&status=eq.pending&order=created_at.desc")
+        for o in rows:
+            user = await self._fetch_one("users", f"id=eq.{o['user_id']}&select=telegram_id,name,phone")
+            if user:
+                o["telegram_id"] = user.get("telegram_id", "")
+                o["name"] = user.get("name", "")
+                o["phone"] = user.get("phone", "")
+            prize = await self._fetch_one("prizes", f"id=eq.{o['prize_id']}&select=name")
+            if prize:
+                o["prize_name"] = prize.get("name", "")
+        return rows
 
     async def complete_order(self, order_id: int):
         await self._fetch("orders", f"id=eq.{order_id}", "PATCH", {"status": "completed"})
@@ -635,7 +652,18 @@ class Database:
             await self._fetch("raffles", f"id=eq.{raffle_id}", "PATCH", {"payout_choice": choice})
 
     async def get_pending_payouts(self) -> list[dict]:
-        return await self._fetch("raffles", "select=*&status=eq.completed&payout_choice=eq.money&payout_status=is.null&order=created_at.desc")
+        rows = await self._fetch("raffles", "select=*&status=eq.completed&payout_choice=eq.money&payout_status=is.null&order=created_at.desc")
+        for r in rows:
+            scan = await self._fetch_one("scans", f"id=eq.{r.get('winner_scan_id', 0)}&select=user_id")
+            if scan:
+                user = await self._fetch_one("users", f"id=eq.{scan['user_id']}&select=telegram_id,name,phone,passport_fio,passport_snumber")
+                if user:
+                    r["telegram_id"] = user.get("telegram_id", "")
+                    r["name"] = user.get("name", "")
+                    r["phone"] = user.get("phone", "")
+                    r["passport_fio"] = user.get("passport_fio", "")
+                    r["passport_snumber"] = user.get("passport_snumber", "")
+        return rows
 
     async def get_user_raffle_wins(self, telegram_id: int) -> list[dict]:
         return await self._fetch("raffles", f"select=*&status=eq.completed&order=created_at.desc")

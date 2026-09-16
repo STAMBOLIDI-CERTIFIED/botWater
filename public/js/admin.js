@@ -51,6 +51,14 @@ function showUserModal(id, name, tg_id, balance, phone, fio, snumber, inn) {
     document.getElementById('userModal').classList.add('show');
 }
 
+function showUserModalFromAttrs(btn) {
+    var d = btn.dataset;
+    showUserModal(
+        d.userId, d.userName, d.userTg, d.userBalance,
+        d.userPhone, d.userPassportFio, d.userPassportSnumber, d.userPassportInn
+    );
+}
+
 // Bottles page: QR modal
 function showQR(bottleId) {
     var token = sessionStorage.getItem('admin_token');
