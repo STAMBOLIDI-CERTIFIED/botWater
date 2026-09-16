@@ -39,13 +39,13 @@ function showMarkWon(codeId) {
 function showUserModal(id, name, tg_id, balance, phone, fio, snumber, inn) {
     document.getElementById('modalTitle').textContent = '👤 ' + (name || 'Без имени');
     document.getElementById('modalBody').innerHTML =
-        '<div style="font-size:13px;line-height:1.8;">' +
-        '<b>ID:</b> ' + id + '<br>' +
-        '<b>Telegram ID:</b> <code>' + tg_id + '</code><br>' +
-        '<b>Баланс:</b> ' + balance + ' баллов<br>' +
-        '<b>Телефон:</b> ' + (phone || '—') + '<br>' +
-        (fio ? '<hr style="border-color:var(--border);margin:8px 0;"><b>ФИО:</b> ' + fio + '<br><b>Паспорт:</b> ' + snumber + '<br><b>ИНН:</b> ' + inn : '') +
-        '</div>';
+        '<div class="info-grid">' +
+        '<div class="info-item"><div class="info-label">ID</div><div class="info-value">' + id + '</div></div>' +
+        '<div class="info-item"><div class="info-label">Telegram ID</div><div class="info-value"><code>' + tg_id + '</code></div></div>' +
+        '<div class="info-item"><div class="info-label">Баланс</div><div class="info-value">' + balance + ' баллов</div></div>' +
+        '<div class="info-item"><div class="info-label">Телефон</div><div class="info-value">' + (phone || '—') + '</div></div>' +
+        '</div>' +
+        (fio ? '<div class="section-divider"></div><div class="info-grid"><div class="info-item"><div class="info-label">ФИО</div><div class="info-value">' + fio + '</div></div><div class="info-item"><div class="info-label">Паспорт</div><div class="info-value">' + snumber + '</div></div><div class="info-item"><div class="info-label">ИНН</div><div class="info-value">' + inn + '</div></div></div>' : '');
     document.getElementById('modalTgId').value = tg_id;
     document.getElementById('modalTgId2').value = tg_id;
     document.getElementById('userModal').classList.add('show');
@@ -82,5 +82,15 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.addEventListener('click', function(e) {
             if (e.target === this) this.classList.remove('show');
         });
+    });
+
+    // Auto-dismiss success/error messages after 5 seconds
+    document.querySelectorAll('.success-msg, .error-msg').forEach(function(msg) {
+        setTimeout(function() {
+            msg.style.transition = 'opacity 300ms, transform 300ms';
+            msg.style.opacity = '0';
+            msg.style.transform = 'translateY(-8px)';
+            setTimeout(function() { msg.remove(); }, 300);
+        }, 5000);
     });
 });

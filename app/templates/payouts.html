@@ -1,9 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>💸 Выплаты</h2>
-<p class="sub">Ожидающие выплаты</p>
-<div class="table-wrap">
-    <div class="table-header"><h3>Ожидающие выплаты</h3></div>
+<div class="page-header">
+    <h2>💸 Выплаты</h2>
+    <p class="sub">Ожидающие выплаты</p>
+</div>
+<div class="card">
+    <div class="card-header"><h3>Ожидающие выплаты</h3></div>
     <div class="table-scroll">
     <table>
         <thead><tr><th>ID</th><th>Пользователь</th><th>Телефон</th><th>Сумма</th><th>Паспорт</th><th>Дата</th><th>Действия</th></tr></thead>
@@ -25,7 +27,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="empty">Нет ожидающих выплат</td></tr>
+        <tr><td colspan="7" class="empty"><div class="empty-icon">💸</div><p>Нет ожидающих выплат</p></td></tr>
         {% endfor %}
         </tbody>
     </table>

@@ -1,19 +1,23 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>📱 QR-коды</h2>
-<p class="sub">Активных: <b>{{ active_count }}</b> | Всего: <b>{{ code_stats.total }}</b> | Выигравших: <b>{{ code_stats.won }}</b> | Использовано: <b>{{ code_stats.used }}</b></p>
-<div class="table-wrap">
-    <div class="table-header"><h3>Добавить коды</h3></div>
-    <div style="padding:16px 20px">
+<div class="page-header">
+    <h2>📱 QR-коды</h2>
+    <p class="sub">Активных: <b>{{ active_count }}</b> · Всего: <b>{{ code_stats.total }}</b> · Выигравших: <b>{{ code_stats.won }}</b> · Использовано: <b>{{ code_stats.used }}</b></p>
+</div>
+<div class="card mb-3">
+    <div class="card-header"><h3>Добавить коды</h3></div>
+    <div class="card-body">
         <form method="POST">
-            <div class="form-group"><label>Партия (batch)</label><input type="text" name="batch" class="form-input form-input-sm" placeholder="batch_20250101"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Партия (batch)</label><input type="text" name="batch" class="form-input" placeholder="batch_20250101"></div>
+            </div>
             <div class="form-group"><label>Коды (каждый с новой строки)</label><textarea name="codes" class="form-input" required placeholder="Код1&#10;Код2&#10;Код3"></textarea></div>
-            <button type="submit" name="add_codes" class="btn btn-primary">Добавить коды</button>
+            <button type="submit" name="add_codes" class="btn btn-primary">➕ Добавить коды</button>
         </form>
     </div>
 </div>
-<div class="table-wrap">
-    <div class="table-header"><h3>Все коды</h3></div>
+<div class="card">
+    <div class="card-header"><h3>Все коды</h3></div>
     <div class="table-scroll">
     <table>
         <thead><tr><th>ID</th><th>Код</th><th>Партия</th><th>Статус</th><th>Победитель</th><th>Создан</th><th>Действия</th></tr></thead>
@@ -26,14 +30,14 @@
             <td><span class="badge {{ 'badge-active' if c.status == 'active' else ('badge-won' if c.status == 'won' else 'badge-used') }}">{{ c.status }}</span></td>
             <td>{{ c.winner_name or '—' }}</td>
             <td>{{ c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else '—' }}</td>
-            <td>
+            <td class="actions-cell">
                 {% if c.status == 'active' %}
-                <button class="btn btn-sm btn-primary" onclick="showMarkWon({{ c.id }})">🏆 Отметить выигрышным</button>
+                <button class="btn btn-sm btn-primary" onclick="showMarkWon({{ c.id }})">🏆 Выигрышный</button>
                 {% endif %}
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="empty">Нет кодов</td></tr>
+        <tr><td colspan="7" class="empty"><div class="empty-icon">📱</div><p>Нет кодов</p></td></tr>
         {% endfor %}
         </tbody>
     </table>
@@ -41,16 +45,20 @@
 </div>
 <div id="markWonModal" class="modal-overlay">
     <div class="modal">
-        <h3>🏆 Отметить как выигрышный</h3>
-        <form method="POST">
-            <input type="hidden" name="code_id" id="wonCodeId">
-            <div class="form-group"><label>Telegram ID победителя</label><input type="number" name="winner_telegram_id" class="form-input" required placeholder="Telegram ID"></div>
-            <div class="modal-actions">
-                <button type="submit" name="mark_won" class="btn btn-primary">✅ Подтвердить</button>
-                <button type="button" class="btn" onclick="document.getElementById('markWonModal').classList.remove('show')" style="background:var(--surface);border:1px solid var(--border);">Отмена</button>
-            </div>
-        </form>
+        <div class="modal-header">
+            <h3>🏆 Отметить как выигрышный</h3>
+            <button class="modal-close" onclick="document.getElementById('markWonModal').classList.remove('show')">✕</button>
+        </div>
+        <div class="modal-body">
+            <form method="POST">
+                <input type="hidden" name="code_id" id="wonCodeId">
+                <div class="form-group"><label>Telegram ID победителя</label><input type="number" name="winner_telegram_id" class="form-input" required placeholder="Telegram ID"></div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('markWonModal').classList.remove('show')">Отмена</button>
+                    <button type="submit" name="mark_won" class="btn btn-primary">✅ Подтвердить</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
-<!-- JS handled by admin.js -->
 {% endblock %}

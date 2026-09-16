@@ -1,9 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>📦 Заказы</h2>
-<p class="sub">Заказы призов, ожидающие выполнения</p>
-<div class="table-wrap">
-    <div class="table-header"><h3>Ожидающие заказы</h3></div>
+<div class="page-header">
+    <h2>📦 Заказы</h2>
+    <p class="sub">Заказы призов, ожидающие выполнения</p>
+</div>
+<div class="card">
+    <div class="card-header"><h3>Ожидающие заказы</h3></div>
     <div class="table-scroll">
     <table>
         <thead><tr><th>ID</th><th>Пользователь</th><th>Приз</th><th>Дата</th><th>Статус</th><th>Действия</th></tr></thead>
@@ -11,7 +13,7 @@
         {% for o in orders %}
         <tr>
             <td>{{ o.id }}</td>
-            <td>{{ o.name or '—' }} <code>{{ o.telegram_id }}</code><br><small>{{ o.phone or '' }}</small></td>
+            <td>{{ o.name or '—' }} <code>{{ o.telegram_id }}</code><br><small class="text-muted">{{ o.phone or '' }}</small></td>
             <td>{{ o.prize_name }}</td>
             <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '—' }}</td>
             <td><span class="badge badge-pending">{{ o.status }}</span></td>
@@ -24,7 +26,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="6" class="empty">Нет ожидающих заказов</td></tr>
+        <tr><td colspan="6" class="empty"><div class="empty-icon">📦</div><p>Нет ожидающих заказов</p></td></tr>
         {% endfor %}
         </tbody>
     </table>

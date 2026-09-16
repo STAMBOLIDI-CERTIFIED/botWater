@@ -1,18 +1,20 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>🎰 Розыгрыши</h2>
-<p class="sub">Активных кодов для розыгрыша: <b>{{ active_codes }}</b></p>
-<div class="table-wrap">
-    <div class="table-header"><h3>Провести розыгрыш</h3></div>
-    <div style="padding:16px 20px">
+<div class="page-header">
+    <h2>🎰 Розыгрыши</h2>
+    <p class="sub">Активных кодов для розыгрыша: <b>{{ active_codes }}</b></p>
+</div>
+<div class="card mb-3">
+    <div class="card-header"><h3>Провести розыгрыш</h3></div>
+    <div class="card-body">
         <form method="POST" class="form-inline">
-            <div class="form-group"><label>Сумма приза (руб)</label><input type="number" name="prize_amount" class="form-input form-input-sm" value="1000" required></div>
+            <div class="form-group"><label>Сумма приза (руб)</label><input type="number" name="prize_amount" class="form-input" value="1000" required></div>
             <button type="submit" name="run_raffle" class="btn btn-primary">🎰 Провести розыгрыш</button>
         </form>
     </div>
 </div>
-<div class="table-wrap">
-    <div class="table-header"><h3>История розыгрышей</h3></div>
+<div class="card">
+    <div class="card-header"><h3>История розыгрышей</h3></div>
     <div class="table-scroll">
     <table>
         <thead><tr><th>ID</th><th>Дата</th><th>Победитель</th><th>Код</th><th>Приз</th><th>Статус</th><th>Выплата</th></tr></thead>
@@ -25,10 +27,10 @@
             <td><code>{{ r.winning_code or '—' }}</code></td>
             <td>{{ r.prize_amount }} руб.</td>
             <td><span class="badge {{ 'badge-active' if r.status == 'pending' else 'badge-won' }}">{{ r.status }}</span></td>
-            <td>{% if r.payout_status %}{{ r.payout_status }}{% else %}—{% endif %}</td>
+            <td>{% if r.payout_status %}<span class="badge badge-{{ r.payout_status }}">{{ r.payout_status }}</span>{% else %}—{% endif %}</td>
         </tr>
         {% else %}
-        <tr><td colspan="7" class="empty">Нет розыгрышей</td></tr>
+        <tr><td colspan="7" class="empty"><div class="empty-icon">🎰</div><p>Нет розыгрышей</p></td></tr>
         {% endfor %}
         </tbody>
     </table>

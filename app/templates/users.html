@@ -1,17 +1,19 @@
 {% extends "layout.html" %}
 {% block content %}
-<h2>👥 Пользователи</h2>
-<p class="sub">Всего: <b>{{ users|length }}</b></p>
+<div class="page-header">
+    <h2>👥 Пользователи</h2>
+    <p class="sub">Всего: <b>{{ users|length }}</b></p>
+</div>
 <div class="search-bar">
     <form method="GET" action="/admin" style="display:flex;gap:10px;width:100%;flex-wrap:wrap;">
         <input type="hidden" name="page" value="users">
         <input type="text" name="search" placeholder="Поиск по имени, телефону или ID..." value="{{ search or '' }}">
         <button type="submit" class="btn btn-primary btn-sm">🔍 Поиск</button>
-        <a href="/admin?page=users" class="btn btn-sm" style="background:var(--surface);border:1px solid var(--border);color:var(--dim);">Сброс</a>
+        <a href="/admin?page=users" class="btn btn-ghost btn-sm">Сброс</a>
     </form>
 </div>
-<div class="table-wrap">
-    <div class="table-header"><h3>Все пользователи</h3></div>
+<div class="card">
+    <div class="card-header"><h3>Все пользователи</h3></div>
     <div class="table-scroll">
     <table>
         <thead><tr><th>ID</th><th>Telegram ID</th><th>Имя</th><th>Телефон</th><th>Баланс</th><th>Паспорт</th><th>Дата</th><th>Действия</th></tr></thead>
@@ -30,7 +32,7 @@
             </td>
         </tr>
         {% else %}
-        <tr><td colspan="8" class="empty">Нет пользователей</td></tr>
+        <tr><td colspan="8" class="empty"><div class="empty-icon">👥</div><p>Нет пользователей</p></td></tr>
         {% endfor %}
         </tbody>
     </table>
@@ -38,30 +40,36 @@
 </div>
 <div id="userModal" class="modal-overlay">
     <div class="modal">
-        <h3 id="modalTitle">Пользователь</h3>
-        <div id="modalBody"></div>
-        <form method="POST" action="/admin?page=users" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-            <input type="hidden" name="telegram_id" id="modalTgId">
-            <div class="form-group"><label>Начислить баллы</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="number" name="amount" class="form-input form-input-sm" placeholder="Количество" required style="flex:1;">
-                    <button type="submit" name="add_balance" class="btn btn-sm btn-success">➕</button>
+        <div class="modal-header">
+            <h3 id="modalTitle">Пользователь</h3>
+            <button class="modal-close" onclick="document.getElementById('userModal').classList.remove('show')">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="modalBody"></div>
+            <div class="section-divider"></div>
+            <form method="POST" action="/admin?page=users">
+                <input type="hidden" name="telegram_id" id="modalTgId">
+                <h4 class="mb-1" style="font-size:13px;font-weight:700;color:var(--success)">💰 Начислить баллы</h4>
+                <div class="form-row mb-2">
+                    <div class="form-group"><label>Количество</label><input type="number" name="amount" class="form-input" placeholder="+100" required></div>
+                    <div class="form-group"><label>Причина</label><input type="text" name="reason" class="form-input" placeholder="Начисление администратором"></div>
                 </div>
-            </div>
-            <div class="form-group"><label>Причина</label><input type="text" name="reason" class="form-input form-input-sm" placeholder="Начисление администратором"></div>
-        </form>
-        <form method="POST" action="/admin?page=users" style="margin-top:8px;">
-            <input type="hidden" name="telegram_id" id="modalTgId2">
-            <div class="form-group"><label>Списать баллы</label>
-                <div style="display:flex;gap:8px;">
-                    <input type="number" name="amount" class="form-input form-input-sm" placeholder="Количество" required style="flex:1;">
-                    <button type="submit" name="deduct_balance" class="btn btn-sm btn-danger">➖</button>
+                <button type="submit" name="add_balance" class="btn btn-success">➕ Начислить</button>
+            </form>
+            <div class="section-divider"></div>
+            <form method="POST" action="/admin?page=users">
+                <input type="hidden" name="telegram_id" id="modalTgId2">
+                <h4 class="mb-1" style="font-size:13px;font-weight:700;color:var(--danger)">💸 Списать баллы</h4>
+                <div class="form-row mb-2">
+                    <div class="form-group"><label>Количество</label><input type="number" name="amount" class="form-input" placeholder="-50" required></div>
+                    <div class="form-group"><label>Причина</label><input type="text" name="reason" class="form-input" placeholder="Списание администратором"></div>
                 </div>
-            </div>
-            <div class="form-group"><label>Причина</label><input type="text" name="reason" class="form-input form-input-sm" placeholder="Списание администратором"></div>
-        </form>
-        <div class="modal-actions"><button class="btn btn-sm" onclick="document.getElementById('userModal').classList.remove('show')" style="background:var(--surface);border:1px solid var(--border);">Закрыть</button></div>
+                <button type="submit" name="deduct_balance" class="btn btn-danger">➖ Списать</button>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="document.getElementById('userModal').classList.remove('show')">Закрыть</button>
+        </div>
     </div>
 </div>
-<!-- JS handled by admin.js -->
 {% endblock %}
