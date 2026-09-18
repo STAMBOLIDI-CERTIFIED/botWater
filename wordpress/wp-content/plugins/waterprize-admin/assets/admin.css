@@ -1,0 +1,435 @@
+/* WaterPrize WP Admin Styles */
+
+/* ─── Stats Grid ─── */
+.wpz-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 14px;
+    margin: 16px 0;
+}
+
+.wpz-stat-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align: center;
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+.wpz-stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+}
+
+.wpz-stat-icon { font-size: 26px; margin-bottom: 6px; }
+.wpz-stat-val { font-size: 30px; font-weight: 700; line-height: 1.2; }
+.wpz-stat-label {
+    font-size: 11px; color: #646970; margin-top: 4px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* ─── Color variants ─── */
+.wpz-blue .wpz-stat-val { color: #2271b1; }
+.wpz-cyan .wpz-stat-val { color: #0ea5e9; }
+.wpz-green .wpz-stat-val { color: #00a32a; }
+.wpz-yellow .wpz-stat-val { color: #dba617; }
+.wpz-red .wpz-stat-val { color: #d63638; }
+.wpz-purple .wpz-stat-val { color: #8b5cf6; }
+.wpz-gold .wpz-stat-val { color: #b8860b; }
+.wpz-teal .wpz-stat-val { color: #14b8a6; }
+.wpz-orange .wpz-stat-val { color: #f97316; }
+.wpz-indigo .wpz-stat-val { color: #6366f1; }
+
+/* ─── Pulse animation for online ─── */
+.wpz-pulse .wpz-stat-icon {
+    animation: wpz-pulse 2s ease-in-out infinite;
+}
+@keyframes wpz-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.wpz-online-flash {
+    animation: wpz-flash 0.6s ease;
+}
+@keyframes wpz-flash {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.3); color: #00a32a; }
+    100% { transform: scale(1); }
+}
+
+/* ─── Card ─── */
+.wpz-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 16px 0;
+}
+.wpz-card h2 {
+    font-size: 15px; font-weight: 600;
+    margin: 0 0 14px; padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* ─── Badge ─── */
+.wpz-badge {
+    display: inline-block;
+    padding: 2px 10px; border-radius: 12px;
+    font-size: 12px; font-weight: 600; line-height: 1.6;
+    white-space: nowrap;
+}
+.wpz-green { background: #d4edda; color: #155724; }
+.wpz-red { background: #f8d7da; color: #721c24; }
+.wpz-yellow { background: #fff3cd; color: #856404; }
+.wpz-blue { background: #d1ecf1; color: #0c5460; }
+.wpz-gray { background: #e2e3e5; color: #383d41; }
+
+.wpz-count {
+    font-size: 14px; font-weight: 400;
+    color: #646970; vertical-align: middle;
+}
+
+.wpz-stats-row {
+    margin: 12px 0; display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+/* ─── Charts ─── */
+.wpz-charts-row {
+    display: flex; gap: 14px; margin: 0 0 14px;
+}
+.wpz-chart-card {
+    flex: 1; min-width: 0;
+}
+.wpz-chart-card canvas {
+    max-height: 110px;
+}
+.wpz-chart-half {
+    flex: 1; min-width: 0;
+}
+
+@media (max-width: 960px) {
+    .wpz-charts-row { flex-direction: column; }
+    .wpz-stats-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+}
+
+/* ─── Activity list ─── */
+.wpz-activity-list {
+    max-height: 400px; overflow-y: auto;
+}
+.wpz-activity-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid #f5f5f5;
+    font-size: 13px;
+}
+.wpz-activity-item:last-child { border-bottom: none; }
+.wpz-activity-text { flex: 1; }
+.wpz-activity-text em { color: #646970; font-style: normal; }
+.wpz-activity-amount {
+    display: inline-block; background: #d4edda; color: #155724;
+    padding: 1px 6px; border-radius: 8px; font-weight: 600;
+    font-size: 12px; margin: 0 4px;
+}
+.wpz-activity-time { color: #999; font-size: 12px; white-space: nowrap; }
+
+/* ─── Export ─── */
+.wpz-export-btns {
+    display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+/* ─── Form styles ─── */
+.wpz-gen-form {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+.wpz-gen-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 120px;
+    flex: 1;
+}
+.wpz-gen-field label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d2327;
+}
+.wpz-gen-field input {
+    padding: 6px 10px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 14px;
+}
+.wpz-gen-field input:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+.wpz-gen-btn {
+    flex: 0 0 auto;
+}
+
+.wpz-inline-form .wpz-form-table { width: auto; }
+.wpz-inline-form .wpz-form-table td {
+    padding: 4px 8px 4px 0; vertical-align: middle;
+    white-space: nowrap;
+}
+.wpz-inline-form .wpz-form-table label {
+    font-weight: 600; font-size: 13px;
+}
+
+.wpz-search-form {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 16px; flex-wrap: wrap;
+}
+
+/* ─── Table header with search ─── */
+.wpz-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.wpz-table-header h2 {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+}
+.wpz-search-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+.wpz-search-row input[type="search"] {
+    padding: 6px 10px;
+    border: 1px solid #8c8f94;
+    border-radius: 4px;
+    font-size: 13px;
+    min-width: 220px;
+}
+.wpz-search-row input[type="search"]:focus {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: none;
+}
+
+/* ─── Table responsive wrapper ─── */
+.wpz-table-wrap {
+    overflow-x: auto;
+}
+
+/* ─── Bottles table columns ─── */
+.wpz-bottles-table .col-id { width: 22%; }
+.wpz-bottles-table .col-batch { width: 12%; }
+.wpz-bottles-table .col-year { width: 10%; }
+.wpz-bottles-table .col-assigned { width: 22%; }
+.wpz-bottles-table .col-scan { width: 18%; }
+.wpz-bottles-table .col-date { width: 16%; }
+
+.wpz-bottles-table td {
+    vertical-align: middle;
+    font-size: 13px;
+}
+
+@media (max-width: 1100px) {
+    .wpz-table-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .wpz-search-row input[type="search"] {
+        min-width: 160px;
+    }
+}
+
+/* ─── Danger button ─── */
+.wpz-btn-danger {
+    background: #d63638 !important;
+    color: #fff !important;
+    border-color: #d63638 !important;
+}
+.wpz-btn-danger:hover {
+    background: #b32d2e !important;
+    border-color: #b32d2e !important;
+    color: #fff !important;
+}
+
+/* ─── Analytics ─── */
+.wpz-analytics-filters {
+    padding: 14px 20px;
+}
+.wpz-filter-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+.wpz-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.wpz-filter-group label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #1d2327;
+}
+.wpz-period-btns {
+    display: flex;
+    gap: 0;
+}
+.wpz-period-btns .button {
+    border-radius: 0;
+    margin-left: -1px;
+}
+.wpz-period-btns .button:first-child {
+    border-radius: 4px 0 0 4px;
+    margin-left: 0;
+}
+.wpz-period-btns .button:last-child {
+    border-radius: 0 4px 4px 0;
+}
+.wpz-analytics-chart-card {
+    padding: 20px;
+}
+.wpz-analytics-chart-card h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* ─── Bottle detail ─── */
+.wpz-bottle-detail h2 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.wpz-bottle-grid {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+.wpz-bottle-info { flex: 1; }
+.wpz-bottle-qr {
+    flex: 0 0 220px;
+    text-align: center;
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+#wpz-qr-code {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#wpz-qr-code img {
+    border-radius: 8px;
+}
+.wpz-bottle-link {
+    text-decoration: none;
+    color: #2271b1;
+    font-weight: 600;
+}
+.wpz-bottle-link:hover {
+    color: #135e96;
+    text-decoration: underline;
+}
+
+@media (max-width: 800px) {
+    .wpz-bottle-grid { flex-direction: column; }
+    .wpz-bottle-qr { flex: none; }
+}
+
+/* ─── Partner QR (list table thumbnail) ─── */
+.wpz-qr-cell {
+    text-align: center;
+    vertical-align: middle;
+}
+.wpz-qr-thumb {
+    width: 56px;
+    height: 56px;
+    border-radius: 6px;
+    border: 1px solid #e0e0e0;
+    display: block;
+    margin: 0 auto 4px;
+    transition: transform 0.15s;
+}
+.wpz-qr-thumb:hover {
+    transform: scale(1.08);
+}
+.wpz-qr-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+.wpz-qr-actions a,
+.wpz-qr-actions button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    text-decoration: none;
+}
+.wpz-qr-actions button:hover,
+.wpz-qr-actions a:hover {
+    opacity: 0.7;
+}
+
+/* ─── Partner QR (form preview, full size) ─── */
+.wpz-qr-preview {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 14px;
+    max-width: 520px;
+}
+.wpz-qr-large {
+    width: 140px;
+    height: 140px;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    flex-shrink: 0;
+}
+.wpz-qr-preview-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    justify-content: center;
+}
+.wpz-qr-link-text {
+    font-size: 12px;
+    color: #646970;
+    word-break: break-all;
+    background: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #e5e5e5;
+    display: inline-block;
+}
+.wpz-qr-copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* ─── Welcome bonus fields toggle ─── */
+.wpz-bonus-field {
+    display: none;
+}
