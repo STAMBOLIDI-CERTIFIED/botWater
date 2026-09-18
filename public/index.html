@@ -290,6 +290,19 @@
     <div id="partners-items" style="display:none">
         <div id="partners-items-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
     </div>
+
+    <div id="partner-qr-overlay" class="partner-qr-overlay" onclick="closePartnerQR()">
+        <div class="partner-qr-modal" onclick="event.stopPropagation()">
+            <div class="partner-qr-header">
+                <span class="partner-qr-title" id="partner-qr-name"></span>
+                <button class="partner-qr-close" onclick="closePartnerQR()">✕</button>
+            </div>
+            <div class="partner-qr-body">
+                <img id="partner-qr-img" class="partner-qr-img" alt="QR Code">
+                <div class="partner-qr-status" id="partner-qr-status"></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <nav class="bottom-nav">

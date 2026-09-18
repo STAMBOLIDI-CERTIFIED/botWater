@@ -534,6 +534,45 @@ class Database:
         except Exception:
             pass
 
+    # ─── Partner QR ────────────────────────────────────
+
+    async def get_category_by_qr_code(self, qr_code: str) -> dict | None:
+        try:
+            return await self._fetch_one("shop_categories", f"qr_code=eq.{qr_code}&select=*")
+        except Exception:
+            return None
+
+    async def process_partner_scan(self, telegram_id: int, qr_code: str) -> dict:
+        category = await self.get_category_by_qr_code(qr_code)
+        if not category:
+            return {"ok": False, "error": "partner_not_found"}
+
+        user = await self.get_user(telegram_id)
+        if not user:
+            return {"ok": False, "error": "user_not_found"}
+
+        scan_points = category.get("scan_points") or 10
+        partner_name = category.get("title", "Партнёр")
+
+        await self.add_balance(telegram_id, scan_points, "partner_scan", f"Сканирование QR партнёра «{partner_name}»")
+        await self.add_tree_xp(telegram_id, scan_points)
+        await self.create_notification(
+            telegram_id, "scan", "Партнёр",
+            f"+{scan_points} баллов за сканирование QR «{partner_name}»", "history"
+        )
+
+        stats = await self.get_user_stats(telegram_id)
+        tree = await self.get_tree_state(telegram_id)
+        return {
+            "ok": True,
+            "balance": stats["balance"],
+            "total_scans": stats["total_scans"],
+            "xp": tree["xp"],
+            "level": tree["level"],
+            "points_earned": scan_points,
+            "partner_name": partner_name,
+        }
+
     async def get_all_prizes(self) -> list[dict]:
         try:
             return await self._fetch("prizes", "select=*&order=price_points.asc")
@@ -879,6 +918,7 @@ class Database:
     async def assign_bottle(self, bottle_id: str, user_id: int):
         await self._fetch("bottles", f"bottle_id=eq.{bottle_id}", "PATCH", {
             "assigned_to": user_id,
+            "assigned_at": "now()",
         })
 
     async def get_unassigned_bottle_count(self) -> int:

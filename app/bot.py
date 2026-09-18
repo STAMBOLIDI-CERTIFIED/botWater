@@ -367,8 +367,19 @@ async def handle_message(db, msg: dict):
 
     # ── Default: try as QR code ──
     if step == "menu" or step.startswith("ask_"):
-        # Maybe it's a QR code scan from manual input
-        pass
+        # Maybe it's a partner QR code scan from manual input
+        if text and text.startswith("partner_"):
+            result = await db.process_partner_scan(chat_id, text)
+            if result.get("ok"):
+                await send_message(
+                    chat_id,
+                    f"🎉 <b>Партнёрское сканирование!</b>\n\n"
+                    f"Вы получили <b>{result['points_earned']} баллов</b> от «{result['partner_name']}»\n"
+                    f"💎 Баланс: {result['balance']} баллов",
+                )
+            else:
+                await send_message(chat_id, "✖️ Партнёр не найден в системе.")
+            return
 
 
 # ─── Start Handler ──────────────────────────────────────
@@ -385,16 +396,36 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
     if user.get("step") != "menu":
         await db.update_user_step(chat_id, "menu")
 
-    # Extract bottle_XXXX from payload (supports full URLs and bare codes)
+    # Extract bottle_XXXX or partner_X from payload (supports full URLs and bare codes)
     if payload:
         if "start=bottle_" in payload:
             payload = payload.split("start=bottle_", 1)[1].split("&", 1)[0]
+        elif "start=partner_" in payload:
+            payload = payload.split("start=partner_", 1)[1].split("&", 1)[0]
+            payload = "partner_" + payload
         elif payload.startswith("bottle_"):
             payload = payload[len("bottle_"):]
+        elif payload.startswith("partner_"):
+            pass
         elif payload.startswith("BTL-"):
             pass
         else:
             payload = ""
+
+    # Handle partner QR scan via deep link
+    if payload and payload.startswith("partner_"):
+        result = await db.process_partner_scan(chat_id, payload)
+        if result.get("ok"):
+            await send_message(
+                chat_id,
+                f"🎉 <b>Партнёрское сканирование!</b>\n\n"
+                f"Вы получили <b>{result['points_earned']} баллов</b> от «{result['partner_name']}»\n"
+                f"💎 Баланс: {result['balance']} баллов",
+            )
+        else:
+            await send_message(chat_id, "✖️ Партнёр не найден в системе.")
+        await show_main_menu(db, chat_id, user)
+        return
 
     bottle_id = payload
     if bottle_id:
@@ -729,6 +760,20 @@ async def handle_webapp_data(db, data: str, chat_id: int):
             f"Подтвердить обмен?",
             reply_markup=exchange_confirm_keyboard(prize_id),
         )
+        return
+
+    # Handle partner QR scan from mini-app
+    if data and data.startswith("partner_"):
+        result = await db.process_partner_scan(chat_id, data)
+        if result.get("ok"):
+            await send_message(
+                chat_id,
+                f"🎉 <b>Партнёрское сканирование!</b>\n\n"
+                f"Вы получили <b>{result['points_earned']} баллов</b> от «{result['partner_name']}»\n"
+                f"💎 Баланс: {result['balance']} баллов",
+            )
+        else:
+            await send_message(chat_id, "✖️ Партнёр не найден в системе.")
         return
 
     if data.startswith("donate:"):
