@@ -459,21 +459,6 @@ function switchHistoryTab(tab) {
 // PAGE: SHOP
 // ═══════════════════════════════════════════
 
-function initShopImages(root) {
-        root.querySelectorAll('img.lazy').forEach(function(img) {
-            var src = img.getAttribute('data-src');
-            if (!src) return;
-            img.onload = function() { img.classList.remove('lazy'); img.classList.add('loaded'); };
-            img.onerror = function() {
-                var fb = document.createElement('div');
-                fb.className = 'shop-prize-img-fallback';
-                fb.innerHTML = ICONS.store || '';
-                img.replaceWith(fb);
-            };
-            img.src = src;
-        });
-    }
-
 async function loadShop() {
         const d = await apiFetch('/user?user_id=' + getUID());
         document.getElementById('shop-balance-val').textContent = d ? d.balance : '—';
@@ -501,7 +486,7 @@ async function loadShop() {
             var ok = bal >= p.price_points;
             var missing = Math.max(0, p.price_points - bal);
             var imgHtml = p.image_url
-                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" data-src="' + esc(p.image_url) + '">'
+                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon(\'store\') + '</div>\'">'
                 : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
             return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's">'
                 + imgHtml
@@ -513,7 +498,6 @@ async function loadShop() {
                     : '<button class="shop-prize-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
-        initShopImages(g);
     }
 
     async function openShopCategory(catId) {
@@ -549,7 +533,7 @@ async function loadShop() {
             const ok = bal >= p.price_points;
             const missing = Math.max(0, p.price_points - bal);
             var imgHtml = p.image_url
-                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" data-src="' + esc(p.image_url) + '">'
+                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon('store') + '</div>\'">'
                 : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
             return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's">'
                 + imgHtml
@@ -561,7 +545,6 @@ async function loadShop() {
                     : '<button class="shop-prize-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
-        initShopImages(g);
     }
 
     // ═══════════════════════════════════════════
