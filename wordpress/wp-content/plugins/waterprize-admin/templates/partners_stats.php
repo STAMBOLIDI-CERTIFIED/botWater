@@ -1,6 +1,4 @@
 <?php if (!defined('ABSPATH')) exit;
-$rest_url = get_rest_url('waterprize/v1/partner-stats');
-$nonce = wp_create_nonce('wp_rest');
 $total_scans = 0;
 $total_unique = 0;
 $total_points = 0;
@@ -185,18 +183,18 @@ foreach ($summary as $row) {
 <script>
 (function() {
     var chartData = <?php echo json_encode($chart_data); ?>;
-    var restUrl = <?php echo json_encode($rest_url); ?>;
-    var wpNonce = <?php echo json_encode($nonce); ?>;
-    var chart = null;
     var currentPeriod = <?php echo json_encode($period); ?>;
     var currentPartner = <?php echo json_encode($category_id); ?>;
 
     function renderChart(labels, scans, points, users) {
         var ctx = document.getElementById('wpz-ps-chart');
         if (!ctx) return;
-        if (chart) chart.destroy();
+        if (!labels.length) {
+            ctx.parentElement.innerHTML = '<p style="text-align:center;padding:40px 0;color:#666;">Нет данных за выбранный период</p>';
+            return;
+        }
 
-        chart = new Chart(ctx, {
+        new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
@@ -276,39 +274,15 @@ foreach ($summary as $row) {
         });
     }
 
-    function loadData(partnerId, period, from, to) {
-        var url = restUrl + '?period=' + encodeURIComponent(period) + '&partner_id=' + partnerId;
-        if (from) url += '&from=' + encodeURIComponent(from);
-        if (to) url += '&to=' + encodeURIComponent(to);
-
-        jQuery('#wpz-ps-chart').css('opacity', '0.5');
-        jQuery.ajax({
-            url: url,
-            headers: { 'X-WP-Nonce': wpNonce },
-            success: function(resp) {
-                var labels = [], scans = [], points = [], users = [];
-                (resp.data || []).forEach(function(d) {
-                    labels.push(d.label);
-                    scans.push(d.cnt || 0);
-                    points.push(d.total_points || 0);
-                    users.push(d.unique_users || 0);
-                });
-                renderChart(labels, scans, points, users);
-            },
-            complete: function() {
-                jQuery('#wpz-ps-chart').css('opacity', '1');
-            }
-        });
-    }
-
-    function updateURL(partnerId, period, from, to) {
+    function navigate(params) {
         var p = new URLSearchParams();
         p.set('page', 'wpz-partner-stats');
-        if (partnerId) p.set('partner_id', partnerId);
-        p.set('period', period);
-        if (from) p.set('from', from);
-        if (to) p.set('to', to);
-        window.history.replaceState({}, '', 'admin.php?' + p.toString());
+        for (var k in params) {
+            if (params[k] !== undefined && params[k] !== '' && params[k] !== '0') {
+                p.set(k, params[k]);
+            }
+        }
+        window.location.href = 'admin.php?' + p.toString();
     }
 
     jQuery(function() {
@@ -322,23 +296,30 @@ foreach ($summary as $row) {
         renderChart(labels, scans, points, users);
 
         jQuery('.wpz-ps-period').on('click', function() {
-            currentPeriod = jQuery(this).data('period');
-            jQuery('.wpz-ps-period').removeClass('button-primary');
-            jQuery(this).addClass('button-primary');
-            loadData(currentPartner, currentPeriod, jQuery('#wpz-ps-from').val(), jQuery('#wpz-ps-to').val());
-            updateURL(currentPartner, currentPeriod, jQuery('#wpz-ps-from').val(), jQuery('#wpz-ps-to').val());
+            navigate({
+                period: jQuery(this).data('period'),
+                partner_id: currentPartner,
+                from: jQuery('#wpz-ps-from').val(),
+                to: jQuery('#wpz-ps-to').val()
+            });
         });
 
         jQuery('#wpz-ps-partner').on('change', function() {
-            currentPartner = jQuery(this).val();
-            loadData(currentPartner, currentPeriod, jQuery('#wpz-ps-from').val(), jQuery('#wpz-ps-to').val());
-            updateURL(currentPartner, currentPeriod, jQuery('#wpz-ps-from').val(), jQuery('#wpz-ps-to').val());
-            window.location.href = 'admin.php?page=wpz-partner-stats&partner_id=' + currentPartner + '&period=' + currentPeriod;
+            navigate({
+                period: currentPeriod,
+                partner_id: jQuery(this).val(),
+                from: jQuery('#wpz-ps-from').val(),
+                to: jQuery('#wpz-ps-to').val()
+            });
         });
 
         jQuery('#wpz-ps-apply').on('click', function() {
-            loadData(currentPartner, currentPeriod, jQuery('#wpz-ps-from').val(), jQuery('#wpz-ps-to').val());
-            updateURL(currentPartner, currentPeriod, jQuery('#wpz-ps-from').val(), jQuery('#wpz-ps-to').val());
+            navigate({
+                period: currentPeriod,
+                partner_id: currentPartner,
+                from: jQuery('#wpz-ps-from').val(),
+                to: jQuery('#wpz-ps-to').val()
+            });
         });
     });
 })();
