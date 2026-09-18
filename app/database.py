@@ -942,7 +942,7 @@ class Database:
     async def assign_bottle(self, bottle_id: str, user_id: int):
         await self._fetch("bottles", f"bottle_id=eq.{bottle_id}", "PATCH", {
             "assigned_to": user_id,
-            "assigned_at": "now()",
+            "assigned_at": datetime.utcnow().isoformat(),
         })
 
     async def get_unassigned_bottle_count(self) -> int:
