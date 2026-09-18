@@ -650,7 +650,7 @@ async function loadPartners() {
 
     async function processPartnerScan(qrCode) {
         var uid = getUID();
-        if (!uid || !qrCode) return false;
+        if (!uid || !qrCode) return { ok: false, error: 'no_user' };
 
         try {
             var resp = await fetch(API_BASE + '/partner/scan', {
@@ -661,10 +661,10 @@ async function loadPartners() {
             var result = await resp.json();
             if (result.ok) {
                 document.getElementById('top-balance').textContent = result.balance;
-                return result;
             }
+            return result;
         } catch(e) {}
-        return false;
+        return { ok: false, error: 'network_error' };
     }
 
     // ═══════════════════════════════════════════
@@ -722,6 +722,8 @@ function startScan() {
             var partnerResult = await processPartnerScan(data);
             if (partnerResult && partnerResult.ok) {
                 document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + partnerResult.partner_name + '»! Баланс: ' + partnerResult.balance;
+            } else if (partnerResult && partnerResult.error === 'already_scanned') {
+                document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' Вы уже сканировали этот QR-код';
             } else {
                 document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' ' + (partnerResult ? partnerResult.error || 'Ошибка' : 'Партнёр не найден');
             }
