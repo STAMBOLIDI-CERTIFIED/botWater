@@ -561,13 +561,11 @@ async function loadPartners() {
 
         g.innerHTML = partnersData.categories.map(function(c, i) {
             var accent = c.color || '#0EA5E9';
-            var hasQR = c.qr_code && c.qr_code.length > 0;
             return '<div class="partner-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openPartnerCategory(' + c.id + ')">'
                 + '<div class="partner-cat-icon" style="background:' + accent + '18">'
                 + (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>') + '</div>'
                 + '<div class="partner-cat-info"><div class="partner-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
                 + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div></div>'
-                + (hasQR ? '<button class="partner-qr-btn" onclick="event.stopPropagation();showPartnerQR(' + c.id + ',\'' + esc(c.title) + '\',\'' + accent + '\')">' + icon('scanner') + '</button>' : '')
                 + '<div class="partner-cat-arrow">›</div></div>';
         }).join('');
     }
@@ -619,33 +617,6 @@ async function loadPartners() {
                     : '<button class="partner-item-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
-    }
-
-    function showPartnerQR(catId, title, accent) {
-        var overlay = document.getElementById('partner-qr-overlay');
-        var img = document.getElementById('partner-qr-img');
-        var nameEl = document.getElementById('partner-qr-name');
-        var statusEl = document.getElementById('partner-qr-status');
-
-        nameEl.textContent = title;
-        nameEl.style.color = accent;
-        statusEl.textContent = '';
-        img.src = '';
-        img.style.display = 'none';
-        overlay.classList.add('show');
-
-        img.src = API_BASE + '/partner/qr/' + catId;
-        img.onload = function() {
-            img.style.display = 'block';
-            statusEl.textContent = 'Сохраните QR-код и разместите у партнёра';
-        };
-        img.onerror = function() {
-            statusEl.textContent = 'Ошибка загрузки QR-кода';
-        };
-    }
-
-    function closePartnerQR() {
-        document.getElementById('partner-qr-overlay').classList.remove('show');
     }
 
     async function processPartnerScan(qrCode) {
