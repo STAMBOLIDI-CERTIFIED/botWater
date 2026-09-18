@@ -40,6 +40,12 @@ class WaterPrize_API {
             'callback' => [$this, 'get_analytics'],
             'permission_callback' => [$this, 'check_admin'],
         ]);
+
+        register_rest_route('waterprize/v1', '/partner-stats', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_partner_stats'],
+            'permission_callback' => [$this, 'check_admin'],
+        ]);
     }
 
     public function get_stats($request) {
@@ -84,6 +90,19 @@ class WaterPrize_API {
             'chart'  => $chart,
             'period' => $period,
             'data'   => $data,
+        ]);
+    }
+
+    public function get_partner_stats($request) {
+        $db = WaterPrize_DB::instance();
+        $period = sanitize_text_field($request->get_param('period') ?? 'day');
+        $from = sanitize_text_field($request->get_param('from') ?? '');
+        $to = sanitize_text_field($request->get_param('to') ?? '');
+        $category_id = (int)($request->get_param('partner_id') ?? 0);
+
+        return rest_ensure_response([
+            'period' => $period,
+            'data'   => $db->get_partner_scans_chart($period, $from, $to, $category_id),
         ]);
     }
 }
