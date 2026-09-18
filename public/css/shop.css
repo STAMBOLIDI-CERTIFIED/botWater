@@ -181,3 +181,77 @@
 .shop-donation-btn:hover {
     box-shadow: 0 6px 32px rgba(239,68,68,0.4);
 }
+
+/* ─── Prize Detail Modal ─── */
+.prize-modal-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    align-items: flex-end; justify-content: center;
+    animation: fadeIn .2s ease;
+}
+.prize-modal-overlay.active { display: flex; }
+.prize-modal {
+    width: 100%; max-width: 420px;
+    max-height: 85vh; overflow-y: auto;
+    background: #1a1c22;
+    border-radius: 20px 20px 0 0;
+    position: relative;
+    animation: slideUp .35s var(--ease-out);
+}
+.prize-modal-close {
+    position: absolute; top: 12px; right: 12px; z-index: 2;
+    width: 32px; height: 32px; border-radius: 50%;
+    background: rgba(255,255,255,0.1); border: none;
+    color: #fff; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .2s;
+}
+.prize-modal-close:hover { background: rgba(255,255,255,0.2); }
+.prize-modal-img {
+    width: 100%; aspect-ratio: 1; overflow: hidden;
+    border-radius: 20px 20px 0 0;
+    background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.03));
+}
+.prize-modal-img img {
+    width: 100%; height: 100%; object-fit: cover;
+}
+.prize-modal-img .prize-modal-img-fallback {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 56px; opacity: .3;
+}
+.prize-modal-body { padding: 20px 20px 28px; }
+.prize-modal-name {
+    font-size: 20px; font-weight: 800; color: #fff;
+    margin-bottom: 10px; line-height: 1.3;
+}
+.prize-modal-desc {
+    font-size: 14px; color: var(--text-dim);
+    line-height: 1.6; margin-bottom: 16px;
+    white-space: pre-line;
+}
+.prize-modal-price {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 16px; font-weight: 700; color: var(--gold);
+    background: var(--gold-glow); padding: 8px 16px;
+    border-radius: 12px; margin-bottom: 18px;
+}
+.prize-modal-btn {
+    width: 100%; padding: 16px; font-size: 15px;
+    border-radius: var(--radius-sm); border: none;
+    font-family: inherit; font-weight: 700;
+    cursor: pointer; transition: all var(--transition-fast);
+}
+.prize-modal-btn:active { transform: scale(0.97); }
+.prize-modal-btn.primary {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: #fff; box-shadow: 0 4px 20px rgba(201,168,76,0.35);
+}
+.prize-modal-btn.primary:hover { box-shadow: 0 6px 28px rgba(201,168,76,0.5); }
+.prize-modal-btn.disabled {
+    background: rgba(255,255,255,0.06); color: var(--text-dim);
+    border: 1px solid var(--glass-border); cursor: not-allowed;
+}

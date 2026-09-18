@@ -459,6 +459,42 @@ function switchHistoryTab(tab) {
 // PAGE: SHOP
 // ═══════════════════════════════════════════
 
+function openPrizeModal(p, bal) {
+        var modal = document.getElementById('prize-modal');
+        var imgWrap = document.getElementById('prize-modal-img');
+        var nameEl = document.getElementById('prize-modal-name');
+        var descEl = document.getElementById('prize-modal-desc');
+        var priceEl = document.getElementById('prize-modal-price');
+        var actionEl = document.getElementById('prize-modal-action');
+
+        if (p.image_url) {
+            imgWrap.innerHTML = '<img src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '">';
+        } else {
+            imgWrap.innerHTML = '<div class="prize-modal-img-fallback">' + icon('store') + '</div>';
+        }
+
+        nameEl.textContent = p.name;
+        descEl.textContent = p.description || 'Описание отсутствует';
+        priceEl.innerHTML = icon('target') + ' ' + p.price_points + ' баллов';
+
+        var ok = bal >= p.price_points;
+        var missing = Math.max(0, p.price_points - bal);
+        if (ok) {
+            actionEl.innerHTML = '<button class="prize-modal-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\');closePrizeModal()">' + icon('gift') + ' Обменять</button>';
+        } else {
+            actionEl.innerHTML = '<button class="prize-modal-btn disabled" disabled>Не хватает ' + missing + ' баллов</button>';
+        }
+
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+function closePrizeModal() {
+        var modal = document.getElementById('prize-modal');
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+
 async function loadShop() {
         const d = await apiFetch('/user?user_id=' + getUID());
         document.getElementById('shop-balance-val').textContent = d ? d.balance : '—';
@@ -488,14 +524,15 @@ async function loadShop() {
             var imgHtml = p.image_url
                 ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon(\'store\') + '</div>\'">'
                 : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
-            return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's">'
+            var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
+            return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
                 + imgHtml
                 + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
                 + '<div class="shop-prize-desc">' + esc(p.description) + '</div>'
                 + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
                 + (ok
-                    ? '<button class="shop-prize-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
-                    : '<button class="shop-prize-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
+                    ? '<button class="shop-prize-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                    : '<button class="shop-prize-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')" style="cursor:pointer">Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
     }
@@ -533,16 +570,17 @@ async function loadShop() {
             const ok = bal >= p.price_points;
             const missing = Math.max(0, p.price_points - bal);
             var imgHtml = p.image_url
-                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon('store') + '</div>\'">'
+                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon(\'store\') + '</div>\'">'
                 : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
-            return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's">'
+            var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
+            return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
                 + imgHtml
                 + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
                 + '<div class="shop-prize-desc">' + esc(p.description) + '</div>'
                 + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
                 + (ok
-                    ? '<button class="shop-prize-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
-                    : '<button class="shop-prize-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
+                    ? '<button class="shop-prize-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                    : '<button class="shop-prize-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')" style="cursor:pointer">Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
     }
