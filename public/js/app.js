@@ -485,8 +485,11 @@ async function loadShop() {
         g.innerHTML = items.map(function(p, i) {
             var ok = bal >= p.price_points;
             var missing = Math.max(0, p.price_points - bal);
+            var imgHtml = p.image_url
+                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon(\'store\') + '</div>\'">'
+                : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
             return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's">'
-                + (p.image_url ? '<img class="shop-prize-img" src="' + esc(p.image_url) + '" onerror="this.style.display=\'none\'">' : '')
+                + imgHtml
                 + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
                 + '<div class="shop-prize-desc">' + esc(p.description) + '</div>'
                 + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
@@ -529,8 +532,11 @@ async function loadShop() {
         g.innerHTML = items.map(function(p, i) {
             const ok = bal >= p.price_points;
             const missing = Math.max(0, p.price_points - bal);
+            var imgHtml = p.image_url
+                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon('store') + '</div>\'">'
+                : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
             return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's">'
-                + (p.image_url ? '<img class="shop-prize-img" src="' + esc(p.image_url) + '" onerror="this.style.display=\'none\'">' : '')
+                + imgHtml
                 + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
                 + '<div class="shop-prize-desc">' + esc(p.description) + '</div>'
                 + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
