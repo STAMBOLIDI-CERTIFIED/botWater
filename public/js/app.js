@@ -561,11 +561,13 @@ async function loadPartners() {
 
         g.innerHTML = partnersData.categories.map(function(c, i) {
             var accent = c.color || '#0EA5E9';
+            var hasQR = c.qr_code && c.qr_code.length > 0;
             return '<div class="partner-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openPartnerCategory(' + c.id + ')">'
                 + '<div class="partner-cat-icon" style="background:' + accent + '18">'
                 + (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>') + '</div>'
                 + '<div class="partner-cat-info"><div class="partner-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
                 + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div></div>'
+                + (hasQR ? '<button class="partner-qr-btn" onclick="event.stopPropagation();showPartnerQR(' + c.id + ',\'' + esc(c.title) + '\',\'' + accent + '\')">' + icon('scanner') + '</button>' : '')
                 + '<div class="partner-cat-arrow">›</div></div>';
         }).join('');
     }
@@ -619,6 +621,52 @@ async function loadPartners() {
         }).join('');
     }
 
+    function showPartnerQR(catId, title, accent) {
+        var overlay = document.getElementById('partner-qr-overlay');
+        var img = document.getElementById('partner-qr-img');
+        var nameEl = document.getElementById('partner-qr-name');
+        var statusEl = document.getElementById('partner-qr-status');
+
+        nameEl.textContent = title;
+        nameEl.style.color = accent;
+        statusEl.textContent = '';
+        img.src = '';
+        img.style.display = 'none';
+        overlay.classList.add('show');
+
+        img.src = API_BASE + '/partner/qr/' + catId;
+        img.onload = function() {
+            img.style.display = 'block';
+            statusEl.textContent = 'Сохраните QR-код и разместите у партнёра';
+        };
+        img.onerror = function() {
+            statusEl.textContent = 'Ошибка загрузки QR-кода';
+        };
+    }
+
+    function closePartnerQR() {
+        document.getElementById('partner-qr-overlay').classList.remove('show');
+    }
+
+    async function processPartnerScan(qrCode) {
+        var uid = getUID();
+        if (!uid || !qrCode) return false;
+
+        try {
+            var resp = await fetch(API_BASE + '/partner/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, qr_code: qrCode }),
+            });
+            var result = await resp.json();
+            if (result.ok) {
+                document.getElementById('top-balance').textContent = result.balance;
+                return result;
+            }
+        } catch(e) {}
+        return false;
+    }
+
     // ═══════════════════════════════════════════
 // PAGE: RAFFLES
 // ═══════════════════════════════════════════
@@ -669,18 +717,28 @@ function startScan() {
         document.getElementById('scan-btn').textContent = 'Сканировать ещё';
         document.getElementById('scan-btn').disabled = false;
         try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
-        var uid = getUID();
-        if (uid && data) {
-            try {
-                const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: uid, bottle_id: data }) });
-                const res = await r.json();
-                if (res.ok) {
-                    document.getElementById('top-balance').textContent = res.balance;
-                    document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
-                } else {
-                    document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' ' + (res.error || 'Ошибка');
-                }
-            } catch (e) { document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' Ошибка сети'; }
+
+        if (data && data.startsWith('partner_')) {
+            var partnerResult = await processPartnerScan(data);
+            if (partnerResult && partnerResult.ok) {
+                document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + partnerResult.partner_name + '»! Баланс: ' + partnerResult.balance;
+            } else {
+                document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' ' + (partnerResult ? partnerResult.error || 'Ошибка' : 'Партнёр не найден');
+            }
+        } else {
+            var uid = getUID();
+            if (uid && data) {
+                try {
+                    const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: uid, bottle_id: data }) });
+                    const res = await r.json();
+                    if (res.ok) {
+                        document.getElementById('top-balance').textContent = res.balance;
+                        document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
+                    } else {
+                        document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' ' + (res.error || 'Ошибка');
+                    }
+                } catch (e) { document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' Ошибка сети'; }
+            }
         }
         tg.sendData(data);
     }

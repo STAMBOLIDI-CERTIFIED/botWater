@@ -87,8 +87,12 @@ CREATE TABLE IF NOT EXISTS shop_categories (
     color VARCHAR(20) DEFAULT '#C9A84C',
     sort_order INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
+    qr_code TEXT DEFAULT '',
+    scan_points INTEGER DEFAULT 10,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_shop_categories_qr_code ON shop_categories(qr_code) WHERE qr_code != '';
 
 -- ─── Prizes ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS prizes (

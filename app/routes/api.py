@@ -1,8 +1,9 @@
 """API routes for the frontend app."""
+import io
 import random
 
 from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..deps import db, get_settings
 
@@ -254,3 +255,67 @@ async def api_scan(request: Request):
 async def api_settings():
     splash_logo_url = await db.get_setting("splash_logo_url")
     return {"splash_logo_url": splash_logo_url or ""}
+
+
+@router.get("/partner/qr/{category_id}")
+async def api_partner_qr(category_id: int):
+    category = await db.get_shop_category(category_id)
+    if not category:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    qr_code = category.get("qr_code", "")
+    if not qr_code:
+        return JSONResponse({"error": "no qr code for this partner"}, status_code=404)
+
+    try:
+        import qrcode
+        from qrcode.image.styledpil import StyledPilImage
+        from qrcode.image.styles.modifiers import RoundedModule
+        from qrcode.image.styles.colormasks import SolidFillColorMask
+    except ImportError:
+        return JSONResponse({"error": "qrcode library not installed"}, status_code=500)
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(qr_code)
+    qr.make(fit=True)
+
+    accent = (category.get("color") or "#0EA5E9").lstrip("#")
+    try:
+        fg = tuple(int(accent[i:i+2], 16) for i in (0, 2, 4))
+    except (ValueError, IndexError):
+        fg = (14, 165, 233)
+
+    img = qr.make_image(
+        image_factory=StyledPilImage,
+        color_mask=SolidFillColorMask(
+            back_color=(255, 255, 255),
+            front_color=fg,
+        ),
+    )
+
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return StreamingResponse(buf, media_type="image/png", headers={
+        "Cache-Control": "public, max-age=3600",
+    })
+
+
+@router.post("/partner/scan")
+async def api_partner_scan(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    qr_code = body.get("qr_code", "")
+    if not user_id or not qr_code:
+        return JSONResponse({"ok": False, "error": "missing user_id or qr_code"}, status_code=400)
+
+    result = await db.process_partner_scan(user_id, qr_code)
+    if not result.get("ok"):
+        status = 404 if result.get("error") == "partner_not_found" else 400
+        return JSONResponse(result, status_code=status)
+    return result
