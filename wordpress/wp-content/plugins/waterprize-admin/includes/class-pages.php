@@ -13,8 +13,9 @@ class WaterPrize_Pages {
         }
     }
 
-    private static function handle_actions() {
+    public static function handle_actions() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
+        if (!current_user_can('manage_options')) return;
         if (!wp_verify_nonce($_POST['_wpnonce'] ?? '', 'wpz_action')) return;
 
         $action = $_POST['action'] ?? '';
@@ -210,7 +211,6 @@ class WaterPrize_Pages {
 
     // ─── Dashboard ────────────────────────────────────
     public static function dashboard() {
-        self::handle_actions();
         $db = self::db();
 
         // CSV export
@@ -271,7 +271,6 @@ class WaterPrize_Pages {
 
     // ─── Users ────────────────────────────────────────
     public static function users() {
-        self::handle_actions();
         $search = sanitize_text_field($_GET['search'] ?? '');
         $page = max(1, (int)($_GET['paged'] ?? 1));
         $per_page = 50;
@@ -284,7 +283,6 @@ class WaterPrize_Pages {
 
     // ─── Codes ────────────────────────────────────────
     public static function codes() {
-        self::handle_actions();
         $codes = self::db()->get_codes(500);
         $stats = [
             'total' => self::db()->count_codes(),
@@ -303,7 +301,6 @@ class WaterPrize_Pages {
             WaterPrize_PDF_Export::export_batch($batch, $year);
         }
 
-        self::handle_actions();
         $db = self::db();
         $search = sanitize_text_field($_GET['search'] ?? '');
         $sort = sanitize_text_field($_GET['sort'] ?? 'id');
@@ -320,14 +317,12 @@ class WaterPrize_Pages {
 
     // ─── Raffles ──────────────────────────────────────
     public static function raffles() {
-        self::handle_actions();
         $raffles = self::db()->get_raffles(200);
         include __DIR__ . '/../templates/raffles.php';
     }
 
     // ─── Prizes ───────────────────────────────────────
     public static function prizes() {
-        self::handle_actions();
         $db = self::db();
         $prizes = $db->get_prizes();
         $categories = $db->get_categories();
@@ -340,7 +335,6 @@ class WaterPrize_Pages {
 
     // ─── Categories (Partners) ────────────────────────
     public static function categories() {
-        self::handle_actions();
         $db = self::db();
         $categories = $db->get_categories();
         $edit_category = null;
@@ -366,21 +360,18 @@ class WaterPrize_Pages {
 
     // ─── Orders ───────────────────────────────────────
     public static function orders() {
-        self::handle_actions();
         $orders = self::db()->get_all_orders(500);
         include __DIR__ . '/../templates/orders.php';
     }
 
     // ─── Admins ───────────────────────────────────────
     public static function admins() {
-        self::handle_actions();
         $admins = self::db()->get_admins();
         include __DIR__ . '/../templates/admins.php';
     }
 
     // ─── Settings ─────────────────────────────────────
     public static function settings() {
-        self::handle_actions();
         include __DIR__ . '/../templates/settings.php';
     }
 
@@ -404,7 +395,6 @@ class WaterPrize_Pages {
 
     // ─── Scans ────────────────────────────────────────
     public static function scans() {
-        self::handle_actions();
         $scans = self::db()->get_scans(200);
         $total = self::db()->count_scans();
         include __DIR__ . '/../templates/scans.php';
@@ -412,7 +402,6 @@ class WaterPrize_Pages {
 
     // ─── Notifications ────────────────────────────────
     public static function notifications() {
-        self::handle_actions();
         $notifications = self::db()->get_notifications(200);
         $total = self::db()->count_notifications();
         include __DIR__ . '/../templates/notifications.php';
@@ -420,7 +409,6 @@ class WaterPrize_Pages {
 
     // ─── Admin Codes ──────────────────────────────────
     public static function admin_codes() {
-        self::handle_actions();
         $admin_codes = self::db()->get_admin_codes(200);
         $total = self::db()->count_admin_codes();
         include __DIR__ . '/../templates/admin_codes.php';
@@ -428,7 +416,6 @@ class WaterPrize_Pages {
 
     // ─── User QR Activations ──────────────────────────
     public static function user_qr_activations() {
-        self::handle_actions();
         $activations = self::db()->get_user_qr_activations(200);
         $total = self::db()->count_user_qr_activations();
         include __DIR__ . '/../templates/user_qr_activations.php';

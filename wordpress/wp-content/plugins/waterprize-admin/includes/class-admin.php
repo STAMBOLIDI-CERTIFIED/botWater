@@ -15,6 +15,7 @@ class WaterPrize_Admin {
     public function __construct() {
         add_action('admin_menu', [$this, 'register_menus']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        add_action('admin_init', ['WaterPrize_Pages', 'handle_actions']);
     }
 
     public function register_menus() {
