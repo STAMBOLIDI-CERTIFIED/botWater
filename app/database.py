@@ -538,9 +538,21 @@ class Database:
 
     async def get_category_by_qr_code(self, qr_code: str) -> dict | None:
         try:
-            return await self._fetch_one("shop_categories", f"qr_code=eq.{qr_code}&select=*")
+            result = await self._fetch_one("shop_categories", f"qr_code=eq.{qr_code}&select=*")
+            if result:
+                return result
         except Exception:
-            return None
+            pass
+        try:
+            rows = await self._fetch("shop_categories", "select=*")
+            for r in rows:
+                if r.get("qr_code", "").startswith(qr_code + "_") or qr_code.startswith(r.get("qr_code", "") + "_"):
+                    return r
+                if qr_code == "partner_" + str(r.get("id", "")):
+                    return r
+        except Exception:
+            pass
+        return None
 
     async def process_partner_scan(self, telegram_id: int, qr_code: str) -> dict:
         category = await self.get_category_by_qr_code(qr_code)

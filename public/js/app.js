@@ -689,8 +689,21 @@ function startScan() {
         document.getElementById('scan-btn').disabled = false;
         try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
 
+        var partnerCode = null;
         if (data && data.startsWith('partner_')) {
-            var partnerResult = await processPartnerScan(data);
+            partnerCode = data;
+        } else if (data && data.includes('start=partner_')) {
+            try {
+                var urlObj = new URL(data);
+                partnerCode = urlObj.searchParams.get('start');
+            } catch(e) {
+                var m = data.match(/start=(partner_[^&]+)/);
+                if (m) partnerCode = m[1];
+            }
+        }
+
+        if (partnerCode) {
+            var partnerResult = await processPartnerScan(partnerCode);
             if (partnerResult && partnerResult.ok) {
                 document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + partnerResult.partner_name + '»! Баланс: ' + partnerResult.balance;
             } else if (partnerResult && partnerResult.error === 'already_scanned') {
