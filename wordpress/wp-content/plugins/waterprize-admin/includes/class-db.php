@@ -566,4 +566,118 @@ class WaterPrize_DB {
             $params
         );
     }
+
+    // ─── Partner Statistics ──────────────────────────────
+    public function get_partner_stats_summary() {
+        return $this->query(
+            "SELECT
+                sc.id as category_id,
+                sc.title as partner_name,
+                sc.qr_code,
+                sc.scan_points,
+                COALESCE(ps.total_scans, 0) as total_scans,
+                COALESCE(ps.unique_users, 0) as unique_users,
+                COALESCE(ps.total_points, 0) as total_points,
+                COALESCE(ps.last_scan_at, NULL) as last_scan_at
+             FROM shop_categories sc
+             LEFT JOIN (
+                SELECT
+                    category_id,
+                    COUNT(*)::int as total_scans,
+                    COUNT(DISTINCT user_id)::int as unique_users,
+                    SUM(points_earned)::int as total_points,
+                    MAX(scanned_at) as last_scan_at
+                FROM partner_scans
+                GROUP BY category_id
+             ) ps ON ps.category_id = sc.id
+             ORDER BY ps.total_scans DESC NULLS LAST"
+        );
+    }
+
+    public function get_partner_scans_detail($category_id, $limit = 200, $offset = 0) {
+        return $this->query(
+            "SELECT
+                ps.id,
+                ps.user_id,
+                u.name,
+                u.username,
+                u.balance,
+                u.tree_level,
+                ps.qr_code,
+                ps.points_earned,
+                ps.scanned_at
+             FROM partner_scans ps
+             JOIN users u ON u.id = ps.user_id
+             WHERE ps.category_id = ?
+             ORDER BY ps.scanned_at DESC
+             LIMIT ? OFFSET ?",
+            [(int)$category_id, (int)$limit, (int)$offset]
+        );
+    }
+
+    public function get_partner_scans_chart($period = 'day', $from = '', $to = '', $category_id = 0) {
+        $where = '1=1';
+        $params = [];
+
+        if ($category_id > 0) {
+            $where .= ' AND ps.category_id = ?';
+            $params[] = (int)$category_id;
+        }
+
+        if ($from) {
+            $where .= ' AND ps.scanned_at >= ?';
+            $params[] = $from;
+        }
+        if ($to) {
+            $where .= " AND ps.scanned_at <= ?::date + interval '1 day'";
+            $params[] = $to;
+        }
+
+        $group = "to_char(ps.scanned_at, 'YYYY-MM-DD')";
+        $order = 'period';
+
+        if ($period === 'hour') {
+            $group = "to_char(ps.scanned_at, 'YYYY-MM-DD HH24:00')";
+        } elseif ($period === 'week') {
+            $group = "to_char(ps.scanned_at, 'IYYY-IW')";
+            $order = 'period';
+        } elseif ($period === 'month') {
+            $group = "to_char(ps.scanned_at, 'YYYY-MM')";
+        } elseif ($period === 'year') {
+            $group = "to_char(ps.scanned_at, 'YYYY')";
+        }
+
+        return $this->query(
+            "SELECT
+                {$group} as label,
+                COUNT(*)::int as cnt,
+                COUNT(DISTINCT ps.user_id)::int as unique_users,
+                COALESCE(SUM(ps.points_earned), 0)::int as total_points
+             FROM partner_scans ps
+             WHERE {$where}
+             GROUP BY {$order}
+             ORDER BY {$order} ASC",
+            $params
+        );
+    }
+
+    public function get_top_partners_users($limit = 20) {
+        return $this->query(
+            "SELECT
+                sc.title as partner_name,
+                u.name as user_name,
+                u.username,
+                u.telegram_id,
+                u.balance,
+                COUNT(*)::int as scans_count,
+                SUM(ps.points_earned)::int as total_points
+             FROM partner_scans ps
+             JOIN users u ON u.id = ps.user_id
+             JOIN shop_categories sc ON sc.id = ps.category_id
+             GROUP BY sc.title, u.name, u.username, u.telegram_id, u.balance
+             ORDER BY scans_count DESC
+             LIMIT ?",
+            [(int)$limit]
+        );
+    }
 }

@@ -374,6 +374,24 @@ class WaterPrize_Pages {
         include __DIR__ . '/../templates/settings.php';
     }
 
+    // ─── Partner Stats ──────────────────────────────────
+    public static function partner_stats() {
+        $db = self::db();
+        $period = sanitize_text_field($_GET['period'] ?? 'day');
+        $from = sanitize_text_field($_GET['from'] ?? '');
+        $to = sanitize_text_field($_GET['to'] ?? '');
+        $category_id = (int)($_GET['partner_id'] ?? 0);
+
+        $summary = $db->get_partner_stats_summary();
+        $chart_data = $db->get_partner_scans_chart($period, $from, $to, $category_id);
+        $detail = [];
+        if ($category_id > 0) {
+            $detail = $db->get_partner_scans_detail($category_id);
+        }
+        $top_users = $db->get_top_partners_users(20);
+        include __DIR__ . '/../templates/partners_stats.php';
+    }
+
     // ─── Scans ────────────────────────────────────────
     public static function scans() {
         self::handle_actions();
