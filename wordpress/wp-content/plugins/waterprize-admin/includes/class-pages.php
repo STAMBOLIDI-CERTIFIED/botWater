@@ -112,7 +112,7 @@ class WaterPrize_Pages {
                     (int)($_POST['category_id'] ?? 0),
                     isset($_POST['active']) ? 1 : 0
                 );
-                wp_redirect(admin_url('admin.php?page=wpz-prizes&msg=' . urlencode('Приз добавлен')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Приз добавлен')));
                 exit;
 
             case 'update_prize':
@@ -125,12 +125,12 @@ class WaterPrize_Pages {
                     (int)($_POST['category_id'] ?? 0),
                     isset($_POST['active']) ? 1 : 0
                 );
-                wp_redirect(admin_url('admin.php?page=wpz-prizes&msg=' . urlencode('Приз обновлён')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Приз обновлён')));
                 exit;
 
             case 'delete_prize':
                 $db->delete_prize((int)($_POST['prize_id'] ?? 0));
-                wp_redirect(admin_url('admin.php?page=wpz-prizes&msg=' . urlencode('Приз удалён')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Приз удалён')));
                 exit;
 
             // ─── Categories CRUD ───────────────────
@@ -150,7 +150,7 @@ class WaterPrize_Pages {
                     esc_url_raw($_POST['telegram'] ?? ''),
                     sanitize_textarea_field($_POST['info'] ?? '')
                 );
-                wp_redirect(admin_url('admin.php?page=wpz-categories&msg=' . urlencode('Партнёр добавлен')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&msg=' . urlencode('Партнёр добавлен')));
                 exit;
 
             case 'update_category':
@@ -170,21 +170,21 @@ class WaterPrize_Pages {
                     esc_url_raw($_POST['telegram'] ?? ''),
                     sanitize_textarea_field($_POST['info'] ?? '')
                 );
-                wp_redirect(admin_url('admin.php?page=wpz-categories&msg=' . urlencode('Партнёр обновлён')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&msg=' . urlencode('Партнёр обновлён')));
                 exit;
 
             case 'delete_category':
                 $db->delete_category((int)($_POST['category_id'] ?? 0));
-                wp_redirect(admin_url('admin.php?page=wpz-categories&msg=' . urlencode('Партнёр удалён')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&msg=' . urlencode('Партнёр удалён')));
                 exit;
 
             case 'regenerate_qr':
                 $cat_id = (int)($_POST['category_id'] ?? 0);
                 if ($cat_id) {
                     $new_qr = $db->regenerate_qr_code($cat_id);
-                    wp_redirect(admin_url('admin.php?page=wpz-categories&edit=' . $cat_id . '&msg=' . urlencode('QR-код обновлён')));
+                    wp_redirect(admin_url('admin.php?page=wpz-partners&edit=' . $cat_id . '&msg=' . urlencode('QR-код обновлён')));
                 } else {
-                    wp_redirect(admin_url('admin.php?page=wpz-categories&err=1&msg=' . urlencode('Партнёр не найден')));
+                    wp_redirect(admin_url('admin.php?page=wpz-partners&err=1&msg=' . urlencode('Партнёр не найден')));
                 }
                 exit;
         }
@@ -373,6 +373,41 @@ class WaterPrize_Pages {
     // ─── Settings ─────────────────────────────────────
     public static function settings() {
         include __DIR__ . '/../templates/settings.php';
+    }
+
+    // ─── Unified Partners Page ────────────────────────
+    public static function partners() {
+        $db = self::db();
+        $tab = sanitize_text_field($_GET['tab'] ?? 'list');
+
+        // Partner list data
+        $categories = $db->get_categories();
+        $edit_category = null;
+        if (!empty($_GET['edit'])) {
+            $edit_category = $db->get_category((int)$_GET['edit']);
+        }
+
+        // Prizes data
+        $prizes = $db->get_prizes();
+        $edit_prize = null;
+        if (!empty($_GET['edit_prize'])) {
+            $edit_prize = $db->get_prize((int)$_GET['edit_prize']);
+        }
+
+        // Stats data
+        $period = sanitize_text_field($_GET['period'] ?? 'day');
+        $from = sanitize_text_field($_GET['from'] ?? '');
+        $to = sanitize_text_field($_GET['to'] ?? '');
+        $category_id = (int)($_GET['partner_id'] ?? 0);
+        $summary = $db->get_partner_stats_summary();
+        $chart_data = $db->get_partner_scans_chart($period, $from, $to, $category_id);
+        $detail = [];
+        if ($category_id > 0) {
+            $detail = $db->get_partner_scans_detail($category_id);
+        }
+        $top_users = $db->get_top_partners_users(20);
+
+        include __DIR__ . '/../templates/partners.php';
     }
 
     // ─── Partner Stats ──────────────────────────────────

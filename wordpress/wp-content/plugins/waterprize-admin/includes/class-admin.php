@@ -34,9 +34,7 @@ class WaterPrize_Admin {
         add_submenu_page('waterprize', 'QR-коды', 'QR-коды', 'manage_options', 'wpz-codes', [$this, 'page_codes']);
         add_submenu_page('waterprize', 'Бутылки', 'Бутылки', 'manage_options', 'wpz-bottles', [$this, 'page_bottles']);
         add_submenu_page('waterprize', 'Розыгрыши', 'Розыгрыши', 'manage_options', 'wpz-raffles', [$this, 'page_raffles']);
-        add_submenu_page('waterprize', 'Призы', 'Призы', 'manage_options', 'wpz-prizes', [$this, 'page_prizes']);
-        add_submenu_page('waterprize', 'Партнёры', 'Партнёры', 'manage_options', 'wpz-categories', [$this, 'page_categories']);
-        add_submenu_page('waterprize', 'Стат. партнёров', 'Стат. партнёров', 'manage_options', 'wpz-partner-stats', [$this, 'page_partner_stats']);
+        add_submenu_page('waterprize', 'Партнёры', 'Партнёры', 'manage_options', 'wpz-partners', [$this, 'page_partners']);
         add_submenu_page('waterprize', 'Аналитика', 'Аналитика', 'manage_options', 'wpz-analytics', [$this, 'page_analytics']);
         add_submenu_page('waterprize', 'Заказы', 'Заказы', 'manage_options', 'wpz-orders', [$this, 'page_orders']);
         add_submenu_page('waterprize', 'Админы', 'Админы', 'manage_options', 'wpz-admins', [$this, 'page_admins']);
@@ -60,10 +58,8 @@ class WaterPrize_Admin {
             wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js', [], '4.4.7', true);
             wp_enqueue_script('wpz-analytics', plugins_url('/assets/analytics.js', dirname(__FILE__)), ['jquery', 'chartjs'], '1.0.0', true);
         }
-        if (strpos($hook, 'wpz-partner-stats') !== false) {
+        if (strpos($hook, 'wpz-partners') !== false) {
             wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js', [], '4.4.7', true);
-        }
-        if (strpos($hook, 'wpz-categories') !== false || strpos($hook, 'wpz-prizes') !== false) {
             wp_enqueue_media();
         }
     }
@@ -74,9 +70,7 @@ class WaterPrize_Admin {
     public function page_codes()     { WaterPrize_Pages::codes(); }
     public function page_bottles()   { WaterPrize_Pages::bottles(); }
     public function page_raffles()   { WaterPrize_Pages::raffles(); }
-    public function page_prizes()    { WaterPrize_Pages::prizes(); }
-    public function page_categories() { WaterPrize_Pages::categories(); }
-    public function page_partner_stats() { WaterPrize_Pages::partner_stats(); }
+    public function page_partners()  { WaterPrize_Pages::partners(); }
     public function page_analytics()  { WaterPrize_Pages::analytics(); }
     public function page_orders()    { WaterPrize_Pages::orders(); }
     public function page_admins()    { WaterPrize_Pages::admins(); }
