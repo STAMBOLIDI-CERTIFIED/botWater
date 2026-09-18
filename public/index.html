@@ -307,5 +307,19 @@
     </button>
 </nav>
 
+<!-- MODAL: Prize Detail -->
+<div id="prize-modal" class="prize-modal-overlay" onclick="if(event.target===this)closePrizeModal()">
+    <div class="prize-modal">
+        <button class="prize-modal-close" onclick="closePrizeModal()">✕</button>
+        <div id="prize-modal-img" class="prize-modal-img"></div>
+        <div class="prize-modal-body">
+            <div id="prize-modal-name" class="prize-modal-name"></div>
+            <div id="prize-modal-desc" class="prize-modal-desc"></div>
+            <div id="prize-modal-price" class="prize-modal-price"></div>
+            <div id="prize-modal-action"></div>
+        </div>
+    </div>
+</div>
+
 <script src="/js/app.js"></script>
 </body>
