@@ -62,6 +62,9 @@ class WaterPrize_Admin {
         if (strpos($hook, 'wpz-partner-stats') !== false) {
             wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js', [], '4.4.7', true);
         }
+        if (strpos($hook, 'wpz-categories') !== false || strpos($hook, 'wpz-prizes') !== false) {
+            wp_enqueue_media();
+        }
     }
 
     // Pages — delegates to WaterPrize_Pages

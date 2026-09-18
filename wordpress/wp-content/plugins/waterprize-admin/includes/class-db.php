@@ -277,18 +277,18 @@ class WaterPrize_DB {
         return $rows[0] ?? null;
     }
 
-    public function add_category($title, $subtitle, $description, $icon, $color, $sort_order, $is_active = true, $scan_points = 10) {
+    public function add_category($title, $subtitle, $description, $icon, $color, $sort_order, $is_active = true, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '') {
         $qr_code = 'partner_' . time() . '_' . bin2hex(random_bytes(4));
         return $this->insert(
-            'INSERT INTO shop_categories (title, subtitle, description, icon, color, sort_order, is_active, qr_code, scan_points) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [$title, $subtitle, $description, $icon, $color, (int)$sort_order, $is_active, $qr_code, (int)$scan_points]
+            'INSERT INTO shop_categories (title, subtitle, description, icon, image_url, logo_url, color, sort_order, is_active, qr_code, scan_points, website, telegram, info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, $qr_code, (int)$scan_points, $website, $telegram, $info]
         );
     }
 
-    public function update_category($id, $title, $subtitle, $description, $icon, $color, $sort_order, $is_active, $scan_points = 10) {
+    public function update_category($id, $title, $subtitle, $description, $icon, $color, $sort_order, $is_active, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '') {
         return $this->execute(
-            'UPDATE shop_categories SET title=?, subtitle=?, description=?, icon=?, color=?, sort_order=?, is_active=?, scan_points=? WHERE id=?',
-            [$title, $subtitle, $description, $icon, $color, (int)$sort_order, $is_active, (int)$scan_points, (int)$id]
+            'UPDATE shop_categories SET title=?, subtitle=?, description=?, icon=?, image_url=?, logo_url=?, color=?, sort_order=?, is_active=?, scan_points=?, website=?, telegram=?, info=? WHERE id=?',
+            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, (int)$scan_points, $website, $telegram, $info, (int)$id]
         );
     }
 
@@ -578,7 +578,8 @@ class WaterPrize_DB {
                 COALESCE(ps.total_scans, 0) as total_scans,
                 COALESCE(ps.unique_users, 0) as unique_users,
                 COALESCE(ps.total_points, 0) as total_points,
-                COALESCE(ps.last_scan_at, NULL) as last_scan_at
+                COALESCE(ps.last_scan_at, NULL) as last_scan_at,
+                COALESCE(pb.buyers_count, 0) as buyers_count
              FROM shop_categories sc
              LEFT JOIN (
                 SELECT
@@ -590,6 +591,15 @@ class WaterPrize_DB {
                 FROM partner_scans
                 GROUP BY category_id
              ) ps ON ps.category_id = sc.id
+             LEFT JOIN (
+                SELECT
+                    sc2.id as category_id,
+                    COUNT(DISTINCT o.user_id)::int as buyers_count
+                FROM shop_categories sc2
+                JOIN prizes pr ON pr.category_id = sc2.id
+                JOIN orders o ON o.prize_id = pr.id
+                GROUP BY sc2.id
+             ) pb ON pb.category_id = sc.id
              ORDER BY ps.total_scans DESC NULLS LAST"
         );
     }
@@ -634,29 +644,65 @@ class WaterPrize_DB {
         }
 
         $group = "to_char(ps.scanned_at, 'YYYY-MM-DD')";
+        $raw_group = 'YYYY-MM-DD';
 
         if ($period === 'hour') {
             $group = "to_char(ps.scanned_at, 'YYYY-MM-DD HH24:00')";
+            $raw_group = 'YYYY-MM-DD HH24:00';
         } elseif ($period === 'week') {
             $group = "to_char(ps.scanned_at, 'IYYY-IW')";
+            $raw_group = 'IYYY-IW';
         } elseif ($period === 'month') {
             $group = "to_char(ps.scanned_at, 'YYYY-MM')";
+            $raw_group = 'YYYY-MM';
         } elseif ($period === 'year') {
             $group = "to_char(ps.scanned_at, 'YYYY')";
+            $raw_group = 'YYYY';
         }
 
-        return $this->query(
+        $rows = $this->query(
             "SELECT
-                {$group} as label,
+                {$group} as raw_label,
                 COUNT(*)::int as cnt,
                 COUNT(DISTINCT ps.user_id)::int as unique_users,
-                COALESCE(SUM(ps.points_earned), 0)::int as total_points
+                COALESCE(SUM(ps.points_earned), 0)::int as total_points,
+                COUNT(DISTINCT CASE WHEN EXISTS (
+                    SELECT 1 FROM orders o
+                    JOIN prizes pr ON pr.id = o.prize_id
+                    WHERE pr.category_id = ps.category_id AND o.user_id = ps.user_id
+                ) THEN ps.user_id END)::int as buyers_count
              FROM partner_scans ps
              WHERE {$where}
-             GROUP BY label
-             ORDER BY label ASC",
+             GROUP BY raw_label
+             ORDER BY raw_label ASC",
             $params
         );
+
+        $ru_days = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+        $ru_months = ['','Январь','Февраль','Март','Апрель','Май','Июнь',
+                       'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+        foreach ($rows as &$row) {
+            $raw = $row['raw_label'];
+            if ($period === 'hour' && preg_match('/(\d{4})-(\d{2})-(\d{2}) (\d{2}):00/', $raw, $m)) {
+                $ts = mktime((int)$m[4], 0, 0, (int)$m[2], (int)$m[3], (int)$m[1]);
+                $row['label'] = $m[3] . '.' . $m[2] . ' ' . $m[4] . ':00';
+            } elseif ($period === 'day' && preg_match('/(\d{4})-(\d{2})-(\d{2})/', $raw, $m)) {
+                $ts = mktime(0, 0, 0, (int)$m[2], (int)$m[3], (int)$m[1]);
+                $row['label'] = $m[3] . '.' . $m[2] . ' (' . $ru_days[(date('w', $ts) + 6) % 7] . ')';
+            } elseif ($period === 'week' && preg_match('/(\d{4})-(\d{2})/', $raw, $m)) {
+                $row['label'] = 'Нед. ' . ltrim($m[2], '0') . ', ' . $m[1];
+            } elseif ($period === 'month' && preg_match('/(\d{4})-(\d{2})/', $raw, $m)) {
+                $row['label'] = $ru_months[(int)$m[2]] . ' ' . $m[1];
+            } elseif ($period === 'year') {
+                $row['label'] = $raw;
+            } else {
+                $row['label'] = $raw;
+            }
+        }
+        unset($row);
+
+        return $rows;
     }
 
     public function get_top_partners_users($limit = 20) {

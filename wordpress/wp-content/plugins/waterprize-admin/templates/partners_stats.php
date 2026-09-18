@@ -2,11 +2,14 @@
 $total_scans = 0;
 $total_unique = 0;
 $total_points = 0;
+$total_buyers = 0;
 foreach ($summary as $row) {
     $total_scans += $row['total_scans'];
     $total_unique += $row['unique_users'];
     $total_points += $row['total_points'];
+    $total_buyers += $row['buyers_count'];
 }
+$overall_conversion = $total_unique > 0 ? round($total_buyers / $total_unique * 100, 1) : 0;
 ?>
 <div class="wrap">
     <h1>📊 Статистика партнёров</h1>
@@ -32,6 +35,11 @@ foreach ($summary as $row) {
             <div class="wpz-stat-icon">🏪</div>
             <div class="wpz-stat-val"><?php echo count($summary); ?></div>
             <div class="wpz-stat-label">Партнёров</div>
+        </div>
+        <div class="wpz-stat-card wpz-red">
+            <div class="wpz-stat-icon">🎯</div>
+            <div class="wpz-stat-val"><?php echo $overall_conversion; ?>%</div>
+            <div class="wpz-stat-label">Конверсия в покупку</div>
         </div>
     </div>
 
@@ -83,6 +91,8 @@ foreach ($summary as $row) {
                     <th>Баллы за скан</th>
                     <th>Всего сканов</th>
                     <th>Уник. пользователей</th>
+                    <th>Покупателей</th>
+                    <th>Конверсия</th>
                     <th>Баллов начислено</th>
                     <th>Последний скан</th>
                     <th>Действия</th>
@@ -90,7 +100,7 @@ foreach ($summary as $row) {
             </thead>
             <tbody>
                 <?php if (empty($summary)): ?>
-                    <tr><td colspan="8">Нет данных</td></tr>
+                    <tr><td colspan="10">Нет данных</td></tr>
                 <?php else: ?>
                     <?php foreach ($summary as $row): ?>
                         <tr style="<?php echo $row['category_id'] == $category_id ? 'background:#e8f5e9;' : ''; ?>">
@@ -99,6 +109,8 @@ foreach ($summary as $row) {
                             <td><?php echo $row['scan_points']; ?></td>
                             <td><strong><?php echo number_format_i18n($row['total_scans']); ?></strong></td>
                             <td><?php echo number_format_i18n($row['unique_users']); ?></td>
+                            <td><?php echo number_format_i18n($row['buyers_count']); ?></td>
+                            <td><strong><?php echo $row['unique_users'] > 0 ? round($row['buyers_count'] / $row['unique_users'] * 100, 1) . '%' : '—'; ?></strong></td>
                             <td><?php echo number_format_i18n($row['total_points']); ?></td>
                             <td><?php echo $row['last_scan_at'] ? date_i18n('d.m.Y H:i', strtotime($row['last_scan_at'])) : '—'; ?></td>
                             <td>
@@ -186,7 +198,7 @@ foreach ($summary as $row) {
     var currentPeriod = <?php echo json_encode($period); ?>;
     var currentPartner = <?php echo json_encode($category_id); ?>;
 
-    function renderChart(labels, scans, points, users) {
+    function renderChart(labels, scans, points, users, conversion) {
         var ctx = document.getElementById('wpz-ps-chart');
         if (!ctx) return;
         if (!labels.length) {
@@ -206,7 +218,7 @@ foreach ($summary as $row) {
                         borderColor: 'rgba(34,113,177,1)',
                         borderWidth: 1,
                         yAxisID: 'y',
-                        order: 2
+                        order: 3
                     },
                     {
                         label: 'Уник. пользователи',
@@ -219,7 +231,7 @@ foreach ($summary as $row) {
                         pointRadius: 4,
                         borderWidth: 2,
                         yAxisID: 'y',
-                        order: 1
+                        order: 2
                     },
                     {
                         label: 'Баллы',
@@ -231,6 +243,20 @@ foreach ($summary as $row) {
                         tension: 0.3,
                         pointRadius: 4,
                         borderWidth: 2,
+                        yAxisID: 'y1',
+                        order: 1
+                    },
+                    {
+                        label: 'Конверсия в покупку (%)',
+                        data: conversion,
+                        type: 'line',
+                        borderColor: 'rgba(239,68,68,1)',
+                        backgroundColor: 'rgba(239,68,68,0.1)',
+                        fill: false,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        borderWidth: 2,
+                        borderDash: [5, 5],
                         yAxisID: 'y1',
                         order: 0
                     }
@@ -247,7 +273,17 @@ foreach ($summary as $row) {
                         titleFont: { size: 13 },
                         bodyFont: { size: 12 },
                         padding: 10,
-                        cornerRadius: 6
+                        cornerRadius: 6,
+                        callbacks: {
+                            label: function(ctx) {
+                                var label = ctx.dataset.label || '';
+                                var value = ctx.parsed.y;
+                                if (label.indexOf('Конверсия') !== -1) {
+                                    return label + ': ' + value + '%';
+                                }
+                                return label + ': ' + value;
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -267,7 +303,7 @@ foreach ($summary as $row) {
                         position: 'right',
                         grid: { display: false },
                         ticks: { font: { size: 11 } },
-                        title: { display: true, text: 'Баллы' }
+                        title: { display: true, text: 'Баллы / Конверсия (%)' }
                     }
                 }
             }
@@ -286,14 +322,17 @@ foreach ($summary as $row) {
     }
 
     jQuery(function() {
-        var labels = [], scans = [], points = [], users = [];
+        var labels = [], scans = [], points = [], users = [], conversion = [];
         chartData.forEach(function(d) {
             labels.push(d.label);
             scans.push(d.cnt || 0);
             points.push(d.total_points || 0);
             users.push(d.unique_users || 0);
+            var u = d.unique_users || 0;
+            var b = d.buyers_count || 0;
+            conversion.push(u > 0 ? Math.round(b / u * 1000) / 10 : 0);
         });
-        renderChart(labels, scans, points, users);
+        renderChart(labels, scans, points, users, conversion);
 
         jQuery('.wpz-ps-period').on('click', function() {
             navigate({

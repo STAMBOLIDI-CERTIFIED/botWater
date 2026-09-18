@@ -561,11 +561,20 @@ async function loadPartners() {
 
         g.innerHTML = partnersData.categories.map(function(c, i) {
             var accent = c.color || '#0EA5E9';
+            var iconHtml = c.logo_url ? '<img src="' + esc(c.logo_url) + '">' : (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>');
+            var extra = '';
+            if (c.website || c.telegram) {
+                extra = '<div class="partner-cat-links">';
+                if (c.website) extra += '<span class="partner-cat-link">🌐</span>';
+                if (c.telegram) extra += '<span class="partner-cat-link">✈️</span>';
+                extra += '</div>';
+            }
             return '<div class="partner-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openPartnerCategory(' + c.id + ')">'
                 + '<div class="partner-cat-icon" style="background:' + accent + '18">'
-                + (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>') + '</div>'
+                + iconHtml + '</div>'
                 + '<div class="partner-cat-info"><div class="partner-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
-                + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div></div>'
+                + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div>'
+                + extra + '</div>'
                 + '<div class="partner-cat-arrow">›</div></div>';
         }).join('');
     }
@@ -588,12 +597,34 @@ async function loadPartners() {
         var items = data.items || [];
         var bal = partnersData.balance;
 
+        var logoSrc = cat.logo_url || cat.image_url || '';
         var headerHtml = '<div class="partner-back-btn" onclick="loadPartners()"><span class="bb-icon">‹</span> Назад</div>'
-            + '<div style="text-align:center;padding:6px 0 14px;animation:fadeIn .4s var(--ease-out)">'
-            + (cat.image_url ? '<img src="' + esc(cat.image_url) + '" style="width:72px;height:72px;border-radius:20px;object-fit:cover;margin-bottom:10px;border:2px solid ' + (cat.color || '#0EA5E9') + ';box-shadow:0 0 30px ' + (cat.color || '#0EA5E9') + '20">'
-                : '<div style="font-size:40px;margin-bottom:8px;animation:emojiBounce .6s ease">' + esc(cat.icon) + '</div>')
-            + '<div style="font-size:22px;font-weight:800;color:' + (cat.color || '#0EA5E9') + '">' + esc(cat.title) + '</div>'
-            + '<div style="font-size:13px;color:var(--text-dim);margin-top:4px">' + esc(cat.subtitle) + '</div></div>';
+            + '<div class="partner-detail-header" style="animation:fadeIn .4s var(--ease-out)">';
+
+        if (logoSrc) {
+            headerHtml += '<img src="' + esc(logoSrc) + '" class="partner-detail-logo" style="border-color:' + (cat.color || '#0EA5E9') + ';box-shadow:0 0 30px ' + (cat.color || '#0EA5E9') + '20">';
+        } else {
+            headerHtml += '<div class="partner-detail-emoji">' + esc(cat.icon) + '</div>';
+        }
+
+        headerHtml += '<div class="partner-detail-title" style="color:' + (cat.color || '#0EA5E9') + '">' + esc(cat.title) + '</div>';
+        if (cat.subtitle) {
+            headerHtml += '<div class="partner-detail-sub">' + esc(cat.subtitle) + '</div>';
+        }
+
+        var linksHtml = '';
+        if (cat.website) linksHtml += '<a href="' + esc(cat.website) + '" target="_blank" rel="noopener" class="partner-info-link">🌐 Сайт</a>';
+        if (cat.telegram) linksHtml += '<a href="' + esc(cat.telegram) + '" target="_blank" rel="noopener" class="partner-info-link">✈️ Telegram</a>';
+        if (linksHtml) headerHtml += '<div class="partner-info-links">' + linksHtml + '</div>';
+
+        if (cat.description) {
+            headerHtml += '<div class="partner-detail-desc">' + esc(cat.description) + '</div>';
+        }
+        if (cat.info) {
+            headerHtml += '<div class="partner-detail-info">' + esc(cat.info).replace(/\n/g, '<br>') + '</div>';
+        }
+
+        headerHtml += '</div>';
 
         g.innerHTML = headerHtml;
 
@@ -608,7 +639,7 @@ async function loadPartners() {
             var ok = bal >= p.price_points;
             var missing = Math.max(0, p.price_points - bal);
             return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's">'
-                + (p.image_url ? '<img class="partner-item-img" src="' + esc(p.image_url) + '" onerror="this.style.display=\'none\'">' : '')
+                + (p.image_url ? '<div class="partner-item-img-wrap"><img class="partner-item-img" src="' + esc(p.image_url) + '" onerror="this.parentElement.style.display=\'none\'">' + (ok ? '<div class="partner-item-badge">Доступно</div>' : '') + '</div>' : (ok ? '<div class="partner-item-badge" style="position:static;margin:10px 10px 0">Доступно</div>' : ''))
                 + '<div class="partner-item-body"><div class="partner-item-name">' + esc(p.name) + '</div>'
                 + '<div class="partner-item-desc">' + esc(p.description) + '</div>'
                 + '<div class="partner-item-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
