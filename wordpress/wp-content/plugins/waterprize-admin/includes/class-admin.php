@@ -34,6 +34,7 @@ class WaterPrize_Admin {
         add_submenu_page('waterprize', 'QR-коды', 'QR-коды', 'manage_options', 'wpz-codes', [$this, 'page_codes']);
         add_submenu_page('waterprize', 'Бутылки', 'Бутылки', 'manage_options', 'wpz-bottles', [$this, 'page_bottles']);
         add_submenu_page('waterprize', 'Розыгрыши', 'Розыгрыши', 'manage_options', 'wpz-raffles', [$this, 'page_raffles']);
+        add_submenu_page('waterprize', 'Магазин', 'Магазин', 'manage_options', 'wpz-shop', [$this, 'page_shop']);
         add_submenu_page('waterprize', 'Партнёры', 'Партнёры', 'manage_options', 'wpz-partners', [$this, 'page_partners']);
         add_submenu_page('waterprize', 'Аналитика', 'Аналитика', 'manage_options', 'wpz-analytics', [$this, 'page_analytics']);
         add_submenu_page('waterprize', 'Заказы', 'Заказы', 'manage_options', 'wpz-orders', [$this, 'page_orders']);
@@ -62,6 +63,9 @@ class WaterPrize_Admin {
             wp_enqueue_script('chartjs', 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js', [], '4.4.7', true);
             wp_enqueue_media();
         }
+        if (strpos($hook, 'wpz-shop') !== false) {
+            wp_enqueue_media();
+        }
     }
 
     // Pages — delegates to WaterPrize_Pages
@@ -71,6 +75,7 @@ class WaterPrize_Admin {
     public function page_bottles()   { WaterPrize_Pages::bottles(); }
     public function page_raffles()   { WaterPrize_Pages::raffles(); }
     public function page_partners()  { WaterPrize_Pages::partners(); }
+    public function page_shop()      { WaterPrize_Pages::shop(); }
     public function page_analytics()  { WaterPrize_Pages::analytics(); }
     public function page_orders()    { WaterPrize_Pages::orders(); }
     public function page_admins()    { WaterPrize_Pages::admins(); }

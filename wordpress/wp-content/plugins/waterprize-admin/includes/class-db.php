@@ -277,6 +277,11 @@ class WaterPrize_DB {
         return $rows[0] ?? null;
     }
 
+    public function get_category_by_title($title) {
+        $rows = $this->query('SELECT * FROM shop_categories WHERE title = ?', [$title]);
+        return $rows[0] ?? null;
+    }
+
     public function add_category($title, $subtitle, $description, $icon, $color, $sort_order, $is_active = true, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '') {
         $qr_code = 'partner_' . time() . '_' . bin2hex(random_bytes(4));
         return $this->insert(
