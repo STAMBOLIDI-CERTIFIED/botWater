@@ -634,13 +634,11 @@ class WaterPrize_DB {
         }
 
         $group = "to_char(ps.scanned_at, 'YYYY-MM-DD')";
-        $order = 'period';
 
         if ($period === 'hour') {
             $group = "to_char(ps.scanned_at, 'YYYY-MM-DD HH24:00')";
         } elseif ($period === 'week') {
             $group = "to_char(ps.scanned_at, 'IYYY-IW')";
-            $order = 'period';
         } elseif ($period === 'month') {
             $group = "to_char(ps.scanned_at, 'YYYY-MM')";
         } elseif ($period === 'year') {
@@ -655,8 +653,8 @@ class WaterPrize_DB {
                 COALESCE(SUM(ps.points_earned), 0)::int as total_points
              FROM partner_scans ps
              WHERE {$where}
-             GROUP BY {$order}
-             ORDER BY {$order} ASC",
+             GROUP BY label
+             ORDER BY label ASC",
             $params
         );
     }
