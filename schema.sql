@@ -84,11 +84,15 @@ CREATE TABLE IF NOT EXISTS shop_categories (
     description TEXT DEFAULT '',
     icon VARCHAR(10) DEFAULT '🎁',
     image_url TEXT DEFAULT '',
+    logo_url TEXT DEFAULT '',
     color VARCHAR(20) DEFAULT '#C9A84C',
     sort_order INT DEFAULT 0,
     is_active BOOLEAN DEFAULT TRUE,
     qr_code TEXT DEFAULT '',
     scan_points INTEGER DEFAULT 10,
+    website TEXT DEFAULT '',
+    telegram TEXT DEFAULT '',
+    info TEXT DEFAULT '',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

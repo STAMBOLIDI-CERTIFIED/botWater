@@ -23,6 +23,21 @@
                         <code><?php echo esc_html($edit_category['color']); ?></code>
                     </td></tr>
                     <tr><th>Баллы за скан</th><td><strong><?php echo esc_html($edit_category['scan_points'] ?? 10); ?></strong> баллов</td></tr>
+                    <?php if (!empty($edit_category['logo_url'])): ?>
+                        <tr><th>Логотип</th><td><img src="<?php echo esc_url($edit_category['logo_url']); ?>" style="max-width:80px;max-height:80px;border-radius:8px;object-fit:cover;"></td></tr>
+                    <?php endif; ?>
+                    <?php if (!empty($edit_category['image_url'])): ?>
+                        <tr><th>Обложка</th><td><img src="<?php echo esc_url($edit_category['image_url']); ?>" style="max-width:200px;max-height:100px;border-radius:8px;object-fit:cover;"></td></tr>
+                    <?php endif; ?>
+                    <?php if (!empty($edit_category['website'])): ?>
+                        <tr><th>Сайт</th><td><a href="<?php echo esc_url($edit_category['website']); ?>" target="_blank"><?php echo esc_html($edit_category['website']); ?></a></td></tr>
+                    <?php endif; ?>
+                    <?php if (!empty($edit_category['telegram'])): ?>
+                        <tr><th>Telegram</th><td><a href="<?php echo esc_url($edit_category['telegram']); ?>" target="_blank"><?php echo esc_html($edit_category['telegram']); ?></a></td></tr>
+                    <?php endif; ?>
+                    <?php if (!empty($edit_category['info'])): ?>
+                        <tr><th>Доп. информация</th><td><?php echo nl2br(esc_html($edit_category['info'])); ?></td></tr>
+                    <?php endif; ?>
                     <tr><th>Статус</th><td>
                         <?php if ($edit_category['is_active']): ?>
                             <span style="color:#00a32a;">✅ Активен</span>
@@ -119,6 +134,53 @@
                         <span class="description">баллов получает пользователь при первом сканировании QR</span>
                     </td>
                 </tr>
+                <tr>
+                    <th><label for="logo_url">Логотип</label></th>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <input type="text" id="logo_url" name="logo_url" class="regular-text"
+                                   value="<?php echo esc_attr($edit_category['logo_url'] ?? ''); ?>"
+                                   placeholder="URL логотипа">
+                            <button type="button" class="button wpz-upload-btn" data-target="logo_url">📁 Загрузить</button>
+                        </div>
+                        <?php if (!empty($edit_category['logo_url'])): ?>
+                            <div style="margin-top:8px;"><img src="<?php echo esc_url($edit_category['logo_url']); ?>" style="max-width:80px;max-height:80px;border-radius:8px;object-fit:cover;"></div>
+                        <?php endif; ?>
+                        <span class="description">Логотип партнёра (отображается в каталоге)</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="image_url">Обложка</label></th>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <input type="text" id="image_url" name="image_url" class="regular-text"
+                                   value="<?php echo esc_attr($edit_category['image_url'] ?? ''); ?>"
+                                   placeholder="URL обложки">
+                            <button type="button" class="button wpz-upload-btn" data-target="image_url">📁 Загрузить</button>
+                        </div>
+                        <?php if (!empty($edit_category['image_url'])): ?>
+                            <div style="margin-top:8px;"><img src="<?php echo esc_url($edit_category['image_url']); ?>" style="max-width:200px;max-height:100px;border-radius:8px;object-fit:cover;"></div>
+                        <?php endif; ?>
+                        <span class="description">Баннер/обложка партнёра (отображается на странице партнёра)</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="website">Сайт</label></th>
+                    <td><input type="url" id="website" name="website" class="regular-text"
+                               value="<?php echo esc_attr($edit_category['website'] ?? ''); ?>"
+                               placeholder="https://example.com"></td>
+                </tr>
+                <tr>
+                    <th><label for="telegram">Telegram</label></th>
+                    <td><input type="url" id="telegram" name="telegram" class="regular-text"
+                               value="<?php echo esc_attr($edit_category['telegram'] ?? ''); ?>"
+                               placeholder="https://t.me/channel"></td>
+                </tr>
+                <tr>
+                    <th><label for="info">Доп. информация</label></th>
+                    <td><textarea id="info" name="info" class="large-text" rows="4"
+                                  placeholder="Адрес, режим работы, телефон и т.д."><?php echo esc_textarea($edit_category['info'] ?? ''); ?></textarea></td>
+                </tr>
             </table>
 
             <p class="submit">
@@ -159,7 +221,13 @@
                 <?php else: foreach ($categories as $c): ?>
                     <tr>
                         <td><?php echo esc_html($c['id']); ?></td>
-                        <td style="font-size:24px;text-align:center;"><?php echo esc_html($c['icon']); ?></td>
+                        <td style="text-align:center;">
+                            <?php if (!empty($c['logo_url'])): ?>
+                                <img src="<?php echo esc_url($c['logo_url']); ?>" style="width:36px;height:36px;border-radius:8px;object-fit:cover;">
+                            <?php else: ?>
+                                <span style="font-size:24px;"><?php echo esc_html($c['icon']); ?></span>
+                            <?php endif; ?>
+                        </td>
                         <td><strong><?php echo esc_html($c['title']); ?></strong></td>
                         <td><?php echo esc_html($c['subtitle'] ?: '—'); ?></td>
                         <td>
@@ -241,5 +309,33 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         bindCopy('.wpz-qr-copy-icon', '✅', '🔗');
+
+        document.querySelectorAll('.wpz-upload-btn').forEach(function(btn){
+            btn.addEventListener('click', function(e){
+                e.preventDefault();
+                var targetId = btn.getAttribute('data-target');
+                var input = document.getElementById(targetId);
+                var frame = wp.media({
+                    title: 'Выберите изображение',
+                    button: { text: 'Использовать' },
+                    multiple: false,
+                    library: { type: 'image' }
+                });
+                frame.on('select', function(){
+                    var attachment = frame.state().get('selection').first().toJSON();
+                    input.value = attachment.url;
+                    var existing = input.parentElement.parentElement.querySelector('img');
+                    if (existing) {
+                        existing.src = attachment.url;
+                    } else {
+                        var preview = document.createElement('div');
+                        preview.style.marginTop = '8px';
+                        preview.innerHTML = '<img src="' + attachment.url + '" style="max-width:200px;max-height:100px;border-radius:8px;object-fit:cover;">';
+                        input.parentElement.parentElement.appendChild(preview);
+                    }
+                });
+                frame.open();
+            });
+        });
     })();
 </script>

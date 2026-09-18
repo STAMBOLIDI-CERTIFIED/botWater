@@ -142,7 +142,12 @@ class WaterPrize_Pages {
                     sanitize_text_field($_POST['color'] ?? '#2271b1'),
                     (int)($_POST['sort_order'] ?? 0),
                     isset($_POST['is_active']),
-                    (int)($_POST['scan_points'] ?? 10)
+                    (int)($_POST['scan_points'] ?? 10),
+                    esc_url_raw($_POST['image_url'] ?? ''),
+                    esc_url_raw($_POST['logo_url'] ?? ''),
+                    esc_url_raw($_POST['website'] ?? ''),
+                    esc_url_raw($_POST['telegram'] ?? ''),
+                    sanitize_textarea_field($_POST['info'] ?? '')
                 );
                 wp_redirect(admin_url('admin.php?page=wpz-categories&msg=' . urlencode('Партнёр добавлен')));
                 exit;
@@ -157,7 +162,12 @@ class WaterPrize_Pages {
                     sanitize_text_field($_POST['color'] ?? '#2271b1'),
                     (int)($_POST['sort_order'] ?? 0),
                     isset($_POST['is_active']),
-                    (int)($_POST['scan_points'] ?? 10)
+                    (int)($_POST['scan_points'] ?? 10),
+                    esc_url_raw($_POST['image_url'] ?? ''),
+                    esc_url_raw($_POST['logo_url'] ?? ''),
+                    esc_url_raw($_POST['website'] ?? ''),
+                    esc_url_raw($_POST['telegram'] ?? ''),
+                    sanitize_textarea_field($_POST['info'] ?? '')
                 );
                 wp_redirect(admin_url('admin.php?page=wpz-categories&msg=' . urlencode('Партнёр обновлён')));
                 exit;
