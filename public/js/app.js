@@ -462,19 +462,38 @@ function switchHistoryTab(tab) {
 async function loadShop() {
         const d = await apiFetch('/user?user_id=' + getUID());
         document.getElementById('shop-balance-val').textContent = d ? d.balance : '—';
-        const cats = await apiFetch('/shop/categories');
         const g = document.getElementById('shop-categories');
-        if (!cats || !cats.length) { g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Категории пока пусты</div></div>'; return; }
-        var shopCats = cats.filter(c => c.is_active && c.title === 'Истокъ');
-        if (!shopCats.length) { g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Товары пока отсутствуют</div></div>'; return; }
-        g.innerHTML = shopCats.map(function(c, i) {
-            var accent = c.color || '#C9A84C';
-            return '<div class="shop-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openShopCategory(' + c.id + ')">'
-                + '<div class="shop-cat-icon-wrap" style="background:' + accent + '18">'
-                + (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>') + '</div>'
-                + '<div class="shop-cat-info"><div class="shop-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
-                + '<div class="shop-cat-sub">' + esc(c.subtitle) + '</div></div>'
-                + '<div class="shop-cat-arrow">›</div></div>';
+
+        const cats = await apiFetch('/shop/categories');
+        if (!cats || !cats.length) { g.style.display = ''; g.style.gridTemplateColumns = ''; g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Магазин пуст</div><div class="empty-d">Товары скоро появятся</div></div>'; return; }
+        var shopCat = cats.find(c => c.is_active && c.title === 'Истокъ');
+        if (!shopCat) { g.style.display = ''; g.style.gridTemplateColumns = ''; g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Товары пока отсутствуют</div></div>'; return; }
+
+        g.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text-dim)">' + icon('hourglass') + ' Загрузка товаров...</div>';
+
+        const data = await apiFetch('/shop/categories/' + shopCat.id);
+        if (!data || !data.items || !data.items.length) { g.style.display = ''; g.style.gridTemplateColumns = ''; g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Товаров пока нет</div><div class="empty-d">Скоро здесь появятся призы</div></div>'; return; }
+
+        var items = data.items;
+        var accent = shopCat.color || '#C9A84C';
+        var bal = d ? d.balance : 0;
+
+        g.style.display = 'grid';
+        g.style.gridTemplateColumns = '1fr 1fr';
+        g.style.gap = '10px';
+        g.style.flexDirection = '';
+        g.innerHTML = items.map(function(p, i) {
+            var ok = bal >= p.price_points;
+            var missing = Math.max(0, p.price_points - bal);
+            return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's">'
+                + (p.image_url ? '<img class="shop-prize-img" src="' + esc(p.image_url) + '" onerror="this.style.display=\'none\'">' : '')
+                + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
+                + '<div class="shop-prize-desc">' + esc(p.description) + '</div>'
+                + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
+                + (ok
+                    ? '<button class="shop-prize-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                    : '<button class="shop-prize-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
+                + '</div></div>';
         }).join('');
     }
 
