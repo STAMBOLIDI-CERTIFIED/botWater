@@ -316,6 +316,12 @@ async def api_partner_scan(request: Request):
 
     result = await db.process_partner_scan(user_id, qr_code)
     if not result.get("ok"):
-        status = 404 if result.get("error") == "partner_not_found" else 400
+        error = result.get("error", "")
+        if error == "partner_not_found":
+            status = 404
+        elif error == "already_scanned":
+            status = 409
+        else:
+            status = 400
         return JSONResponse(result, status_code=status)
     return result

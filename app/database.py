@@ -551,8 +551,20 @@ class Database:
         if not user:
             return {"ok": False, "error": "user_not_found"}
 
+        existing = await self._fetch_one("partner_scans",
+            f"user_id=eq.{user['id']}&qr_code=eq.{qr_code}")
+        if existing:
+            return {"ok": False, "error": "already_scanned"}
+
         scan_points = category.get("scan_points") or 10
         partner_name = category.get("title", "Партнёр")
+
+        await self._fetch("partner_scans", method="POST", json_data={
+            "user_id": user["id"],
+            "qr_code": qr_code,
+            "category_id": category.get("id"),
+            "points_earned": scan_points,
+        })
 
         await self.add_balance(telegram_id, scan_points, "partner_scan", f"Сканирование QR партнёра «{partner_name}»")
         await self.add_tree_xp(telegram_id, scan_points)
