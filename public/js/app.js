@@ -799,11 +799,11 @@ function startScan() {
         if (partnerCode) {
             var partnerResult = await processPartnerScan(partnerCode);
             if (partnerResult && partnerResult.ok) {
-                document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + partnerResult.partner_name + '»! Баланс: ' + partnerResult.balance;
+                document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + esc(partnerResult.partner_name) + '»! Баланс: ' + partnerResult.balance;
             } else if (partnerResult && partnerResult.error === 'already_scanned') {
-                document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' Вы уже сканировали этот QR-код';
+                document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' Вы уже сканировали этот QR-код';
             } else {
-                document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' ' + (partnerResult ? partnerResult.error || 'Ошибка' : 'Партнёр не найден');
+                document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' ' + (partnerResult ? esc(partnerResult.error || 'Ошибка') : 'Партнёр не найден');
             }
         } else {
             var uid = getUID();
@@ -813,11 +813,11 @@ function startScan() {
                     const res = await r.json();
                     if (res.ok) {
                         document.getElementById('top-balance').textContent = res.balance;
-                        document.getElementById('scan-data').textContent = data + '\n\n' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
+                        document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
                     } else {
-                        document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' ' + (res.error || 'Ошибка');
+                        document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' ' + esc(res.error || 'Ошибка');
                     }
-                } catch (e) { document.getElementById('scan-data').textContent = data + '\n\n' + icon('warning') + ' Ошибка сети'; }
+                } catch (e) { document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' Ошибка сети'; }
             }
         }
         tg.sendData(data);
