@@ -522,8 +522,8 @@ async function loadShop() {
             var ok = bal >= p.price_points;
             var missing = Math.max(0, p.price_points - bal);
             var imgHtml = p.image_url
-                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon(\'store\') + '</div>\'">'
-                : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
+                ? '<div class="shop-prize-img-wrap"><img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-prize-img-fallback" style="display:none">' + icon('store') + '</div></div>'
+                : '<div class="shop-prize-img-wrap"><div class="shop-prize-img-fallback">' + icon('store') + '</div></div>';
             var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
             return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
                 + imgHtml
@@ -570,8 +570,8 @@ async function loadShop() {
             const ok = bal >= p.price_points;
             const missing = Math.max(0, p.price_points - bal);
             var imgHtml = p.image_url
-                ? '<img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.outerHTML=\'<div class=shop-prize-img-fallback>' + icon(\'store\') + '</div>\'">'
-                : '<div class="shop-prize-img-fallback">' + icon('store') + '</div>';
+                ? '<div class="shop-prize-img-wrap"><img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-prize-img-fallback" style="display:none">' + icon('store') + '</div></div>'
+                : '<div class="shop-prize-img-wrap"><div class="shop-prize-img-fallback">' + icon('store') + '</div></div>';
             var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
             return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
                 + imgHtml
