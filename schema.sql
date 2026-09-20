@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS users (
     passport_inn TEXT DEFAULT '',
     gift_opened BOOLEAN DEFAULT FALSE,
     gift_points INTEGER DEFAULT 0,
+    is_banned BOOLEAN DEFAULT FALSE,
+    ban_reason TEXT DEFAULT '',
+    banned_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );

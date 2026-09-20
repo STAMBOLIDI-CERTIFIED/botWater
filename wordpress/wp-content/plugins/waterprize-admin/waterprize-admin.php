@@ -24,6 +24,17 @@ add_action('init', function () {
     WaterPrize_API::instance();
 });
 
+// Auto-migrate DB columns on admin load
+add_action('admin_init', function () {
+    if (!get_option('wpz_migration_ban_columns')) {
+        $db = WaterPrize_DB::instance();
+        $db->execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_banned BOOLEAN DEFAULT FALSE");
+        $db->execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS ban_reason TEXT DEFAULT ''");
+        $db->execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ");
+        update_option('wpz_migration_ban_columns', true);
+    }
+});
+
 add_action('wp_ajax_wpz_online', function () {
     if (!current_user_can('manage_options')) {
         wp_send_json_error('no permission');

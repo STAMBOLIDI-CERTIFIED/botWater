@@ -65,6 +65,7 @@
     border-radius: 10px;
     padding: 20px;
     margin: 16px 0;
+    overflow: hidden;
 }
 .wpz-card h2 {
     font-size: 15px; font-weight: 600;
@@ -432,4 +433,29 @@
 /* ─── Welcome bonus fields toggle ─── */
 .wpz-bonus-field {
     display: none;
+}
+
+/* ─── Responsive: mobile-friendly ─── */
+@media (max-width: 782px) {
+    .wpz-stats-grid {
+        grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+        gap: 8px;
+    }
+    .wpz-stat-card { padding: 12px 8px; }
+    .wpz-stat-val { font-size: 22px; }
+    .wpz-stat-icon { font-size: 20px; }
+    .wpz-stat-label { font-size: 10px; }
+
+    .wpz-card { padding: 14px; margin: 10px 0; }
+    .wpz-card h2 { font-size: 14px; }
+
+    .wrap > div[style*="grid-template-columns:2fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    .wpz-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .wpz-table-wrap table { min-width: 700px; }
+
+    .wpz-search-form { flex-direction: column; }
+    .wpz-search-form input[type="search"] { width: 100%; min-width: 0 !important; }
 }

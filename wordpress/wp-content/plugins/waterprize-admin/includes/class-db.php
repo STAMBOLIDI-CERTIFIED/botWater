@@ -124,6 +124,81 @@ class WaterPrize_DB {
         return $this->execute('UPDATE users SET balance = ? WHERE telegram_id = ?', [$new, (int)$telegram_id]);
     }
 
+    public function get_users_stats() {
+        $row = $this->query("SELECT
+            COUNT(*)::int as total,
+            COUNT(*) FILTER (WHERE balance > 0)::int as with_balance,
+            COALESCE(SUM(balance), 0)::int as total_balance,
+            COALESCE(AVG(balance), 0)::int as avg_balance,
+            COUNT(*) FILTER (WHERE phone != '')::int as with_phone,
+            COUNT(*) FILTER (WHERE passport_fio != '')::int as with_passport,
+            COUNT(*) FILTER (WHERE tree_level > 1)::int as above_level1,
+            COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 day')::int as new_today,
+            COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int as new_week,
+            COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days')::int as new_month,
+            COUNT(*) FILTER (WHERE updated_at > NOW() - INTERVAL '15 minutes')::int as online,
+            COUNT(*) FILTER (WHERE is_banned = TRUE)::int as banned
+        FROM users");
+        return $row[0] ?? [];
+    }
+
+    public function get_users_registrations_chart($days = 30) {
+        return $this->query(
+            "SELECT TO_CHAR(DATE(created_at), 'DD.MM') as day, COUNT(*)::int as cnt
+             FROM users
+             WHERE created_at > NOW() - INTERVAL '{$days} days'
+             GROUP BY DATE(created_at)
+             ORDER BY DATE(created_at)"
+        );
+    }
+
+    public function get_top_balances($limit = 5) {
+        return $this->query(
+            "SELECT name, telegram_id, balance, tree_level
+             FROM users WHERE balance > 0
+             ORDER BY balance DESC LIMIT " . (int)$limit
+        );
+    }
+
+    public function get_users_by_level() {
+        return $this->query(
+            "SELECT tree_level, COUNT(*)::int as cnt
+             FROM users GROUP BY tree_level ORDER BY tree_level"
+        );
+    }
+
+    // ─── User Management (Ban/Unban/Delete) ─────────────
+    public function ban_user($telegram_id, $reason = '') {
+        return $this->execute(
+            'UPDATE users SET is_banned = TRUE, ban_reason = ?, banned_at = NOW() WHERE telegram_id = ?',
+            [$reason, (int)$telegram_id]
+        );
+    }
+
+    public function unban_user($telegram_id) {
+        return $this->execute(
+            'UPDATE users SET is_banned = FALSE, ban_reason = \'\', banned_at = NULL WHERE telegram_id = ?',
+            [(int)$telegram_id]
+        );
+    }
+
+    public function delete_user($telegram_id) {
+        $user = $this->get_user($telegram_id);
+        if (!$user) return false;
+        $uid = $user['id'];
+        $this->execute('DELETE FROM points_log WHERE user_id = ?', [$uid]);
+        $this->execute('DELETE FROM notifications WHERE user_id = ?', [$uid]);
+        $this->execute('DELETE FROM scans WHERE user_id = ?', [$uid]);
+        $this->execute('DELETE FROM orders WHERE user_id = ?', [$uid]);
+        $this->execute('DELETE FROM user_qr_activations WHERE user_id = ?', [$uid]);
+        return $this->execute('DELETE FROM users WHERE id = ?', [$uid]);
+    }
+
+    public function count_users_banned() {
+        $row = $this->query("SELECT COUNT(*) as cnt FROM users WHERE is_banned = TRUE");
+        return $row[0]['cnt'] ?? 0;
+    }
+
     // ─── QR Codes ─────────────────────────────────────
     public function get_codes($limit = 200, $offset = 0) {
         return $this->query('SELECT * FROM qr_codes ORDER BY id DESC LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset);

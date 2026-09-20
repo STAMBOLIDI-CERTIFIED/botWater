@@ -41,6 +41,49 @@ class WaterPrize_Pages {
                 }
                 exit;
 
+            case 'ban_user':
+                $tg = (int)($_POST['telegram_id'] ?? 0);
+                $reason = sanitize_text_field($_POST['ban_reason'] ?? '');
+                if ($tg) {
+                    $user = $db->get_user($tg);
+                    if ($user) {
+                        $db->ban_user($tg, $reason);
+                        $uname = $user['name'] ?: $tg;
+                        wp_redirect(admin_url('admin.php?page=wpz-users&msg=' . urlencode("Пользователь {$uname} заблокирован")));
+                    } else {
+                        wp_redirect(admin_url('admin.php?page=wpz-users&err=1&msg=' . urlencode('Пользователь не найден')));
+                    }
+                }
+                exit;
+
+            case 'unban_user':
+                $tg = (int)($_POST['telegram_id'] ?? 0);
+                if ($tg) {
+                    $user = $db->get_user($tg);
+                    if ($user) {
+                        $db->unban_user($tg);
+                        $uname = $user['name'] ?: $tg;
+                        wp_redirect(admin_url('admin.php?page=wpz-users&msg=' . urlencode("Пользователь {$uname} разблокирован")));
+                    } else {
+                        wp_redirect(admin_url('admin.php?page=wpz-users&err=1&msg=' . urlencode('Пользователь не найден')));
+                    }
+                }
+                exit;
+
+            case 'delete_user':
+                $tg = (int)($_POST['telegram_id'] ?? 0);
+                if ($tg) {
+                    $user = $db->get_user($tg);
+                    if ($user) {
+                        $db->delete_user($tg);
+                        $uname = $user['name'] ?: $tg;
+                        wp_redirect(admin_url('admin.php?page=wpz-users&msg=' . urlencode("Пользователь {$uname} удалён")));
+                    } else {
+                        wp_redirect(admin_url('admin.php?page=wpz-users&err=1&msg=' . urlencode('Пользователь не найден')));
+                    }
+                }
+                exit;
+
             case 'add_codes':
                 $codes_text = sanitize_textarea_field($_POST['codes'] ?? '');
                 $batch = sanitize_text_field($_POST['batch'] ?? '');
@@ -277,9 +320,9 @@ class WaterPrize_Pages {
 
         switch ($type) {
             case 'users':
-                fputcsv($out, ['ID', 'Telegram ID', 'Имя', 'Username', 'Телефон', 'Баланс', 'XP', 'Уровень', 'Дата регистрации'], ';');
+                fputcsv($out, ['ID', 'Telegram ID', 'Имя', 'Username', 'Телефон', 'Баланс', 'XP', 'Уровень', 'Забанен', 'Причина бана', 'Дата'], ';');
                 foreach ($db->get_users('', 10000) as $r) {
-                    fputcsv($out, [$r['id'], $r['telegram_id'], $r['name'], $r['username'], $r['phone'], $r['balance'], $r['tree_xp'], $r['tree_level'], $r['created_at']], ';');
+                    fputcsv($out, [$r['id'], $r['telegram_id'], $r['name'], $r['username'], $r['phone'], $r['balance'], $r['tree_xp'], $r['tree_level'], $r['is_banned'] ? 'Да' : 'Нет', $r['ban_reason'] ?? '', $r['created_at']], ';');
                 }
                 break;
             case 'points':
@@ -314,6 +357,11 @@ class WaterPrize_Pages {
         $total = self::db()->count_users($search);
         $users = self::db()->get_users($search, $per_page, $offset);
         $total_pages = ceil($total / $per_page);
+        $stats = self::db()->get_users_stats();
+        $reg_chart = self::db()->get_users_registrations_chart(30);
+        $top_balances = self::db()->get_top_balances(5);
+        $by_level = self::db()->get_users_by_level();
+        $banned_count = self::db()->count_users_banned();
         include __DIR__ . '/../templates/users.php';
     }
 
