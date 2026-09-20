@@ -135,6 +135,13 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode($msg)));
                 exit;
 
+            case 'save_splash_logo':
+                $url = esc_url_raw($_POST['splash_logo_url'] ?? '');
+                $db->set_setting('splash_logo_url', $url);
+                $msg = $url ? 'Логотип обновлён!' : 'Логотип удалён.';
+                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode($msg)));
+                exit;
+
             case 'update_order_status':
                 $order_id = (int)($_POST['order_id'] ?? 0);
                 $new_status = sanitize_text_field($_POST['new_status'] ?? '');
