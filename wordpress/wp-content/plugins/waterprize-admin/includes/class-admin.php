@@ -45,6 +45,7 @@ class WaterPrize_Admin {
         add_submenu_page('waterprize', 'Чат поддержки', 'Чат поддержки', 'manage_options', 'wpz-support', [$this, 'page_support']);
         add_submenu_page('waterprize', 'Активации QR', 'Активации QR', 'manage_options', 'wpz-qr-activations', [$this, 'page_user_qr_activations']);
         add_submenu_page('waterprize', 'Настройки БД', 'Настройки БД', 'manage_options', 'wpz-settings', [$this, 'page_settings']);
+        add_submenu_page('waterprize', 'Настройки бота', 'Настройки бота', 'manage_options', 'wpz-bot-settings', [$this, 'page_bot_settings']);
     }
 
     public function enqueue_assets($hook) {
@@ -89,6 +90,7 @@ class WaterPrize_Admin {
     public function page_user_qr_activations() { WaterPrize_Pages::user_qr_activations(); }
     public function page_support() { WaterPrize_Pages::support(); }
     public function page_settings()  { WaterPrize_Pages::settings(); }
+    public function page_bot_settings() { WaterPrize_Pages::bot_settings(); }
 
     public static function activate() {}
     public static function deactivate() {}

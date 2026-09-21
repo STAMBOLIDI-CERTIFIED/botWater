@@ -333,6 +333,23 @@ class WaterPrize_Pages {
                 }
                 wp_redirect(admin_url('admin.php?page=wpz-support&chat=' . $chat_id . '&msg=' . urlencode('Ответ отправлен')));
                 exit;
+
+            case 'save_bot_settings':
+                $db = self::db();
+                $reward_keys = ['scan_balance','scan_xp','partner_scan_default','gift_min','gift_max','conversion_multiplier','expired_conversion_multiplier','level_up_bonus','tree_threshold_2','tree_threshold_3','tree_threshold_4','tree_threshold_5','tree_threshold_6'];
+                $message_keys = ['msg_welcome','msg_scan_success_1','msg_scan_success_2','msg_gift_prompt','msg_balance','msg_stats','msg_donation_success','msg_exchange_success','msg_level_up'];
+                foreach ($reward_keys as $k) {
+                    if (isset($_POST[$k])) {
+                        $db->set_setting($k, sanitize_text_field($_POST[$k]));
+                    }
+                }
+                foreach ($message_keys as $k) {
+                    if (isset($_POST[$k])) {
+                        $db->set_setting($k, wp_kses_post($_POST[$k]));
+                    }
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-bot-settings&msg=' . urlencode('Настройки бота сохранены')));
+                exit;
         }
     }
 
@@ -524,6 +541,11 @@ class WaterPrize_Pages {
     // ─── Settings ─────────────────────────────────────
     public static function settings() {
         include __DIR__ . '/../templates/settings.php';
+    }
+
+    // ─── Bot Settings ────────────────────────────────
+    public static function bot_settings() {
+        include __DIR__ . '/../templates/bot-settings.php';
     }
 
     // ─── Unified Partners Page ────────────────────────
