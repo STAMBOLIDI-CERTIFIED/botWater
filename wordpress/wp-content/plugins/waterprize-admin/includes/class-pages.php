@@ -273,6 +273,46 @@ class WaterPrize_Pages {
                 $db->delete_prize((int)($_POST['prize_id'] ?? 0));
                 wp_redirect(admin_url('admin.php?page=wpz-shop&tab=products&msg=' . urlencode('Товар удалён')));
                 exit;
+
+            case 'close_support_chat':
+                $chat_id = (int)($_POST['chat_id'] ?? 0);
+                if ($chat_id) {
+                    $db->close_support_chat($chat_id);
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-support&chat=' . $chat_id . '&msg=' . urlencode('Чат закрыт')));
+                exit;
+
+            case 'reply_support_chat':
+                $chat_id = (int)($_POST['chat_id'] ?? 0);
+                $message = sanitize_textarea_field($_POST['message'] ?? '');
+                if ($chat_id && $message) {
+                    $db->send_support_message($chat_id, 'admin', $message);
+                    try {
+                        $chat = $db->get_support_chat($chat_id);
+                        if ($chat && !empty($chat['user_telegram_id'])) {
+                            $prod_env = file_get_contents(ABSPATH . '../prod.env');
+                            $bot_token = '';
+                            if ($prod_env && preg_match('/BOT_TOKEN=(.+)/', $prod_env, $m)) {
+                                $bot_token = trim($m[1]);
+                            }
+                            if ($bot_token) {
+                                $text = "💬 Ответ поддержки:\n\n" . $message;
+                                wp_remote_post("https://api.telegram.org/bot{$bot_token}/sendMessage", [
+                                    'body' => json_encode([
+                                        'chat_id' => $chat['user_telegram_id'],
+                                        'text' => $text,
+                                    ]),
+                                    'headers' => ['Content-Type' => 'application/json'],
+                                    'timeout' => 10,
+                                ]);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        error_log('Support reply error: ' . $e->getMessage());
+                    }
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-support&chat=' . $chat_id . '&msg=' . urlencode('Ответ отправлен')));
+                exit;
         }
     }
 
@@ -590,5 +630,13 @@ class WaterPrize_Pages {
         $activations = self::db()->get_user_qr_activations(200);
         $total = self::db()->count_user_qr_activations();
         include __DIR__ . '/../templates/user_qr_activations.php';
+    }
+
+    // ─── Support Chat ─────────────────────────────────
+    public static function support() {
+        $db = self::db();
+        $chats = $db->get_support_chats(200);
+        $total = $db->count_support_chats();
+        include __DIR__ . '/../templates/support.php';
     }
 }

@@ -325,3 +325,105 @@ async def api_partner_scan(request: Request):
             status = 400
         return JSONResponse(result, status_code=status)
     return result
+
+
+# ─── Support Chat ─────────────────────────────────────
+
+@router.get("/support/chat")
+async def api_support_chat(user_id: int = 0):
+    if not user_id:
+        return JSONResponse({"error": "missing user_id"}, status_code=400)
+    chat = await db.get_or_create_support_chat(user_id)
+    if not chat:
+        return JSONResponse({"error": "user not found"}, status_code=404)
+    messages = await db.get_support_messages(chat["id"])
+    return {"chat": chat, "messages": messages}
+
+
+@router.post("/support/send")
+async def api_support_send(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    message = body.get("message", "").strip()
+    if not user_id or not message:
+        return JSONResponse({"ok": False, "error": "missing user_id or message"}, status_code=400)
+    chat = await db.get_or_create_support_chat(user_id)
+    if not chat:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+    msg = await db.send_support_message(chat["id"], "user", message)
+    if not msg:
+        return JSONResponse({"ok": False, "error": "failed to send"}, status_code=500)
+
+    try:
+        user = await db.get_user(user_id)
+        admins = await db.get_admins()
+        from ..config import get_settings
+        s = get_settings()
+        admin_ids = list(s.get("ADMIN_IDS", []))
+        if s.get("SUPERADMIN_ID"):
+            admin_ids.append(s["SUPERADMIN_ID"])
+        for a in admins:
+            if a.get("telegram_id") and a["telegram_id"] not in admin_ids:
+                admin_ids.append(a["telegram_id"])
+        if admin_ids:
+            import httpx
+            user_name = user.get("name", "") if user else str(user_id)
+            text = f"💬 Новое сообщение в чате поддержки от {user_name}:\n\n{message}"
+            async with httpx.AsyncClient() as client:
+                for admin_tg_id in admin_ids:
+                    try:
+                        await client.post(
+                            f"https://api.telegram.org/bot{s['BOT_TOKEN']}/sendMessage",
+                            json={"chat_id": admin_tg_id, "text": text}, timeout=10
+                        )
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+    return {"ok": True, "message": msg}
+
+
+@router.get("/support/admin/chats")
+async def api_support_admin_chats():
+    chats = await db.get_all_support_chats()
+    return chats
+
+
+@router.post("/support/admin/reply")
+async def api_support_admin_reply(request: Request):
+    body = await request.json()
+    chat_id = body.get("chat_id", 0)
+    message = body.get("message", "").strip()
+    if not chat_id or not message:
+        return JSONResponse({"ok": False, "error": "missing chat_id or message"}, status_code=400)
+    msg = await db.send_support_message(chat_id, "admin", message)
+    if not msg:
+        return JSONResponse({"ok": False, "error": "failed to send"}, status_code=500)
+
+    try:
+        chat = await db.get_support_chat_with_user(chat_id)
+        if chat and chat.get("user_telegram_id"):
+            from ..config import get_settings
+            s = get_settings()
+            import httpx
+            text = f"💬 Ответ поддержки:\n\n{message}"
+            async with httpx.AsyncClient() as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{s['BOT_TOKEN']}/sendMessage",
+                    json={"chat_id": chat["user_telegram_id"], "text": text}, timeout=10
+                )
+    except Exception:
+        pass
+
+    return {"ok": True, "message": msg}
+
+
+@router.post("/support/admin/close")
+async def api_support_admin_close(request: Request):
+    body = await request.json()
+    chat_id = body.get("chat_id", 0)
+    if not chat_id:
+        return JSONResponse({"ok": False, "error": "missing chat_id"}, status_code=400)
+    await db.close_support_chat(chat_id)
+    return {"ok": True}

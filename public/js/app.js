@@ -88,6 +88,7 @@ const ICONS = {
         tree:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-tree)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-tree" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#66BB6A"/><stop offset="1" stop-color="#2E9E5B"/></linearGradient></defs><path d="M12 13l-2 -2" /><path d="M12 12l2 -2" /><path d="M12 21v-13" /><path d="M9.824 16a3 3 0 0 1 -2.743 -3.69a3 3 0 0 1 .304 -4.833a3 3 0 0 1 4.615 -3.707a3 3 0 0 1 4.614 3.707a3 3 0 0 1 .305 4.833a3 3 0 0 1 -2.919 3.695h-4l-.176 -.005" /></svg>',
         trophy:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-trophy)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-trophy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD54F"/><stop offset="1" stop-color="#FF8F00"/></linearGradient></defs><path d="M8 21l8 0" /><path d="M12 17l0 4" /><path d="M7 4l10 0" /><path d="M17 4v8a5 5 0 0 1 -10 0v-8" /><path d="M3 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /></svg>',
         warning:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-warning)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-warning" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#F57C00"/></linearGradient></defs><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0" /><path d="M12 16h.01" /></svg>',
+        chat:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-chat)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-chat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F59E0B"/><stop offset="1" stop-color="#D97706"/></linearGradient></defs><path d="M21 15a2 2 0 0 1 -2 2h-14l-4 4v-14a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2z" /><path d="M9 10h.01" /><path d="M12 10h.01" /><path d="M15 10h.01" /></svg>',
     };
     function icon(name, cls) {
         var svg = ICONS[name] || '';
@@ -397,6 +398,7 @@ function stopScanner() {
         if (r) r.style.display = 'none';
         var z = document.getElementById('scan-zone');
         if (z) z.style.display = 'block';
+        if (supportPollTimer) { clearInterval(supportPollTimer); supportPollTimer = null; }
     }
 
     function openPage(page) {
@@ -436,6 +438,7 @@ function stopScanner() {
         if (page === 'tree') loadTree();
         if (page === 'bottles') renderBottles();
         if (page === 'gift') {} // gift page is static
+        if (page === 'support') openSupport();
     }
 
     // ═══════════════════════════════════════════
@@ -1148,3 +1151,97 @@ async function loadTree() {
             document.getElementById('tree-container').innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('tree') + '</div><div class="empty-t">Ошибка</div><div class="empty-d">' + e.message + '</div></div>';
         }
     }
+
+    // ═══════════════════════════════════════════
+// PAGE: SUPPORT CHAT
+// ═══════════════════════════════════════════
+
+var supportChatId = null;
+    var supportPollTimer = null;
+
+    async function openSupport() {
+        var uid = getUID();
+        if (!uid) return;
+        var msgsEl = document.getElementById('support-messages');
+        msgsEl.innerHTML = '<div class="support-loading">' + icon('hourglass') + ' Загрузка...</div>';
+
+        try {
+            var d = await apiFetch('/support/chat?user_id=' + uid);
+            if (d && d.chat) {
+                supportChatId = d.chat.id;
+                document.getElementById('support-status').textContent = d.chat.status === 'closed' ? 'Чат закрыт' : 'Отправьте сообщение, и мы ответим вам';
+                renderSupportMessages(d.messages || []);
+            }
+        } catch(e) {
+            msgsEl.innerHTML = '<div class="support-empty"><div class="support-empty-icon">' + icon('warning') + '</div><div class="support-empty-text">Ошибка загрузки</div></div>';
+        }
+
+        if (supportPollTimer) clearInterval(supportPollTimer);
+        supportPollTimer = setInterval(pollSupportMessages, 5000);
+    }
+
+    function renderSupportMessages(messages) {
+        var el = document.getElementById('support-messages');
+        if (!messages.length) {
+            el.innerHTML = '<div class="support-empty"><div class="support-empty-icon">' + icon('question') + '</div><div class="support-empty-text">Напишите нам, и мы ответим в ближайшее время</div></div>';
+            return;
+        }
+        el.innerHTML = messages.map(function(m) {
+            var isUser = m.sender_type === 'user';
+            var time = m.created_at ? new Date(m.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
+            return '<div class="support-msg ' + (isUser ? 'support-msg-user' : 'support-msg-admin') + '">'
+                + '<div class="support-msg-bubble">' + esc(m.message) + '</div>'
+                + '<div class="support-msg-time">' + time + '</div>'
+                + '</div>';
+        }).join('');
+        el.scrollTop = el.scrollHeight;
+    }
+
+    async function sendSupportMessage() {
+        var input = document.getElementById('support-input');
+        var msg = input.value.trim();
+        if (!msg) return;
+        var uid = getUID();
+        if (!uid) return;
+
+        input.value = '';
+        input.disabled = true;
+        document.getElementById('support-send-btn').disabled = true;
+
+        try {
+            var resp = await fetch(API_BASE + '/support/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, message: msg })
+            });
+            var result = await resp.json();
+            if (result.ok) {
+                await pollSupportMessages();
+            }
+        } catch(e) {}
+
+        input.disabled = false;
+        document.getElementById('support-send-btn').disabled = false;
+        input.focus();
+    }
+
+    async function pollSupportMessages() {
+        var uid = getUID();
+        if (!uid || !supportChatId) return;
+        try {
+            var d = await apiFetch('/support/chat?user_id=' + uid);
+            if (d && d.messages) {
+                renderSupportMessages(d.messages);
+                if (d.chat) {
+                    document.getElementById('support-status').textContent = d.chat.status === 'closed' ? 'Чат закрыт' : 'Отправьте сообщение, и мы ответим вам';
+                }
+            }
+        } catch(e) {}
+    }
+
+    document.getElementById('support-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendSupportMessage();
+        }
+    });

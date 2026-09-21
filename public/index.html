@@ -85,6 +85,14 @@
             </div>
             <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(14,165,233,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('store')</div>
         </div>
+        <div class="card card-full anim-in" onclick="openPage('support')" style="--i:3;background:linear-gradient(135deg,var(--glass-bg),rgba(245,158,11,0.06));border-color:rgba(245,158,11,0.2)">
+            <div class="card-left" style="flex:1">
+                <div class="card-tag" style="color:#F59E0B">Поддержка</div>
+                <div class="card-label">Чат с поддержкой</div>
+                <div class="card-desc">Напишите нам, если нужна помощь</div>
+            </div>
+            <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(245,158,11,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('chat')</div>
+        </div>
     </div>
 </div>
 
@@ -289,6 +297,25 @@
     <div id="partners-categories" style="display:flex;flex-direction:column;gap:12px"></div>
     <div id="partners-items" style="display:none">
         <div id="partners-items-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+    </div>
+</div>
+
+<!-- ПОДДЕРЖКА -->
+<div id="page-support" class="page">
+    <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
+    <div class="support-header">
+        <div class="support-header-title">icon('question') Чат поддержки</div>
+        <div class="support-header-sub" id="support-status">Отправьте сообщение, и мы ответим вам</div>
+    </div>
+    <div class="support-messages" id="support-messages">
+        <div class="support-empty">
+            <div class="support-empty-icon">icon('question')</div>
+            <div class="support-empty-text">Напишите нам, и мы ответим в ближайшее время</div>
+        </div>
+    </div>
+    <div class="support-input-wrap">
+        <input class="support-input" id="support-input" type="text" placeholder="Введите сообщение..." maxlength="1000">
+        <button class="support-send-btn" id="support-send-btn" onclick="sendSupportMessage()">icon('bolt')</button>
     </div>
 </div>
 

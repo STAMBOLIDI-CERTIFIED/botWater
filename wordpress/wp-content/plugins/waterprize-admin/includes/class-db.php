@@ -191,6 +191,11 @@ class WaterPrize_DB {
         $this->execute('DELETE FROM scans WHERE user_id = ?', [$uid]);
         $this->execute('DELETE FROM orders WHERE user_id = ?', [$uid]);
         $this->execute('DELETE FROM user_qr_activations WHERE user_id = ?', [$uid]);
+        $chat_ids = $this->query('SELECT id FROM support_chats WHERE user_id = ?', [$uid]);
+        foreach ($chat_ids as $c) {
+            $this->execute('DELETE FROM support_messages WHERE chat_id = ?', [$c['id']]);
+        }
+        $this->execute('DELETE FROM support_chats WHERE user_id = ?', [$uid]);
         return $this->execute('DELETE FROM users WHERE id = ?', [$uid]);
     }
 
@@ -803,5 +808,64 @@ class WaterPrize_DB {
              LIMIT ?",
             [(int)$limit]
         );
+    }
+
+    // ─── Support Chat ─────────────────────────────────
+    public function get_support_chats($limit = 200, $offset = 0) {
+        return $this->query(
+            "SELECT sc.*, u.name as user_name, u.telegram_id as user_telegram_id,
+                    sm.message as last_message, sm.sender_type as last_sender, sm.created_at as last_message_at,
+                    (SELECT COUNT(*)::int FROM support_messages WHERE chat_id = sc.id AND sender_type = 'user') as unread_count
+             FROM support_chats sc
+             LEFT JOIN users u ON sc.user_id = u.id
+             LEFT JOIN support_messages sm ON sm.id = (
+                SELECT id FROM support_messages WHERE chat_id = sc.id ORDER BY created_at DESC LIMIT 1
+             )
+             ORDER BY sc.updated_at DESC
+             LIMIT " . (int)$limit . " OFFSET " . (int)$offset
+        );
+    }
+
+    public function count_support_chats() {
+        $row = $this->query('SELECT COUNT(*) as cnt FROM support_chats');
+        return $row[0]['cnt'] ?? 0;
+    }
+
+    public function get_support_chat($chat_id) {
+        $rows = $this->query(
+            "SELECT sc.*, u.name as user_name, u.telegram_id as user_telegram_id
+             FROM support_chats sc
+             LEFT JOIN users u ON sc.user_id = u.id
+             WHERE sc.id = ?",
+            [(int)$chat_id]
+        );
+        return $rows[0] ?? null;
+    }
+
+    public function get_support_messages($chat_id, $limit = 200) {
+        return $this->query(
+            "SELECT * FROM support_messages WHERE chat_id = ? ORDER BY created_at ASC LIMIT " . (int)$limit,
+            [(int)$chat_id]
+        );
+    }
+
+    public function send_support_message($chat_id, $sender_type, $message) {
+        $id = $this->insert(
+            'INSERT INTO support_messages (chat_id, sender_type, message) VALUES (?, ?, ?)',
+            [(int)$chat_id, $sender_type, $message]
+        );
+        $this->execute('UPDATE support_chats SET updated_at = NOW() WHERE id = ?', [(int)$chat_id]);
+        return $id;
+    }
+
+    public function close_support_chat($chat_id) {
+        return $this->execute('UPDATE support_chats SET status = ? WHERE id = ?', ['closed', (int)$chat_id]);
+    }
+
+    public function count_unread_support_chats() {
+        $row = $this->query(
+            "SELECT COUNT(*) as cnt FROM support_chats WHERE status = 'open'"
+        );
+        return $row[0]['cnt'] ?? 0;
     }
 }

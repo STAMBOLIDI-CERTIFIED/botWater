@@ -1003,6 +1003,63 @@ class Database:
             return True
         return False
 
+    # ─── Support Chat ───────────────────────────────────
+
+    async def get_or_create_support_chat(self, telegram_id: int) -> dict | None:
+        user = await self.get_user(telegram_id)
+        if not user:
+            return None
+        existing = await self._fetch_one("support_chats", f"user_id=eq.{user['id']}&status=eq.open&select=*")
+        if existing:
+            return existing
+        rows = await self._fetch("support_chats", method="POST", json_data={"user_id": user["id"]})
+        return rows[0] if rows else None
+
+    async def get_support_messages(self, chat_id: int, limit: int = 50) -> list[dict]:
+        return await self._fetch("support_messages", f"select=*&chat_id=eq.{chat_id}&order=created_at.asc&limit={limit}")
+
+    async def send_support_message(self, chat_id: int, sender_type: str, message: str) -> dict | None:
+        rows = await self._fetch("support_messages", method="POST", json_data={
+            "chat_id": chat_id,
+            "sender_type": sender_type,
+            "message": message,
+        })
+        await self._fetch("support_chats", f"id=eq.{chat_id}", "PATCH", {"updated_at": datetime.utcnow().isoformat()})
+        return rows[0] if rows else None
+
+    async def get_all_support_chats(self) -> list[dict]:
+        rows = await self._fetch("support_chats", "select=*&order=updated_at.desc")
+        result = []
+        for chat in rows:
+            user = await self.get_user_by_id(chat.get("user_id", 0))
+            last_msg_rows = await self._fetch("support_messages", f"chat_id=eq.{chat['id']}&order=created_at.desc&limit=1")
+            last_msg = last_msg_rows[0] if last_msg_rows else None
+            unread_rows = await self._fetch("support_messages", f"chat_id=eq.{chat['id']}&sender_type=eq.user&select=id")
+            result.append({
+                **chat,
+                "user_name": user.get("name", "") if user else "",
+                "user_telegram_id": user.get("telegram_id", 0) if user else 0,
+                "last_message": last_msg.get("message", "") if last_msg else "",
+                "last_sender": last_msg.get("sender_type", "") if last_msg else "",
+                "last_message_at": str(last_msg.get("created_at", "")) if last_msg else "",
+                "unread_count": len(unread_rows),
+            })
+        return result
+
+    async def get_support_chat_with_user(self, chat_id: int) -> dict | None:
+        chat = await self._fetch_one("support_chats", f"id=eq.{chat_id}&select=*")
+        if not chat:
+            return None
+        user = await self.get_user_by_id(chat.get("user_id", 0))
+        return {
+            **chat,
+            "user_name": user.get("name", "") if user else "",
+            "user_telegram_id": user.get("telegram_id", 0) if user else 0,
+        }
+
+    async def close_support_chat(self, chat_id: int):
+        await self._fetch("support_chats", f"id=eq.{chat_id}", "PATCH", {"status": "closed"})
+
     # ─── Settings ────────────────────────────────────────
 
     async def get_setting(self, key: str) -> str | None:
