@@ -415,7 +415,7 @@ function stopScanner() {
         });
         var nav = document.querySelector('.bottom-nav');
         if (nav) {
-            if (page === 'gift' || page === 'post-gift') {
+            if (page === 'gift' || page === 'post-gift' || page === 'support') {
                 nav.classList.add('nav-hidden');
             } else {
                 nav.classList.remove('nav-hidden');
@@ -1158,22 +1158,73 @@ async function loadTree() {
 
 var supportChatId = null;
     var supportPollTimer = null;
+    var supportLastMsgCount = 0;
+
+    function initSupportIcons() {
+        var avatars = document.querySelectorAll('.support-header-avatar .icn');
+        var emptyIcons = document.querySelectorAll('.support-empty-icon .icn');
+        var sendBtns = document.querySelectorAll('.support-send-btn .icn');
+        avatars.forEach(function(el) { el.innerHTML = ICONS['chat'] ? '<span class="icn">' + ICONS['chat'] + '</span>' : '💬'; });
+        emptyIcons.forEach(function(el) { el.innerHTML = ICONS['chat'] ? '<span class="icn">' + ICONS['chat'] + '</span>' : '💬'; });
+        sendBtns.forEach(function(el) { el.innerHTML = ICONS['bolt'] ? '<span class="icn">' + ICONS['bolt'] + '</span>' : '➤'; });
+    }
+
+    function formatDateSep(dateStr) {
+        var d = new Date(dateStr);
+        var now = new Date();
+        var diff = Math.floor((now - d) / 86400000);
+        if (diff === 0) return 'Сегодня';
+        if (diff === 1) return 'Вчера';
+        return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+    }
+
+    function formatMsgTime(dateStr) {
+        if (!dateStr) return '';
+        return new Date(dateStr).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function shouldShowDateSep(messages, index) {
+        if (index === 0) return true;
+        var prev = new Date(messages[index - 1].created_at);
+        var curr = new Date(messages[index].created_at);
+        return prev.toDateString() !== curr.toDateString();
+    }
+
+    function isConsecutive(messages, index) {
+        if (index === 0) return false;
+        var prev = messages[index - 1];
+        var curr = messages[index];
+        if (prev.sender_type !== curr.sender_type) return false;
+        var diff = new Date(curr.created_at) - new Date(prev.created_at);
+        return diff < 120000;
+    }
 
     async function openSupport() {
         var uid = getUID();
         if (!uid) return;
         var msgsEl = document.getElementById('support-messages');
-        msgsEl.innerHTML = '<div class="support-loading">' + icon('hourglass') + ' Загрузка...</div>';
+        msgsEl.innerHTML = '<div class="support-loading">' + (ICONS['hourglass'] ? '<span class="icn">' + ICONS['hourglass'] + '</span>' : '') + ' Загрузка...</div>';
+
+        initSupportIcons();
 
         try {
             var d = await apiFetch('/support/chat?user_id=' + uid);
             if (d && d.chat) {
                 supportChatId = d.chat.id;
-                document.getElementById('support-status').textContent = d.chat.status === 'closed' ? 'Чат закрыт' : 'Отправьте сообщение, и мы ответим вам';
+                var isClosed = d.chat.status === 'closed';
+                var statusEl = document.getElementById('support-status');
+                if (isClosed) {
+                    statusEl.innerHTML = '<span style="color:var(--red)">Чат закрыт</span>';
+                    document.querySelector('.support-input-wrap').style.display = 'none';
+                } else {
+                    statusEl.innerHTML = '<span class="online-dot"></span><span>Мы онлайн</span>';
+                    document.querySelector('.support-input-wrap').style.display = '';
+                }
                 renderSupportMessages(d.messages || []);
+                supportLastMsgCount = (d.messages || []).length;
             }
         } catch(e) {
-            msgsEl.innerHTML = '<div class="support-empty"><div class="support-empty-icon">' + icon('warning') + '</div><div class="support-empty-text">Ошибка загрузки</div></div>';
+            msgsEl.innerHTML = '<div class="support-empty"><div class="support-empty-icon"><span class="icn">' + (ICONS['warning'] ? ICONS['warning'] : '⚠') + '</span></div><div class="support-empty-text">Ошибка загрузки чата</div></div>';
         }
 
         if (supportPollTimer) clearInterval(supportPollTimer);
@@ -1183,18 +1234,48 @@ var supportChatId = null;
     function renderSupportMessages(messages) {
         var el = document.getElementById('support-messages');
         if (!messages.length) {
-            el.innerHTML = '<div class="support-empty"><div class="support-empty-icon">' + icon('question') + '</div><div class="support-empty-text">Напишите нам, и мы ответим в ближайшее время</div></div>';
+            el.innerHTML = '<div class="support-empty"><div class="support-empty-icon"><span class="icn">' + (ICONS['chat'] ? ICONS['chat'] : '💬') + '</span></div><div class="support-empty-text">Напишите нам — мы ответим <strong>в ближайшее время</strong></div></div>';
             return;
         }
-        el.innerHTML = messages.map(function(m) {
+
+        var html = '';
+        for (var i = 0; i < messages.length; i++) {
+            var m = messages[i];
             var isUser = m.sender_type === 'user';
-            var time = m.created_at ? new Date(m.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) : '';
-            return '<div class="support-msg ' + (isUser ? 'support-msg-user' : 'support-msg-admin') + '">'
-                + '<div class="support-msg-bubble">' + esc(m.message) + '</div>'
-                + '<div class="support-msg-time">' + time + '</div>'
-                + '</div>';
-        }).join('');
-        el.scrollTop = el.scrollHeight;
+            var time = formatMsgTime(m.created_at);
+            var showDate = shouldShowDateSep(messages, i);
+            var consecutive = isConsecutive(messages, i);
+
+            if (showDate) {
+                html += '<div class="support-date-sep"><span>' + formatDateSep(m.created_at) + '</span></div>';
+            }
+
+            html += '<div class="support-msg ' + (isUser ? 'support-msg-user' : 'support-msg-admin') + (consecutive ? ' is-consecutive' : '') + '">';
+
+            if (!isUser && !consecutive) {
+                html += '<div class="support-msg-avatar"><span class="icn">' + (ICONS['shield'] ? ICONS['shield'] : '🛡') + '</span></div>';
+            }
+
+            html += '<div class="support-msg-bubble">' + esc(m.message) + '</div>';
+
+            if (!consecutive) {
+                html += '<div class="support-msg-meta">';
+                html += '<span class="support-msg-sender">' + (isUser ? 'Вы' : 'Поддержка') + '</span>';
+                html += '<span class="support-msg-time">' + time + '</span>';
+                if (isUser) {
+                    html += '<span class="support-msg-status">✓</span>';
+                }
+                html += '</div>';
+            }
+
+            html += '</div>';
+        }
+
+        el.innerHTML = html;
+
+        requestAnimationFrame(function() {
+            el.scrollTop = el.scrollHeight;
+        });
     }
 
     async function sendSupportMessage() {
@@ -1207,6 +1288,19 @@ var supportChatId = null;
         input.value = '';
         input.disabled = true;
         document.getElementById('support-send-btn').disabled = true;
+
+        var msgsEl = document.getElementById('support-messages');
+        var emptyEl = msgsEl.querySelector('.support-empty');
+        if (emptyEl) emptyEl.remove();
+
+        var msgEl = document.createElement('div');
+        msgEl.className = 'support-msg support-msg-user';
+        msgEl.innerHTML = '<div class="support-msg-bubble">' + esc(msg) + '</div>'
+            + '<div class="support-msg-meta"><span class="support-msg-sender">Вы</span>'
+            + '<span class="support-msg-time">' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) + '</span>'
+            + '<span class="support-msg-status">✓</span></div>';
+        msgsEl.appendChild(msgEl);
+        msgsEl.scrollTop = msgsEl.scrollHeight;
 
         try {
             var resp = await fetch(API_BASE + '/support/send', {
@@ -1231,9 +1325,18 @@ var supportChatId = null;
         try {
             var d = await apiFetch('/support/chat?user_id=' + uid);
             if (d && d.messages) {
-                renderSupportMessages(d.messages);
+                if (d.messages.length !== supportLastMsgCount) {
+                    renderSupportMessages(d.messages);
+                    supportLastMsgCount = d.messages.length;
+                }
                 if (d.chat) {
-                    document.getElementById('support-status').textContent = d.chat.status === 'closed' ? 'Чат закрыт' : 'Отправьте сообщение, и мы ответим вам';
+                    var isClosed = d.chat.status === 'closed';
+                    var statusEl = document.getElementById('support-status');
+                    if (isClosed) {
+                        statusEl.innerHTML = '<span style="color:var(--red)">Чат закрыт</span>';
+                    } else {
+                        statusEl.innerHTML = '<span class="online-dot"></span><span>Мы онлайн</span>';
+                    }
                 }
             }
         } catch(e) {}
