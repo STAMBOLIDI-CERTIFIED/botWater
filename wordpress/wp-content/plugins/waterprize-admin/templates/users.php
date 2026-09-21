@@ -155,6 +155,36 @@ $banned_count = $banned_count ?? 0;
         </form>
     </div>
 
+    <!-- ═══ Tree XP Form ═══ -->
+    <div class="wpz-card">
+        <h2>🌳 Начислить опыт для дерева</h2>
+        <p style="margin:0 0 12px;color:#666;font-size:13px;">Уровни: Росток (0) → Саженец (100) → Молодое (500) → Крепкое (1000) → Могучее (2000) → Древо (5000)</p>
+        <form method="post">
+            <?php wp_nonce_field('wpz_action'); ?>
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;">
+                <div style="flex:1;min-width:140px;">
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">Telegram ID</label>
+                    <input type="number" name="telegram_id" required placeholder="Telegram ID"
+                           class="regular-text" style="width:100%;box-sizing:border-box;">
+                </div>
+                <div style="flex:1;min-width:100px;">
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">Опыт (XP)</label>
+                    <input type="number" name="xp_amount" required placeholder="+50 / -10"
+                           class="regular-text" style="width:100%;box-sizing:border-box;">
+                </div>
+                <div style="flex:2;min-width:160px;">
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">Причина</label>
+                    <input type="text" name="xp_reason" placeholder="Причина"
+                           class="regular-text" style="width:100%;box-sizing:border-box;">
+                </div>
+                <div style="flex:0 0 auto;">
+                    <button type="submit" name="action" value="add_tree_xp"
+                            class="button button-primary" style="margin-top:18px;">🌳 Применить</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
     <!-- ═══ Search ═══ -->
     <div class="wpz-card">
         <form method="get" class="wpz-search-form" style="margin-bottom:0;">

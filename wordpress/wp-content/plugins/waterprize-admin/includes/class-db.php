@@ -124,6 +124,19 @@ class WaterPrize_DB {
         return $this->execute('UPDATE users SET balance = ? WHERE telegram_id = ?', [$new, (int)$telegram_id]);
     }
 
+    public function update_tree_xp($telegram_id, $xp) {
+        $user = $this->get_user($telegram_id);
+        if (!$user) return false;
+        $new_xp = max(0, ($user['tree_xp'] ?? 0) + $xp);
+        $new_level = 1;
+        if ($new_xp >= 5000) $new_level = 6;
+        elseif ($new_xp >= 2000) $new_level = 5;
+        elseif ($new_xp >= 1000) $new_level = 4;
+        elseif ($new_xp >= 500) $new_level = 3;
+        elseif ($new_xp >= 100) $new_level = 2;
+        return $this->execute('UPDATE users SET tree_xp = ?, tree_level = ? WHERE telegram_id = ?', [$new_xp, $new_level, (int)$telegram_id]);
+    }
+
     public function get_users_stats() {
         $row = $this->query("SELECT
             COUNT(*)::int as total,

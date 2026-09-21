@@ -41,6 +41,26 @@ class WaterPrize_Pages {
                 }
                 exit;
 
+            case 'add_tree_xp':
+                $tg = (int)($_POST['telegram_id'] ?? 0);
+                $xp = (int)($_POST['xp_amount'] ?? 0);
+                $reason = sanitize_text_field($_POST['xp_reason'] ?? '');
+                if ($tg && $xp) {
+                    $ok = $db->update_tree_xp($tg, $xp);
+                    $user = $db->get_user($tg);
+                    $uname = $user ? $user['name'] : $tg;
+                    if ($user && $xp > 0) {
+                        $db->insert(
+                            'INSERT INTO points_log (user_id, amount, type, description) VALUES (?, ?, ?, ?)',
+                            [$user['id'], $xp, 'admin_xp', $reason ?: 'Начисление опыта администратором']
+                        );
+                    }
+                    wp_redirect(admin_url('admin.php?page=wpz-users&msg=' . urlencode($ok ? "Опыт {$uname} изменён на {$xp} XP (уровень {$user['tree_level']})" : 'Ошибка: пользователь не найден')));
+                } else {
+                    wp_redirect(admin_url('admin.php?page=wpz-users&err=1&msg=' . urlencode('Заполните Telegram ID и количество XP')));
+                }
+                exit;
+
             case 'ban_user':
                 $tg = (int)($_POST['telegram_id'] ?? 0);
                 $reason = sanitize_text_field($_POST['ban_reason'] ?? '');
