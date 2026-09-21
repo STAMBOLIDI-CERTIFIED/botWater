@@ -89,6 +89,7 @@ const ICONS = {
         trophy:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-trophy)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-trophy" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFD54F"/><stop offset="1" stop-color="#FF8F00"/></linearGradient></defs><path d="M8 21l8 0" /><path d="M12 17l0 4" /><path d="M7 4l10 0" /><path d="M17 4v8a5 5 0 0 1 -10 0v-8" /><path d="M3 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 9a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /></svg>',
         warning:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-warning)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-warning" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB74D"/><stop offset="1" stop-color="#F57C00"/></linearGradient></defs><path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0" /><path d="M12 16h.01" /></svg>',
         chat:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-chat)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-chat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F59E0B"/><stop offset="1" stop-color="#D97706"/></linearGradient></defs><path d="M21 15a2 2 0 0 1 -2 2h-14l-4 4v-14a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2z" /><path d="M9 10h.01" /><path d="M12 10h.01" /><path d="M15 10h.01" /></svg>',
+        send:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-send)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-send" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C9A84C"/><stop offset="1" stop-color="#E0C46A"/></linearGradient></defs><path d="M22 2L11 13" /><path d="M22 2L15 22L11 13L2 9L22 2Z" /></svg>',
     };
     function icon(name, cls) {
         var svg = ICONS[name] || '';
@@ -1166,7 +1167,7 @@ var supportChatId = null;
         var sendBtns = document.querySelectorAll('.support-send-btn .icn');
         avatars.forEach(function(el) { el.innerHTML = ICONS['chat'] ? '<span class="icn">' + ICONS['chat'] + '</span>' : '💬'; });
         emptyIcons.forEach(function(el) { el.innerHTML = ICONS['chat'] ? '<span class="icn">' + ICONS['chat'] + '</span>' : '💬'; });
-        sendBtns.forEach(function(el) { el.innerHTML = ICONS['bolt'] ? '<span class="icn">' + ICONS['bolt'] + '</span>' : '➤'; });
+        sendBtns.forEach(function(el) { el.innerHTML = ICONS['send'] ? '<span class="icn">' + ICONS['send'] + '</span>' : '➤'; });
     }
 
     function formatDateSep(dateStr) {
