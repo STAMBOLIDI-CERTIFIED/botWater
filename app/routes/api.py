@@ -187,7 +187,11 @@ async def api_gift_open(request: Request):
     if opened:
         return JSONResponse({"error": "gift already opened"}, status_code=409)
 
-    points = random.choices([10, 15, 25, 50, 100], weights=[35, 30, 20, 10, 5], k=1)[0]
+    gift_min = await db.get_bot_setting_int("gift_min", 10)
+    gift_max = await db.get_bot_setting_int("gift_max", 100)
+    gift_values = [gift_min, int(gift_min * 1.5), int(gift_min * 2.5), int(gift_min * 5), gift_max]
+    gift_weights = [35, 30, 20, 10, 5]
+    points = random.choices(gift_values, weights=gift_weights, k=1)[0]
 
     try:
         await db.mark_gift_opened(user_id, points)
@@ -242,9 +246,11 @@ async def api_scan(request: Request):
         return JSONResponse({"ok": False, "error": "already scanned"}, status_code=409)
 
     await db.assign_bottle(bottle_id, user["id"])
-    await db.add_balance(user_id, 10, "scan", f"Сканирование бутылки {bottle_id}")
-    await db.add_tree_xp(user_id, 10)
-    await db.create_notification(user_id, "scan", "Сканирование", f"+10 баллов за бутылку {bottle_id}", "history")
+    scan_balance = await db.get_bot_setting_int("scan_balance", 10)
+    scan_xp = await db.get_bot_setting_int("scan_xp", 10)
+    await db.add_balance(user_id, scan_balance, "scan", f"Сканирование бутылки {bottle_id}")
+    await db.add_tree_xp(user_id, scan_xp)
+    await db.create_notification(user_id, "scan", "Сканирование", f"+{scan_balance} баллов за бутылку {bottle_id}", "history")
 
     stats = await db.get_user_stats(user_id)
     tree = await db.get_tree_state(user_id)

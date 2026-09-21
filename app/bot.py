@@ -201,25 +201,24 @@ async def apply_persistent_menu(db, chat_id: int):
 
 async def send_balance(db, chat_id: int):
     stats = await db.get_user_stats(chat_id)
-    await send_message(
-        chat_id,
-        f"🪙 <b>Ваш баланс:</b> {stats['balance']} баллов\n"
-        f"📈 Всего сканирований: {stats['total_scans']}",
-    )
+    msg = await db.get_bot_setting("msg_balance",
+        f"🪙 <b>Ваш баланс:</b> {stats['balance']} баллов\n📈 Всего сканирований: {stats['total_scans']}")
+    msg = msg.replace("{balance}", str(stats['balance'])).replace("{total_scans}", str(stats['total_scans']))
+    await send_message(chat_id, msg)
 
 
 async def send_stats(db, chat_id: int):
     stats = await db.get_user_stats(chat_id)
     codes_count = await db.get_active_codes_count()
     unassigned = await db.get_unassigned_bottle_count()
-    await send_message(
-        chat_id,
-        f"📈 <b>Статистика</b>\n\n"
-        f"🙋 Ваши сканирования: <b>{stats['total_scans']}</b>\n"
+    msg = await db.get_bot_setting("msg_stats",
+        f"📈 <b>Статистика</b>\n\n🙋 Ваши сканирования: <b>{stats['total_scans']}</b>\n"
         f"🪙 Баллы: <b>{stats['balance']}</b>\n"
         f"📲 Активных QR-кодов: <b>{codes_count}</b>\n"
-        f"🧊 Свободных бутылок: <b>{unassigned}</b>",
-    )
+        f"🧊 Свободных бутылок: <b>{unassigned}</b>")
+    msg = msg.replace("{total_scans}", str(stats['total_scans'])).replace("{balance}", str(stats['balance']))
+    msg = msg.replace("{codes_count}", str(codes_count)).replace("{unassigned}", str(unassigned))
+    await send_message(chat_id, msg)
 
 
 async def send_raffle_info(db, chat_id: int):
@@ -420,9 +419,23 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
         user_row = await db.get_user(chat_id)
         await db.assign_bottle(bottle_id, user_row["id"])
         await db.activate_qr_code(chat_id, bottle_id)
-        await db.add_balance(chat_id, 10, "scan", f"Сканирование бутылки {bottle_id}")
-        await db.add_tree_xp(chat_id, 10)
-        await db.create_notification(chat_id, "scan", "Сканирование", f"+10 баллов за бутылку {bottle_id}", "history")
+        scan_balance = await db.get_bot_setting_int("scan_balance", 10)
+        scan_xp = await db.get_bot_setting_int("scan_xp", 10)
+        await db.add_balance(chat_id, scan_balance, "scan", f"Сканирование бутылки {bottle_id}")
+        level_result = await db.add_tree_xp(chat_id, scan_xp)
+        await db.create_notification(chat_id, "scan", "Сканирование", f"+{scan_balance} баллов за бутылку {bottle_id}", "history")
+
+        if level_result and level_result.get("level_changed"):
+            level_names = {2: "Саженец", 3: "Молодое дерево", 4: "Крепкое дерево", 5: "Могучее дерево", 6: "Древо"}
+            new_lvl = level_result["new_level"]
+            level_name = level_names.get(new_lvl, f"Уровень {new_lvl}")
+            level_msg = await db.get_bot_setting("msg_level_up", f'🎉 <b>Поздравляем!</b>\n\nВаше дерево выросло до уровня «{level_name}»!')
+            level_msg = level_msg.replace("{level_name}", level_name)
+            await send_message(chat_id, level_msg)
+            level_up_bonus = await db.get_bot_setting_int("level_up_bonus", 0)
+            if level_up_bonus > 0:
+                await db.add_balance(chat_id, level_up_bonus, "level_up", f"Бонус за уровень «{level_name}»")
+                await send_message(chat_id, f"🪙 +{level_up_bonus} баллов за повышение уровня!")
 
         s = get_settings()
         app_url = s["WEBAPP_URL"]
@@ -432,15 +445,13 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
 
         await send_message(
             chat_id,
-            "🥳 <b>Поздравляем!</b>\n\n"
-            "Вы зарегистрировали бутылку и автоматически стали участником главного конкурса призов.\n\n"
-            "Но это ещё не всё 👇",
+            await db.get_bot_setting("msg_scan_success_1",
+                "🥳 <b>Поздравляем!</b>\n\nВы зарегистрировали бутылку и автоматически стали участником главного конкурса призов.\n\nНо это ещё не всё 👇"),
         )
         await send_message(
             chat_id,
-            "🎀 <b>Для вас доступен моментальный подарок!</b>\n\n"
-            "Откройте мини-приложение и получите свой первый приз прямо сейчас.\n\n"
-            "Внутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы.",
+            await db.get_bot_setting("msg_scan_success_2",
+                "🎀 <b>Для вас доступен моментальный подарок!</b>\n\nОткройте мини-приложение и получите свой первый приз прямо сейчас.\n\nВнутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы."),
             reply_markup=gift_keyboard(app_url),
         )
         return
@@ -457,9 +468,8 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
             app_url = app_url + sep + "user_id=" + str(chat_id)
         await send_message(
             chat_id,
-            "🎀 <b>Для вас доступен моментальный подарок!</b>\n\n"
-            "Откройте мини-приложение и получите свой первый приз прямо сейчас.\n\n"
-            "Внутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы.",
+            await db.get_bot_setting("msg_gift_prompt",
+                "🎀 <b>Для вас доступен моментальный подарок!</b>\n\nОткройте мини-приложение и получите свой первый приз прямо сейчас.\n\nВнутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы."),
             reply_markup=gift_keyboard(app_url),
         )
         return
@@ -475,15 +485,14 @@ async def show_main_menu(db, chat_id: int, user: dict | None = None):
         await db.update_user_step(chat_id, "menu")
     s = get_settings()
     is_admin = await db.is_admin(chat_id)
-    await send_message(
-        chat_id,
-        f"💧 <b>Главное меню</b>\n\n"
-        f"Привет, {user['name'] or 'друг'}! 👋\n"
-        f"🪙 Баланс: <b>{user['balance']} баллов</b>\n\n"
+    name = user['name'] or 'друг'
+    balance = user['balance']
+    msg = await db.get_bot_setting("msg_welcome",
+        f"💧 <b>Главное меню</b>\n\nПривет, {name}! 👋\n🪙 Баланс: <b>{balance} баллов</b>\n\n"
         f"Сканируйте QR-коды на бутылках и получайте баллы!\n"
-        f"Кнопки для быстрого доступа теперь под полем ввода 👇",
-        reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id),
-    )
+        f"Кнопки для быстрого доступа теперь под полем ввода 👇")
+    msg = msg.replace("{name}", name).replace("{balance}", str(balance))
+    await send_message(chat_id, msg, reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id))
 
 
 # ─── Profile ────────────────────────────────────────────
@@ -581,7 +590,8 @@ async def handle_callback(db, cbd: dict):
             if row:
                 raffle = dict(row)
         if raffle and raffle.get("prize_amount"):
-            points = raffle["prize_amount"] * 10
+            conv_mult = await db.get_bot_setting_int("conversion_multiplier", 10)
+            points = raffle["prize_amount"] * conv_mult
             await db.set_payout_choice(raffle_id, "points")
             await send_message(
                 chat_id,
@@ -651,13 +661,10 @@ async def handle_callback(db, cbd: dict):
         await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user_row["id"], prize_id)
         await db.create_notification(chat_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
-        await send_message(
-            chat_id,
-            f"🥳 <b>Заказ оформлен!</b>\n\n"
-            f"Приз: {prize['name']}\n"
-            f"Номер заказа: #{order_id}\n\n"
-            f"Мы свяжемся с вами для уточнения получения.",
-        )
+        msg = await db.get_bot_setting("msg_exchange_success",
+            f"🥳 <b>Заказ оформлен!</b>\n\nПриз: {prize['name']}\nНомер заказа: #{order_id}\n\nМы свяжемся с вами для уточнения получения.")
+        msg = msg.replace("{name}", prize['name']).replace("{order_id}", str(order_id))
+        await send_message(chat_id, msg)
         return
 
     logger.warning(f"Unknown callback: {data}")
@@ -747,12 +754,10 @@ async def handle_webapp_data(db, data: str, chat_id: int):
             return
         await db.add_balance(chat_id, -amount, "donation", f"Пожертвование {amount} баллов")
         await db.create_notification(chat_id, "donation", "Пожертвование", f"Вы пожертвовали {amount} баллов", "shop")
-        await send_message(
-            chat_id,
-            f"💚 <b>Спасибо за пожертвование!</b>\n\n"
-            f"Вы пожертвовали <b>{amount} баллов</b>.\n"
-            f"Ваши баллы пойдут на добрые дела и поддержку проектов.",
-        )
+        msg = await db.get_bot_setting("msg_donation_success",
+            f"💚 <b>Спасибо за пожертвование!</b>\n\nВы пожертвовали <b>{amount} баллов</b>.\nВаши баллы пойдут на добрые дела и поддержку проектов.")
+        msg = msg.replace("{amount}", str(amount))
+        await send_message(chat_id, msg)
         return
 
     # Try to handle as QR code value

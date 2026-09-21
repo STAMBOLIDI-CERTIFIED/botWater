@@ -314,25 +314,28 @@ class Database:
             return
         new_xp = (user.get("tree_xp") or 0) + xp
         current_level = user.get("tree_level") or 1
-        new_level = self._calc_level(new_xp, current_level)
+        t2 = await self.get_bot_setting_int("tree_threshold_2", 100)
+        t3 = await self.get_bot_setting_int("tree_threshold_3", 500)
+        t4 = await self.get_bot_setting_int("tree_threshold_4", 1000)
+        t5 = await self.get_bot_setting_int("tree_threshold_5", 2000)
+        t6 = await self.get_bot_setting_int("tree_threshold_6", 5000)
+        thresholds = {1: t2, 2: t3, 3: t4, 4: t5, 5: t6}
+        new_level = self._calc_level(new_xp, current_level, thresholds)
+        level_changed = new_level != current_level
         await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {
             "tree_xp": new_xp,
             "tree_level": new_level,
         })
+        return {"new_level": new_level, "level_changed": level_changed}
 
-    def _calc_level(self, current_xp: int, current_level: int) -> int:
+    def _calc_level(self, current_xp: int, current_level: int, thresholds: dict | None = None) -> int:
+        if thresholds is None:
+            thresholds = {1: 100, 2: 500, 3: 1000, 4: 2000, 5: 5000}
         new_level = 1
-        if current_xp >= 5000:
-            new_level = 6
-        elif current_xp >= 2000:
-            new_level = 5
-        elif current_xp >= 1000:
-            new_level = 4
-        elif current_xp >= 500:
-            new_level = 3
-        elif current_xp >= 100:
-            new_level = 2
-        return new_level
+        for lvl in sorted(thresholds.keys()):
+            if current_xp >= thresholds[lvl]:
+                new_level = lvl + 1
+        return min(new_level, 6)
 
     async def get_tree_state(self, telegram_id: int) -> dict:
         user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=tree_xp,tree_level")
@@ -340,7 +343,12 @@ class Database:
             return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0}
         current_xp = user.get("tree_xp") or 0
         level = user.get("tree_level") or 1
-        thresholds = {1: 100, 2: 500, 3: 1000, 4: 2000, 5: 5000, 6: 999999}
+        t2 = await self.get_bot_setting_int("tree_threshold_2", 100)
+        t3 = await self.get_bot_setting_int("tree_threshold_3", 500)
+        t4 = await self.get_bot_setting_int("tree_threshold_4", 1000)
+        t5 = await self.get_bot_setting_int("tree_threshold_5", 2000)
+        t6 = await self.get_bot_setting_int("tree_threshold_6", 5000)
+        thresholds = {1: t2, 2: t3, 3: t4, 4: t5, 5: t6, 6: 999999}
         next_xp = thresholds.get(level, 100)
         if level >= 6:
             next_xp = thresholds[5]
@@ -568,7 +576,8 @@ class Database:
         if existing:
             return {"ok": False, "error": "already_scanned"}
 
-        scan_points = category.get("scan_points") or 10
+        default_pts = await self.get_bot_setting_int("partner_scan_default", 10)
+        scan_points = category.get("scan_points") or default_pts
         partner_name = category.get("title", "Партнёр")
 
         await self._fetch("partner_scans", method="POST", json_data={
@@ -697,7 +706,8 @@ class Database:
             if not users:
                 return
             user = users[0]
-            points = raffle["prize_amount"] * 10
+            multiplier = await self.get_bot_setting_int("conversion_multiplier", 10)
+            points = raffle["prize_amount"] * multiplier
             new_balance = (user.get("balance") or 0) + points
             await self._fetch("users", f"id=eq.{user['id']}", "PATCH", {"balance": new_balance})
             await self._fetch("points_log", method="POST", json_data={
@@ -751,7 +761,8 @@ class Database:
             user_id = scan.get("user_id")
             if not user_id:
                 continue
-            points = raffle["prize_amount"] * 5
+            exp_mult = await self.get_bot_setting_int("expired_conversion_multiplier", 5)
+            points = raffle["prize_amount"] * exp_mult
             users = await self._fetch("users", f"id=eq.{user_id}&select=balance")
             if users:
                 new_balance = (users[0].get("balance") or 0) + points
@@ -1062,6 +1073,9 @@ class Database:
 
     # ─── Settings ────────────────────────────────────────
 
+    _settings_cache: dict[str, str | None] = {}
+    _settings_cache_ttl: float = 0
+
     async def get_setting(self, key: str) -> str | None:
         row = await self._fetch_one("settings", f"key=eq.{key}&select=value")
         return row["value"] if row else None
@@ -1072,3 +1086,21 @@ class Database:
             await self._fetch("settings", f"key=eq.{key}", "PATCH", {"value": value, "updated_at": datetime.utcnow().isoformat()})
         else:
             await self._fetch("settings", method="POST", json_data={"key": key, "value": value})
+        self._settings_cache.pop(key, None)
+
+    async def get_bot_setting(self, key: str, default: str = "") -> str:
+        import time
+        now = time.time()
+        if now - self._settings_cache_ttl < 60 and key in self._settings_cache:
+            return self._settings_cache[key] or default
+        val = await self.get_setting(key)
+        self._settings_cache[key] = val
+        self._settings_cache_ttl = now
+        return val if val is not None else default
+
+    async def get_bot_setting_int(self, key: str, default: int = 0) -> int:
+        val = await self.get_bot_setting(key, str(default))
+        try:
+            return int(val)
+        except (ValueError, TypeError):
+            return default
