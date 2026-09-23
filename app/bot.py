@@ -392,6 +392,31 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
             payload = payload[len("bottle_"):]
         elif payload.startswith("BTL-"):
             pass
+        elif "start=partner_" in payload:
+            partner_code = payload.split("start=partner_", 1)[1].split("&", 1)[0]
+            s = get_settings()
+            app_url = s["WEBAPP_URL"]
+            sep = "&" if "?" in app_url else "?"
+            app_url = app_url + sep + "user_id=" + str(chat_id) + "&partner_scan=partner_" + partner_code
+            await send_message(
+                chat_id,
+                await db.get_bot_setting("msg_partner_scan",
+                    "🏪 <b>Откройте мини-приложение</b>\n\nНажмите кнопку ниже, чтобы перейти к товарам партнёра."),
+                reply_markup={"inline_keyboard": [[{"text": "🛍 Открыть товары", "web_app": {"url": app_url}}]]},
+            )
+            return
+        elif payload.startswith("partner_"):
+            s = get_settings()
+            app_url = s["WEBAPP_URL"]
+            sep = "&" if "?" in app_url else "?"
+            app_url = app_url + sep + "user_id=" + str(chat_id) + "&partner_scan=" + payload
+            await send_message(
+                chat_id,
+                await db.get_bot_setting("msg_partner_scan",
+                    "🏪 <b>Откройте мини-приложение</b>\n\nНажмите кнопку ниже, чтобы перейти к товарам партнёра."),
+                reply_markup={"inline_keyboard": [[{"text": "🛍 Открыть товары", "web_app": {"url": app_url}}]]},
+            )
+            return
         else:
             payload = ""
 

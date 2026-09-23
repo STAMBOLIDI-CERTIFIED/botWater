@@ -272,6 +272,10 @@ async def api_partner_qr(category_id: int):
     if not qr_code:
         return JSONResponse({"error": "no qr code for this partner"}, status_code=404)
 
+    s = get_settings()
+    bot_username = s.get("BOT_USERNAME", "WaterPrizeBot")
+    qr_content = f"https://t.me/{bot_username}?start={qr_code}"
+
     try:
         import qrcode
         from qrcode.image.styledpil import StyledPilImage
@@ -286,7 +290,7 @@ async def api_partner_qr(category_id: int):
         box_size=10,
         border=2,
     )
-    qr.add_data(qr_code)
+    qr.add_data(qr_content)
     qr.make(fit=True)
 
     accent = (category.get("color") or "#0EA5E9").lstrip("#")

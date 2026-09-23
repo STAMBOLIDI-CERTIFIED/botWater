@@ -1365,3 +1365,33 @@ var supportChatId = null;
             sendSupportMessage();
         }
     });
+
+    // ═══════════════════════════════════════════
+// AUTO PARTNER SCAN (via deep link)
+// ═══════════════════════════════════════════
+
+    (function() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var partnerScan = params.get('partner_scan');
+            if (partnerScan && partnerScan.startsWith('partner_')) {
+                var uid = getUID();
+                if (uid) {
+                    setTimeout(async function() {
+                        var result = await processPartnerScan(partnerScan);
+                        if (result && result.ok) {
+                            if (result.already_scanned) {
+                                showToast('Баллы уже начислены');
+                                openShopCategory(result.category_id);
+                            } else {
+                                showToast('+' + result.points_earned + ' баллов от «' + result.partner_name + '»');
+                                openShopCategory(result.category_id);
+                            }
+                        } else {
+                            showToast('Партнёр не найден');
+                        }
+                    }, 500);
+                }
+            }
+        } catch(e) {}
+    })();

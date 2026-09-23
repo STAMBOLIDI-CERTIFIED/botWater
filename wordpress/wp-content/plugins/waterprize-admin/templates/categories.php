@@ -52,8 +52,10 @@
                 <div id="wpz-qr-code"></div>
                 <p class="description" style="text-align:center;margin-top:8px;">QR-код партнёра</p>
                 <?php if (!empty($edit_category['qr_code'])): ?>
+                    <?php $bot_username = $db->get_setting('bot_username') ?: 'WaterPrizeBot'; ?>
+                    <?php $deep_link = 'https://t.me/' . esc_attr($bot_username) . '?start=' . $edit_category['qr_code']; ?>
                     <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;">
-                        <a href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=<?php echo urlencode($edit_category['qr_code']); ?>"
+                        <a href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=<?php echo urlencode($deep_link); ?>"
                            download="partner-<?php echo esc_attr($edit_category['id']); ?>-qr.png"
                            class="button button-small">⬇️ Скачать</a>
                         <form method="post" style="display:inline;">
@@ -244,13 +246,15 @@
                         </td>
                         <td class="wpz-qr-cell">
                             <?php if (!empty($c['qr_code'])): ?>
-                                <a href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=<?php echo urlencode($c['qr_code']); ?>"
+                                <?php $bot_un = $db->get_setting('bot_username') ?: 'WaterPrizeBot'; ?>
+                                <?php $dl = 'https://t.me/' . $bot_un . '?start=' . $c['qr_code']; ?>
+                                <a href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=<?php echo urlencode($dl); ?>"
                                    target="_blank" rel="noopener" title="Открыть QR в полном размере">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=<?php echo urlencode($c['qr_code']); ?>"
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=<?php echo urlencode($dl); ?>"
                                          class="wpz-qr-thumb" alt="QR">
                                 </a>
                                 <div class="wpz-qr-actions">
-                                    <a href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=<?php echo urlencode($c['qr_code']); ?>"
+                                    <a href="https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=<?php echo urlencode($dl); ?>"
                                        download="partner-<?php echo esc_attr($c['id']); ?>-qr.png" title="Скачать QR">⬇️</a>
                                     <button type="button" class="wpz-qr-copy-icon" data-link="<?php echo esc_attr($c['qr_code']); ?>" title="Скопировать код">🔗</button>
                                 </div>
@@ -281,8 +285,11 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    var qrCode = <?php echo json_encode($edit_category['qr_code'] ?? ''); ?>;
+    var botUsername = <?php echo json_encode($db->get_setting('bot_username') ?: 'WaterPrizeBot'); ?>;
+    var deepLink = 'https://t.me/' + botUsername + '?start=' + qrCode;
     new QRCode(document.getElementById('wpz-qr-code'), {
-        text: <?php echo json_encode($edit_category['qr_code'] ?? ''); ?>,
+        text: deepLink,
         width: 200,
         height: 200,
         colorDark: '#1e293b',

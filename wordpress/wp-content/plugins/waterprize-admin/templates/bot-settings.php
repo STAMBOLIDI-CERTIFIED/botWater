@@ -33,6 +33,7 @@ $values = [];
 foreach (array_merge(array_keys($reward_keys), array_keys($message_keys)) as $key) {
     $values[$key] = $db->get_setting($key) ?: '';
 }
+$values['bot_username'] = $db->get_setting('bot_username') ?: 'WaterPrizeBot';
 ?>
 <div class="wrap">
     <?php WaterPrize_Pages::flash_message(); ?>
@@ -41,6 +42,22 @@ foreach (array_merge(array_keys($reward_keys), array_keys($message_keys)) as $ke
 
     <form method="post">
         <?php wp_nonce_field('wpz_action'); ?>
+
+        <!-- ═══ Bot Config ═══ -->
+        <div class="wpz-card">
+            <h2>🤖 Конфигурация бота</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label for="bot_username">Username бота</label></th>
+                    <td>
+                        <input type="text" id="bot_username" name="bot_username"
+                               value="<?php echo esc_attr($values['bot_username']); ?>"
+                               class="regular-text" placeholder="WaterPrizeBot">
+                        <p class="description">Без @. Используется для генерации deep link в QR-кодах партнёров.</p>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
         <!-- ═══ Rewards ═══ -->
         <div class="wpz-card">

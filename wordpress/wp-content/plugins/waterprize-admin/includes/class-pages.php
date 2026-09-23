@@ -338,6 +338,9 @@ class WaterPrize_Pages {
                 $db = self::db();
                 $reward_keys = ['scan_balance','scan_xp','partner_scan_default','gift_min','gift_max','conversion_multiplier','expired_conversion_multiplier','level_up_bonus','tree_threshold_2','tree_threshold_3','tree_threshold_4','tree_threshold_5','tree_threshold_6'];
                 $message_keys = ['msg_welcome','msg_scan_success_1','msg_scan_success_2','msg_gift_prompt','msg_balance','msg_stats','msg_donation_success','msg_exchange_success','msg_level_up'];
+                if (isset($_POST['bot_username'])) {
+                    $db->set_setting('bot_username', sanitize_text_field($_POST['bot_username']));
+                }
                 foreach ($reward_keys as $k) {
                     if (isset($_POST[$k])) {
                         $db->set_setting($k, sanitize_text_field($_POST[$k]));
