@@ -323,7 +323,9 @@ function countUp(el, target, duration) {
             }
 
             await updateNotifBadge();
+        } catch(e) {}
 
+        try {
             var coupCard = document.getElementById('card-my-coupons');
             if (coupCard) coupCard.style.display = 'block';
 
