@@ -79,7 +79,10 @@ async def _setup_bot_commands():
             },
         })
         webhook_url = f"{domain}/webhook"
-        await client.post(f"{api}/setWebhook", json={"url": webhook_url})
+        await client.post(f"{api}/setWebhook", json={
+            "url": webhook_url,
+            "allowed_updates": ["message", "callback_query", "my_chat_member"],
+        })
         logger.info(f"Webhook set to {webhook_url}")
         logger.info("Bot commands and menu button set")
 
