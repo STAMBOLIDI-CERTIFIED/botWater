@@ -325,8 +325,6 @@ async def api_partner_scan(request: Request):
         error = result.get("error", "")
         if error == "partner_not_found":
             status = 404
-        elif error == "already_scanned":
-            status = 409
         else:
             status = 400
         return JSONResponse(result, status_code=status)

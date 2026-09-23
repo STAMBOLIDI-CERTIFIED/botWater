@@ -803,9 +803,12 @@ function startScan() {
         if (partnerCode) {
             var partnerResult = await processPartnerScan(partnerCode);
             if (partnerResult && partnerResult.ok) {
-                document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + esc(partnerResult.partner_name) + '»! Баланс: ' + partnerResult.balance;
-            } else if (partnerResult && partnerResult.error === 'already_scanned') {
-                document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' Вы уже сканировали этот QR-код';
+                if (partnerResult.already_scanned) {
+                    showToast('Баллы уже начислены');
+                    openShopCategory(partnerResult.category_id);
+                } else {
+                    document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + esc(partnerResult.partner_name) + '»! Баланс: ' + partnerResult.balance;
+                }
             } else {
                 document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' ' + (partnerResult ? esc(partnerResult.error || 'Ошибка') : 'Партнёр не найден');
             }
@@ -899,6 +902,19 @@ function miniScanBottle(seed) {
 // ═══════════════════════════════════════════
 
 function esc(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function showToast(msg) {
+        var t = document.createElement('div');
+        t.textContent = msg;
+        Object.assign(t.style, {
+            position:'fixed', bottom:'80px', left:'50%', transform:'translateX(-50%)',
+            background:'rgba(201,168,76,0.95)', color:'#111318', padding:'10px 20px',
+            borderRadius:'12px', fontSize:'13px', fontWeight:'600', zIndex:'9999',
+            boxShadow:'0 4px 20px rgba(0,0,0,0.4)', transition:'opacity .3s', opacity:'0'
+        });
+        document.body.appendChild(t);
+        requestAnimationFrame(function() { t.style.opacity = '1'; });
+        setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2000);
+    }
     function sendToBot(c) { tg.sendData(c); setTimeout(updateNotifBadge, 2000); }
     function sendDonation() {
         var inp = document.getElementById('donation-amount');

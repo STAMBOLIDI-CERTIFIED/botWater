@@ -4,7 +4,7 @@
     <h1>🤝 Партнёры <span class="wpz-count"><?php echo esc_html(count($categories)); ?></span></h1>
 
     <?php if ($edit_category): ?>
-    <!-- ═══ Карточка партнёра ═══ -->
+
     <div class="wpz-card wpz-bottle-detail">
         <h2>
             Партнёр <strong><?php echo esc_html($edit_category['title']); ?></strong>

@@ -574,7 +574,12 @@ class Database:
         existing = await self._fetch_one("partner_scans",
             f"user_id=eq.{user['id']}&qr_code=eq.{qr_code}")
         if existing:
-            return {"ok": False, "error": "already_scanned"}
+            return {
+                "ok": True,
+                "already_scanned": True,
+                "category_id": category.get("id"),
+                "partner_name": category.get("title", "Партнёр"),
+            }
 
         default_pts = await self.get_bot_setting_int("partner_scan_default", 10)
         scan_points = category.get("scan_points") or default_pts
