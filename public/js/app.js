@@ -508,6 +508,7 @@ async function loadShop() {
         var partnerList = document.getElementById('shop-partners-list');
         var recSection = document.getElementById('shop-recommended-section');
         var recGrid = document.getElementById('shop-recommended-grid');
+        var recCount = document.getElementById('shop-rec-count');
         var emptyEl = document.getElementById('shop-empty');
 
         partnerSection.style.display = 'none';
@@ -530,20 +531,13 @@ async function loadShop() {
         partnerList.innerHTML = partners.map(function(c, i) {
             var accent = c.color || '#0EA5E9';
             var iconHtml = c.logo_url ? '<img src="' + esc(c.logo_url) + '">' : (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>');
-            var extra = '';
-            if (c.website || c.telegram) {
-                extra = '<div class="partner-cat-links">';
-                if (c.website) extra += '<span class="partner-cat-link">🌐</span>';
-                if (c.telegram) extra += '<span class="partner-cat-link">✈️</span>';
-                extra += '</div>';
-            }
-            return '<div class="partner-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openPartnerCategory(' + c.id + ')">'
-                + '<div class="partner-cat-icon" style="background:' + accent + '18">'
+            return '<div class="shop-partner-card" style="animation-delay:' + (i * 0.06) + 's" onclick="openPartnerCategory(' + c.id + ')">'
+                + '<div class="shop-partner-icon" style="background:' + accent + '18;border:1px solid ' + accent + '30">'
                 + iconHtml + '</div>'
-                + '<div class="partner-cat-info"><div class="partner-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
-                + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div>'
-                + extra + '</div>'
-                + '<div class="partner-cat-arrow">›</div></div>';
+                + '<div class="shop-partner-name">' + esc(c.title) + '</div>'
+                + '<div class="shop-partner-sub">' + esc(c.subtitle || '') + '</div>'
+                + '<div class="shop-partner-arrow">›</div>'
+                + '</div>';
         }).join('');
         partnerSection.style.display = 'block';
 
@@ -560,21 +554,23 @@ async function loadShop() {
         }
 
         if (allItems.length) {
+            recCount.textContent = allItems.length;
             recGrid.innerHTML = allItems.map(function(p, i) {
                 var ok = bal >= p.price_points;
                 var missing = Math.max(0, p.price_points - bal);
-                var imgHtml = p.image_url
-                    ? '<div class="shop-prize-img-wrap"><img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-prize-img-fallback" style="display:none">' + icon('store') + '</div></div>'
-                    : '<div class="shop-prize-img-wrap"><div class="shop-prize-img-fallback">' + icon('store') + '</div></div>';
                 var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
-                return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
+                var imgHtml = p.image_url
+                    ? '<img class="shop-rec-img" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-rec-img-fallback" style="display:none">' + icon('store') + '</div>'
+                    : '<div class="shop-rec-img-fallback">' + icon('store') + '</div>';
+                return '<div class="shop-rec-card" style="animation-delay:' + (i * 0.04) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
                     + imgHtml
-                    + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
-                    + '<div style="font-size:11px;color:' + p._partner_color + ';margin-bottom:4px">' + esc(p._partner_name) + '</div>'
-                    + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
+                    + '<div class="shop-rec-body">'
+                    + '<div class="shop-rec-name">' + esc(p.name) + '</div>'
+                    + '<div class="shop-rec-partner" style="color:' + p._partner_color + '">' + esc(p._partner_name) + '</div>'
+                    + '<div class="shop-rec-price">' + icon('target') + ' ' + p.price_points + '</div>'
                     + (ok
-                        ? '<button class="shop-prize-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
-                        : '<button class="shop-prize-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')" style="cursor:pointer">Не хватает ' + missing + ' баллов</button>')
+                        ? '<button class="shop-rec-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                        : '<button class="shop-rec-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')">Не хватает ' + missing + '</button>')
                     + '</div></div>';
             }).join('');
             recSection.style.display = 'block';

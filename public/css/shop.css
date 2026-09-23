@@ -262,3 +262,377 @@
     background: rgba(255,255,255,0.06); color: var(--text-dim);
     border: 1px solid var(--glass-border); cursor: not-allowed;
 }
+
+/* ═══════════════════════════════════════════
+   МАГАЗИН КУПОНОВ — НОВЫЙ ДИЗАЙН
+   ═══════════════════════════════════════════ */
+
+.shop-header {
+    text-align: center;
+    padding: 8px 0 20px;
+    animation: slideUp .4s cubic-bezier(.16,1,.3,1) both;
+}
+
+.shop-header-icon {
+    font-size: 48px;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 4px 12px rgba(14,165,233,0.3));
+    animation: treeEmojiFloat 3s ease-in-out infinite;
+}
+
+.shop-header-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--text-main);
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+}
+
+.shop-header-sub {
+    font-size: 13px;
+    color: var(--text-dim);
+    font-weight: 500;
+}
+
+/* ─── Balance Card ─── */
+
+.shop-balance-new {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 20px;
+    margin-bottom: 24px;
+    background: linear-gradient(135deg, rgba(201,168,76,0.12), rgba(201,168,76,0.04));
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 16px;
+    animation: slideUp .5s var(--ease-out) both;
+    position: relative;
+    overflow: hidden;
+}
+
+.shop-balance-new::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(201,168,76,0.4), transparent);
+}
+
+.shop-balance-new::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.04), transparent 50%);
+    pointer-events: none;
+}
+
+.sbn-coin {
+    font-size: 32px;
+    flex-shrink: 0;
+    animation: coinPulse 2s ease-in-out infinite;
+}
+
+@keyframes coinPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
+.sbn-info {
+    flex: 1;
+}
+
+.sbn-label {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+}
+
+.sbn-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--gold);
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+
+.sbn-value span {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+/* ─── Section Headers ─── */
+
+.shop-section {
+    margin-bottom: 24px;
+    animation: slideUp .5s var(--ease-out) both;
+}
+
+.shop-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding: 0 2px;
+}
+
+.shop-section-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.shop-section-count {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.06);
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+/* ─── Partners Horizontal Scroll ─── */
+
+.shop-partners-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding: 4px 0 16px;
+    margin: 0 -20px;
+    padding-left: 20px;
+    padding-right: 20px;
+    scrollbar-width: none;
+}
+
+.shop-partners-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.shop-partner-card {
+    flex: 0 0 auto;
+    width: 140px;
+    scroll-snap-align: start;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    padding: 16px 14px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .25s var(--ease-out);
+    position: relative;
+    overflow: hidden;
+    animation: slideUp .4s var(--ease-out) both;
+}
+
+.shop-partner-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 16px 16px 0 0;
+    opacity: 0.6;
+}
+
+.shop-partner-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.04), transparent 40%);
+    pointer-events: none;
+}
+
+.shop-partner-card:active {
+    transform: scale(0.96);
+}
+
+.shop-partner-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 10px;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+.shop-partner-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.shop-partner-icon span {
+    font-size: 26px;
+}
+
+.shop-partner-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+    z-index: 1;
+}
+
+.shop-partner-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    position: relative;
+    z-index: 1;
+}
+
+.shop-partner-arrow {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 14px;
+    color: var(--text-dim);
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: all .25s var(--ease-out);
+    z-index: 1;
+}
+
+.shop-partner-card:hover .shop-partner-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* ─── Recommendations Grid ─── */
+
+.shop-rec-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.shop-rec-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: all .25s var(--ease-out);
+    position: relative;
+    animation: slideUp .4s var(--ease-out) both;
+}
+
+.shop-rec-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent 30%);
+    pointer-events: none;
+}
+
+.shop-rec-card:active {
+    transform: scale(0.97);
+}
+
+.shop-rec-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    display: block;
+    background: linear-gradient(135deg, rgba(201,168,76,0.08), rgba(201,168,76,0.02));
+}
+
+.shop-rec-img-fallback {
+    width: 100%;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(201,168,76,0.1), rgba(201,168,76,0.03));
+    font-size: 28px;
+    color: var(--text-dim);
+    opacity: 0.5;
+}
+
+.shop-rec-body {
+    padding: 10px 12px 12px;
+    position: relative;
+    z-index: 1;
+}
+
+.shop-rec-name {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shop-rec-partner {
+    font-size: 10px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.shop-rec-price {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold);
+    background: rgba(201,168,76,0.1);
+    padding: 3px 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.shop-rec-btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    border-radius: 8px;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all .2s var(--ease-out);
+}
+
+.shop-rec-btn:active {
+    transform: scale(0.96);
+}
+
+.shop-rec-btn.primary {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(201,168,76,0.25);
+}
+
+.shop-rec-btn.outline {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--glass-border);
+    font-size: 10px;
+}

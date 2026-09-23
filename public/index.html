@@ -166,19 +166,36 @@
 <!-- МАГАЗИН КУПОНОВ -->
 <div id="page-shop" class="page">
     <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
-    <div style="text-align:center;padding:8px 0 4px;animation:slideUp .4s cubic-bezier(.16,1,.3,1)">
-        <div class="section-title" style="margin-bottom:2px;font-size:22px">icon('store') Магазин купонов</div>
-        <p style="font-size:13px;color:var(--text-dim)">Партнёры и рекомендации</p>
+
+    <div class="shop-header">
+        <div class="shop-header-icon">icon('store')</div>
+        <div class="shop-header-title">Магазин купонов</div>
+        <div class="shop-header-sub">Обменивайте баллы на призы от партнёров</div>
     </div>
-    <div class="shop-balance">icon('coin') Баланс: <b id="shop-balance-val">—</b> баллов</div>
-    <div id="shop-partners-section" style="display:none">
-        <div style="font-size:15px;font-weight:700;color:var(--text-main);margin:16px 0 10px">Партнёры</div>
-        <div id="shop-partners-list" style="display:flex;flex-direction:column;gap:10px"></div>
+
+    <div class="shop-balance-new">
+        <div class="sbn-coin">icon('coin')</div>
+        <div class="sbn-info">
+            <div class="sbn-label">Ваш баланс</div>
+            <div class="sbn-value"><b id="shop-balance-val">—</b> <span>баллов</span></div>
+        </div>
     </div>
-    <div id="shop-recommended-section" style="display:none">
-        <div style="font-size:15px;font-weight:700;color:var(--text-main);margin:20px 0 10px">Рекомендации</div>
-        <div id="shop-recommended-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div>
+
+    <div id="shop-partners-section" class="shop-section" style="display:none">
+        <div class="shop-section-header">
+            <div class="shop-section-title">Партнёры</div>
+        </div>
+        <div id="shop-partners-list" class="shop-partners-scroll"></div>
     </div>
+
+    <div id="shop-recommended-section" class="shop-section" style="display:none">
+        <div class="shop-section-header">
+            <div class="shop-section-title">Рекомендации</div>
+            <div class="shop-section-count" id="shop-rec-count"></div>
+        </div>
+        <div id="shop-recommended-grid" class="shop-rec-grid"></div>
+    </div>
+
     <div id="shop-empty" style="display:none"></div>
 </div>
 
