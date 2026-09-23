@@ -1,6 +1,11 @@
 """API routes for the frontend app."""
 import io
+import json
 import random
+import time
+from urllib.parse import parse_qsl
+import hashlib
+import hmac
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -8,6 +13,42 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from ..deps import db, get_settings
 
 router = APIRouter(prefix="/api")
+
+
+def _validate_init_data(init_data: str, bot_token: str) -> dict | None:
+    if not init_data or not bot_token:
+        return None
+    try:
+        parsed = dict(parse_qsl(init_data, keep_blank_values=True))
+    except Exception:
+        return None
+    hash_val = parsed.pop("hash", None)
+    if not hash_val:
+        return None
+    data_check_string = "\n".join(f"{k}={parsed[k]}" for k in sorted(parsed))
+    secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
+    computed = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(computed, hash_val):
+        return None
+    user_json = parsed.get("user", "")
+    if user_json:
+        try:
+            return json.loads(user_json)
+        except Exception:
+            pass
+    return {}
+
+
+@router.middleware("http")
+async def api_auth_middleware(request: Request, call_next):
+    if request.url.path.startswith("/api/"):
+        init_data = request.headers.get("X-Telegram-Init-Data", "")
+        s = get_settings()
+        user = _validate_init_data(init_data, s.get("BOT_TOKEN", ""))
+        if user is None:
+            return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+        request.state.tg_user = user
+    return await call_next(request)
 
 
 @router.get("/user")

@@ -212,7 +212,8 @@ function setUserUI(data) {
 // API HELPERS
 // ═══════════════════════════════════════════
 
-async function apiFetch(p) { try { return await (await fetch(API_BASE + p)).json(); } catch(e) { return null; } }
+async function apiFetch(p) { try { return await (await fetch(API_BASE + p, { headers: { 'X-Telegram-Init-Data': tg.initData || '' } })).json(); } catch(e) { return null; } }
+function _h(extra) { return Object.assign({ 'X-Telegram-Init-Data': tg.initData || '' }, extra || {}); }
 
     function getUID() {
         if (user.id) return user.id;
@@ -284,7 +285,7 @@ function countUp(el, target, duration) {
         if (!uid) return;
 
         try {
-            var rawD = await fetch(API_BASE + '/user?user_id=' + uid);
+            var rawD = await fetch(API_BASE + '/user?user_id=' + uid, { headers: _h() });
             var txt = await rawD.text();
             var d = null;
             try { d = JSON.parse(txt); } catch(e) {}
@@ -308,7 +309,7 @@ function countUp(el, target, duration) {
                 } else {
                     console.log('[avatar] no photo_url, trying fallback');
                     try {
-                        var photoResp = await fetch(API_BASE + '/user-photo?user_id=' + uid);
+                        var photoResp = await fetch(API_BASE + '/user-photo?user_id=' + uid, { headers: _h() });
                         var photoData = await photoResp.json();
                         if (photoData && photoData.photo_url) {
                             console.log('[avatar] photo_url from fallback:', photoData.photo_url);
@@ -398,7 +399,7 @@ var notifOpen = false;
         var b = document.getElementById('bell-badge');
         if (b) { b.textContent = ''; b.classList.remove('show'); }
         var uid = getUID();
-        if (uid) fetch(API_BASE + '/notifications/clear?user_id=' + uid).catch(function(){});
+        if (uid) fetch(API_BASE + '/notifications/clear?user_id=' + uid, { headers: _h() }).catch(function(){});
     }
 
     // ═══════════════════════════════════════════
@@ -620,7 +621,7 @@ async function startCouponScanner() {
                     var uid = getUID();
                     var resp = await fetch(API_BASE + '/coupon/activate', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: _h({ 'Content-Type': 'application/json' }),
                         body: JSON.stringify({ qr_code: qrCode, partner_telegram_id: uid })
                     });
                     var result = await resp.json();
@@ -929,7 +930,7 @@ async function loadShop() {
         try {
             var resp = await fetch(API_BASE + '/partner/scan', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: _h({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ user_id: uid, qr_code: qrCode }),
             });
             var result = await resp.json();
@@ -945,7 +946,7 @@ async function loadShop() {
         var uid = getUID();
         if (!uid) return [];
         try {
-            var resp = await fetch(API_BASE + '/user/' + uid + '/available-coupons');
+            var resp = await fetch(API_BASE + '/user/' + uid + '/available-coupons', { headers: _h() });
             var data = await resp.json();
             return data.ok ? data.orders : [];
         } catch(e) {}
@@ -958,7 +959,7 @@ async function loadShop() {
         try {
             var resp = await fetch(API_BASE + '/coupon/redeem', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: _h({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ user_id: uid, order_id: orderId, partner_id: partnerId }),
             });
             return await resp.json();
@@ -1056,7 +1057,7 @@ function startScan() {
             var uid = getUID();
             if (uid && data) {
                 try {
-                    const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_id: uid, bottle_id: data }) });
+                    const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: _h({ 'Content-Type': 'application/json' }), body: JSON.stringify({ user_id: uid, bottle_id: data }) });
                     const res = await r.json();
                     if (res.ok) {
                         document.getElementById('top-balance').textContent = res.balance;
@@ -1239,7 +1240,7 @@ function esc(t) { const d = document.createElement('div'); d.textContent = t; re
 
             var resp = await fetch(API_BASE + '/gift/open', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: _h({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ user_id: uid }),
                 signal: controller.signal
             });
@@ -1562,7 +1563,7 @@ var supportChatId = null;
         try {
             var resp = await fetch(API_BASE + '/support/send', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: _h({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ user_id: uid, message: msg })
             });
             var result = await resp.json();

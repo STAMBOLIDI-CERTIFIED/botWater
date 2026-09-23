@@ -20,19 +20,19 @@ class WaterPrize_API {
         register_rest_route('waterprize/v1', '/stats', [
             'methods' => 'GET',
             'callback' => [$this, 'get_stats'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [$this, 'check_admin'],
         ]);
 
         register_rest_route('waterprize/v1', '/users', [
             'methods' => 'GET',
             'callback' => [$this, 'get_users'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [$this, 'check_admin'],
         ]);
 
         register_rest_route('waterprize/v1', '/users/(?P<telegram_id>\d+)', [
             'methods' => 'GET',
             'callback' => [$this, 'get_user'],
-            'permission_callback' => '__return_true',
+            'permission_callback' => [$this, 'check_admin'],
         ]);
 
         register_rest_route('waterprize/v1', '/analytics', [
