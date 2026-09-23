@@ -9,6 +9,7 @@ $tab = $tab ?? 'list';
     <nav class="nav-tab-wrapper" style="margin-bottom:20px;">
         <a href="?page=wpz-partners&tab=list" class="nav-tab <?php echo $tab === 'list' ? 'nav-tab-active' : ''; ?>">Партнёры</a>
         <a href="?page=wpz-partners&tab=prizes" class="nav-tab <?php echo $tab === 'prizes' ? 'nav-tab-active' : ''; ?>">Призы</a>
+        <a href="?page=wpz-partners&tab=orders" class="nav-tab <?php echo $tab === 'orders' ? 'nav-tab-active' : ''; ?>">Заказы</a>
         <a href="?page=wpz-partners&tab=stats" class="nav-tab <?php echo $tab === 'stats' ? 'nav-tab-active' : ''; ?>">Статистика</a>
     </nav>
 
@@ -557,6 +558,91 @@ $tab = $tab ?? 'list';
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <?php elseif ($tab === 'orders'): ?>
+    <!-- ═══ TAB: Заказы ═══ -->
+    <div class="wpz-card">
+        <h2>📦 Заказы</h2>
+        <form method="get" style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <input type="hidden" name="page" value="wpz-partners">
+            <input type="hidden" name="tab" value="orders">
+            <input type="search" name="order_search" placeholder="Поиск по имени, призу или ID..." value="<?php echo esc_attr($order_search ?? ''); ?>" class="regular-text">
+            <select name="order_status">
+                <option value="">Все статусы</option>
+                <option value="pending" <?php echo ($order_status ?? '') === 'pending' ? 'selected' : ''; ?>>Ожидает</option>
+                <option value="approved" <?php echo ($order_status ?? '') === 'approved' ? 'selected' : ''; ?>>Одобрен</option>
+                <option value="shipped" <?php echo ($order_status ?? '') === 'shipped' ? 'selected' : ''; ?>>Отправлен</option>
+                <option value="completed" <?php echo ($order_status ?? '') === 'completed' ? 'selected' : ''; ?>>Выполнен</option>
+                <option value="cancelled" <?php echo ($order_status ?? '') === 'cancelled' ? 'selected' : ''; ?>>Отменён</option>
+            </select>
+            <button type="submit" class="button">🔍 Найти</button>
+        </form>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th style="width:60px">ID</th>
+                    <th>Пользователь</th>
+                    <th>Приз</th>
+                    <th>Баллы</th>
+                    <th style="width:100px">Статус</th>
+                    <th style="width:160px">Дата</th>
+                    <th style="width:200px">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($all_orders)): ?>
+                    <tr><td colspan="7">Нет заказов</td></tr>
+                <?php else: foreach ($all_orders as $o): ?>
+                    <tr>
+                        <td><strong>#<?php echo esc_html($o['id']); ?></strong></td>
+                        <td>
+                            <?php echo esc_html($o['user_name'] ?? '—'); ?>
+                            <br><small style="color:#999">ID: <?php echo esc_html($o['user_telegram_id'] ?? $o['user_id'] ?? '—'); ?></small>
+                        </td>
+                        <td><?php echo esc_html($o['prize_name'] ?? '—'); ?></td>
+                        <td><strong><?php echo esc_html($o['price_points'] ?? '—'); ?></strong></td>
+                        <td>
+                            <?php
+                            $status_colors = ['pending'=>'#f0ad4e','approved'=>'#5cb85c','shipped'=>'#5bc0de','completed'=>'#337ab7','cancelled'=>'#d9534f'];
+                            $status_labels = ['pending'=>'Ожидает','approved'=>'Одобрен','shipped'=>'Отправлен','completed'=>'Выполнен','cancelled'=>'Отменён'];
+                            $st = $o['status'] ?? 'pending';
+                            ?>
+                            <span style="color:<?php echo $status_colors[$st] ?? '#999'; ?>;font-weight:600"><?php echo $status_labels[$st] ?? $st; ?></span>
+                        </td>
+                        <td><small><?php echo esc_html($o['created_at'] ?? '—'); ?></small></td>
+                        <td>
+                            <?php if ($st === 'pending'): ?>
+                                <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
+                                    <input type="hidden" name="action" value="approve_order">
+                                    <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
+                                    <button type="submit" class="button button-small" style="color:#00a32a">✅ Одобрить</button>
+                                </form>
+                                <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
+                                    <input type="hidden" name="action" value="cancel_order">
+                                    <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
+                                    <button type="submit" class="button button-small" onclick="return confirm('Отменить заказ?')" style="color:#d63638">❌ Отменить</button>
+                                </form>
+                            <?php elseif ($st === 'approved'): ?>
+                                <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
+                                    <input type="hidden" name="action" value="ship_order">
+                                    <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
+                                    <button type="submit" class="button button-small">🚚 Отправлен</button>
+                                </form>
+                            <?php elseif ($st === 'shipped'): ?>
+                                <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
+                                    <input type="hidden" name="action" value="complete_order">
+                                    <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
+                                    <button type="submit" class="button button-small" style="color:#00a32a">✅ Выполнен</button>
+                                </form>
+                            <?php else: ?>
+                                <span style="color:#999">—</span>
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                <?php endforeach; endif; ?>
+            </tbody>
+        </table>
     </div>
 
     <?php elseif ($tab === 'stats'): ?>

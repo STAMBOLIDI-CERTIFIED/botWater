@@ -258,42 +258,6 @@ class WaterPrize_Pages {
                 }
                 exit;
 
-            // ─── Shop Prizes CRUD ─────────────────────
-            case 'add_shop_prize':
-                $shop_cat = $db->get_category_by_title('Истокъ');
-                if (!$shop_cat) {
-                    wp_redirect(admin_url('admin.php?page=wpz-shop&err=1&msg=' . urlencode('Категория «Истокъ» не найдена')));
-                    exit;
-                }
-                $db->add_prize(
-                    sanitize_text_field($_POST['name'] ?? ''),
-                    sanitize_textarea_field($_POST['description'] ?? ''),
-                    esc_url_raw($_POST['image_url'] ?? ''),
-                    (int)($_POST['price_points'] ?? 0),
-                    $shop_cat['id'],
-                    isset($_POST['active']) ? 1 : 0
-                );
-                wp_redirect(admin_url('admin.php?page=wpz-shop&tab=products&msg=' . urlencode('Товар добавлен')));
-                exit;
-
-            case 'update_shop_prize':
-                $db->update_prize(
-                    (int)($_POST['prize_id'] ?? 0),
-                    sanitize_text_field($_POST['name'] ?? ''),
-                    sanitize_textarea_field($_POST['description'] ?? ''),
-                    esc_url_raw($_POST['image_url'] ?? ''),
-                    (int)($_POST['price_points'] ?? 0),
-                    (int)($_POST['category_id'] ?? 0),
-                    isset($_POST['active']) ? 1 : 0
-                );
-                wp_redirect(admin_url('admin.php?page=wpz-shop&tab=products&msg=' . urlencode('Товар обновлён')));
-                exit;
-
-            case 'delete_shop_prize':
-                $db->delete_prize((int)($_POST['prize_id'] ?? 0));
-                wp_redirect(admin_url('admin.php?page=wpz-shop&tab=products&msg=' . urlencode('Товар удалён')));
-                exit;
-
             case 'close_support_chat':
                 $chat_id = (int)($_POST['chat_id'] ?? 0);
                 if ($chat_id) {
@@ -583,52 +547,22 @@ class WaterPrize_Pages {
         }
         $top_users = $db->get_top_partners_users(20);
 
-        include __DIR__ . '/../templates/partners.php';
-    }
-
-    // ─── Shop Page ────────────────────────────────────
-    public static function shop() {
-        $db = self::db();
-        $tab = sanitize_text_field($_GET['tab'] ?? 'products');
-        $search = sanitize_text_field($_GET['search'] ?? '');
-        $filter_status = sanitize_text_field($_GET['status'] ?? '');
-
-        // Get or auto-create the "Истокъ" category
-        $shop_cat = $db->get_category_by_title('Истокъ');
-        if (!$shop_cat) {
-            $db->add_category('Истокъ', 'Собственные товары', 'Товары магазина Истокъ', '💧', '#1E88E5', 0, true, 0);
-            $shop_cat = $db->get_category_by_title('Истокъ');
-        }
-        $shop_category_id = $shop_cat ? $shop_cat['id'] : 0;
-
-        // Products tab
-        $all_prizes = $db->get_prizes();
-        $shop_prizes = array_filter($all_prizes, fn($p) => $p['category_id'] == $shop_category_id);
-
-        // Search filter
-        if ($search) {
-            $shop_prizes = array_filter($shop_prizes, fn($p) => stripos($p['name'], $search) !== false || stripos($p['description'] ?? '', $search) !== false);
-        }
-        // Status filter
-        if ($filter_status === 'active') {
-            $shop_prizes = array_filter($shop_prizes, fn($p) => $p['active']);
-        } elseif ($filter_status === 'inactive') {
-            $shop_prizes = array_filter($shop_prizes, fn($p) => !$p['active']);
-        }
-
-        $edit_prize = null;
-        if (!empty($_GET['edit_prize'])) {
-            $edit_prize = $db->get_prize((int)$_GET['edit_prize']);
-        }
-
-        // Orders tab — only orders for shop prizes
-        $shop_prize_ids = array_column($shop_prizes, 'id');
+        // Orders data
         $all_orders = $db->get_all_orders(500);
-        $shop_orders = $shop_prize_ids
-            ? array_filter($all_orders, fn($o) => in_array($o['prize_id'], $shop_prize_ids))
-            : [];
+        $order_search = sanitize_text_field($_GET['order_search'] ?? '');
+        $order_status = sanitize_text_field($_GET['order_status'] ?? '');
+        if ($order_search) {
+            $all_orders = array_filter($all_orders, function($o) use ($order_search) {
+                return stripos($o['user_name'] ?? '', $order_search) !== false
+                    || stripos($o['prize_name'] ?? '', $order_search) !== false
+                    || stripos($o['id'] ?? '', $order_search) !== false;
+            });
+        }
+        if ($order_status) {
+            $all_orders = array_filter($all_orders, fn($o) => $o['status'] === $order_status);
+        }
 
-        include __DIR__ . '/../templates/shop.php';
+        include __DIR__ . '/../templates/partners.php';
     }
 
     // ─── Partner Stats ──────────────────────────────────
