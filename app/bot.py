@@ -1,5 +1,6 @@
 import json
 import logging
+import asyncio
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,14 @@ async def delete_chat_messages(chat_id: int):
                 await client.post(_url("deleteMessage"), json={"chat_id": chat_id, "message_id": msg_id})
             except Exception:
                 pass
+
+
+async def _delete_message(chat_id: int, message_id: int):
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(_url("deleteMessage"), json={"chat_id": chat_id, "message_id": message_id})
+        except Exception:
+            pass
 
 
 async def answer_callback(callback_id: str, text: str = "", show_alert: bool = False):
@@ -703,22 +712,35 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
             await answer_callback(cid, "✖️ Недостаточно баллов для обмена", show_alert=True)
             return
         await answer_callback(cid, "⏳ Обработка...")
-        await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
-        order_id = await db.create_order(user_row["id"], prize_id)
+        try:
+            await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
+            order_id = await db.create_order(user_row["id"], prize_id)
 
-        last_scan = await db.get_first_partner_for_user(user_row["id"])
-        await db.record_journey(
-            user_row["id"], "coupon_buy",
-            partner_id=last_scan["partner_id"] if last_scan else None,
-            related_id=order_id,
-            points_used=prize["price_points"]
-        )
+            last_scan = await db.get_first_partner_for_user(user_row["id"])
+            await db.record_journey(
+                user_row["id"], "coupon_buy",
+                partner_id=last_scan["partner_id"] if last_scan else None,
+                related_id=order_id,
+                points_used=prize["price_points"]
+            )
 
-        await db.create_notification(chat_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
-        msg = await db.get_bot_setting("msg_exchange_success",
-            f"🥳 <b>Заказ оформлен!</b>\n\nПриз: {prize['name']}\nНомер заказа: #{order_id}\n\nМы свяжемся с вами для уточнения получения.")
-        msg = msg.replace("{name}", prize['name']).replace("{order_id}", str(order_id))
-        await send_message(chat_id, msg)
+            await db.create_notification(chat_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
+            msg = await db.get_bot_setting("msg_exchange_success",
+                f"🥳 <b>Заказ оформлен!</b>\n\nПриз: {prize['name']}\nНомер заказа: #{order_id}\n\nМы свяжемся с вами для уточнения получения.")
+            msg = msg.replace("{name}", prize['name']).replace("{order_id}", str(order_id))
+            success_msg = await send_message(chat_id, msg)
+            msg_id = cbd.get("message", {}).get("message_id")
+            if msg_id:
+                await _delete_message(chat_id, msg_id)
+            if success_msg and success_msg.get("result", {}).get("message_id"):
+                mid = success_msg["result"]["message_id"]
+                async def _delayed_delete():
+                    await asyncio.sleep(5)
+                    await _delete_message(chat_id, mid)
+                asyncio.create_task(_delayed_delete())
+        except Exception as e:
+            logger.error(f"exchange_prize error: {e}", exc_info=True)
+            await send_message(chat_id, "⚠️ Ошибка при обмене. Попробуйте позже.")
         return
 
     logger.warning(f"Unknown callback: {data}")
