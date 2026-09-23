@@ -645,14 +645,16 @@ class Database:
         await self._fetch("orders", f"id=eq.{order_id}", "PATCH", {"status": "completed"})
 
     async def get_user_completed_orders(self, user_id: int) -> list[dict]:
-        rows = await self._fetch("orders",
-            f"user_id=eq.{user_id}&status=eq.approved&select=*,prizes(name,price_points)&order=created_at.desc")
-        for o in rows:
-            if o.get("prizes"):
-                o["prize_name"] = o["prizes"].get("name", "")
-                o["prize_price"] = o["prizes"].get("price_points", 0)
-                del o["prizes"]
-        return rows
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT o.*, p.name AS prize_name, p.price_points AS prize_price "
+                "FROM orders o "
+                "LEFT JOIN prizes p ON o.prize_id = p.id "
+                "WHERE o.user_id = $1 AND o.status = 'approved' "
+                "ORDER BY o.created_at DESC",
+                user_id,
+            )
+        return [dict(r) for r in rows]
 
     async def redeem_coupon(self, user_id: int, order_id: int, partner_id: int) -> dict:
         user = await self._fetch_one("users", f"telegram_id=eq.{user_id}&select=id,telegram_id,name")
@@ -706,16 +708,49 @@ class Database:
     # ─── Partner Accounts ─────────────────────────────
 
     async def get_partner_account_by_telegram_id(self, telegram_id: int) -> dict | None:
-        return await self._fetch_one("partner_accounts",
-            f"telegram_id=eq.{telegram_id}&is_active=eq.true&select=*,shop_categories(title,icon,color)")
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT pa.*, sc.title AS cat_title, sc.icon AS cat_icon, sc.color AS cat_color "
+                "FROM partner_accounts pa "
+                "LEFT JOIN shop_categories sc ON pa.category_id = sc.id "
+                "WHERE pa.telegram_id = $1 AND pa.is_active = true",
+                telegram_id,
+            )
+        if not row:
+            return None
+        d = dict(row)
+        d["shop_categories"] = {"title": d.pop("cat_title", ""), "icon": d.pop("cat_icon", ""), "color": d.pop("cat_color", "")}
+        return d
 
     async def get_partner_account(self, account_id: int) -> dict | None:
-        return await self._fetch_one("partner_accounts",
-            f"id=eq.{account_id}&select=*,shop_categories(title,icon,color)")
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT pa.*, sc.title AS cat_title, sc.icon AS cat_icon, sc.color AS cat_color "
+                "FROM partner_accounts pa "
+                "LEFT JOIN shop_categories sc ON pa.category_id = sc.id "
+                "WHERE pa.id = $1",
+                account_id,
+            )
+        if not row:
+            return None
+        d = dict(row)
+        d["shop_categories"] = {"title": d.pop("cat_title", ""), "icon": d.pop("cat_icon", ""), "color": d.pop("cat_color", "")}
+        return d
 
     async def get_partner_accounts(self) -> list[dict]:
-        return await self._fetch("partner_accounts",
-            "select=*,shop_categories(title,icon,color)&order=created_at.desc")
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT pa.*, sc.title AS cat_title, sc.icon AS cat_icon, sc.color AS cat_color "
+                "FROM partner_accounts pa "
+                "LEFT JOIN shop_categories sc ON pa.category_id = sc.id "
+                "ORDER BY pa.created_at DESC"
+            )
+        result = []
+        for row in rows:
+            d = dict(row)
+            d["shop_categories"] = {"title": d.pop("cat_title", ""), "icon": d.pop("cat_icon", ""), "color": d.pop("cat_color", "")}
+            result.append(d)
+        return result
 
     async def add_partner_account(self, telegram_id: int, name: str, category_id: int) -> int:
         rows = await self._fetch("partner_accounts", method="POST", json_data={
@@ -732,22 +767,16 @@ class Database:
         await self._fetch("partner_accounts", f"id=eq.{account_id}", "DELETE")
 
     async def get_partner_used_coupons(self, category_id: int) -> list[dict]:
-        rows = await self._fetch("user_coupons",
-            f"status=eq.used&select=*,prizes(name),users(name,telegram_id)&order=used_at.desc")
-        result = []
-        for r in rows:
-            if r.get("prizes"):
-                r["prize_name"] = r["prizes"].get("name", "")
-                del r["prizes"]
-            if r.get("users"):
-                r["user_name"] = r["users"].get("name", "")
-                r["user_telegram_id"] = r["users"].get("telegram_id", 0)
-                del r["users"]
-            if r.get("prize"):
-                r["prize_name"] = r["prize"].get("name", "")
-                del r["prize"]
-            result.append(r)
-        return result
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT uc.*, p.name AS prize_name, u.name AS user_name, u.telegram_id AS user_telegram_id "
+                "FROM user_coupons uc "
+                "LEFT JOIN prizes p ON uc.prize_id = p.id "
+                "LEFT JOIN users u ON uc.user_id = u.id "
+                "WHERE uc.status = 'used' "
+                "ORDER BY uc.used_at DESC"
+            )
+        return [dict(r) for r in rows]
 
     # ─── User Coupons ─────────────────────────────────
 
@@ -760,25 +789,32 @@ class Database:
         return qr_code
 
     async def get_user_coupons(self, user_id: int) -> list[dict]:
-        rows = await self._fetch("user_coupons",
-            f"user_id=eq.{user_id}&select=*,prizes(name,price_points,image_url,description),shop_categories(title,color,icon)&order=created_at.desc")
-        for r in rows:
-            if r.get("prizes"):
-                r["prize_name"] = r["prizes"].get("name", "")
-                r["prize_price"] = r["prizes"].get("price_points", 0)
-                r["prize_image"] = r["prizes"].get("image_url", "")
-                r["prize_description"] = r["prizes"].get("description", "")
-                del r["prizes"]
-            if r.get("shop_categories"):
-                r["partner_name"] = r["shop_categories"].get("title", "")
-                r["partner_color"] = r["shop_categories"].get("color", "#0EA5E9")
-                r["partner_icon"] = r["shop_categories"].get("icon", "")
-                del r["shop_categories"]
-        return rows
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT uc.*, p.name AS prize_name, p.price_points AS prize_price, "
+                "p.image_url AS prize_image, p.description AS prize_description, "
+                "sc.title AS partner_name, sc.color AS partner_color, sc.icon AS partner_icon "
+                "FROM user_coupons uc "
+                "LEFT JOIN prizes p ON uc.prize_id = p.id "
+                "LEFT JOIN shop_categories sc ON p.category_id = sc.id "
+                "WHERE uc.user_id = $1 "
+                "ORDER BY uc.created_at DESC",
+                user_id,
+            )
+        return [dict(r) for r in rows]
 
     async def get_user_coupon_by_qr(self, qr_code: str) -> dict | None:
-        return await self._fetch_one("user_coupons",
-            f"qr_code=eq.{qr_code}&select=*,prizes(name,price_points),users(name,telegram_id)")
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT uc.*, p.name AS prize_name, p.price_points AS prize_price, "
+                "u.name AS user_name, u.telegram_id AS user_telegram_id "
+                "FROM user_coupons uc "
+                "LEFT JOIN prizes p ON uc.prize_id = p.id "
+                "LEFT JOIN users u ON uc.user_id = u.id "
+                "WHERE uc.qr_code = $1",
+                qr_code,
+            )
+        return dict(row) if row else None
 
     async def activate_user_coupon(self, qr_code: str, partner_account_id: int) -> dict:
         coupon = await self.get_user_coupon_by_qr(qr_code)
@@ -794,12 +830,8 @@ class Database:
             "used_by_partner_id": partner_account_id
         })
 
-        if coupon.get("users"):
-            user_name = coupon["users"].get("name", "")
-            prize_name = coupon.get("prizes", {}).get("name", "") if coupon.get("prizes") else ""
-        else:
-            user_name = ""
-            prize_name = ""
+        user_name = coupon.get("user_name", "")
+        prize_name = coupon.get("prize_name", "")
 
         return {
             "ok": True,
