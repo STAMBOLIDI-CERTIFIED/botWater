@@ -694,15 +694,15 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
 
     if data.startswith("exchange_prize:"):
         prize_id = int(data.split(":", 1)[1])
-        await answer_callback(cid)
         prize = await db.get_prize(prize_id)
         if not prize:
-            await send_message(chat_id, "✖️ Приз не найден.")
+            await answer_callback(cid, "✖️ Приз не найден", show_alert=True)
             return
         user_row = await db.get_user(chat_id)
         if not user_row or user_row["balance"] < prize["price_points"]:
-            await send_message(chat_id, "✖️ Недостаточно баллов для обмена.")
+            await answer_callback(cid, "✖️ Недостаточно баллов для обмена", show_alert=True)
             return
+        await answer_callback(cid, "⏳ Обработка...")
         await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user_row["id"], prize_id)
 
