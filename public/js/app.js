@@ -434,7 +434,6 @@ function stopScanner() {
         if (page === 'profile') loadUserData();
         if (page === 'history') switchHistoryTab('scans');
         if (page === 'shop') loadShop();
-        if (page === 'partners') loadPartners();
         if (page === 'raffles') loadRaffles();
         if (page === 'tree') loadTree();
         if (page === 'bottles') renderBottles();
@@ -500,45 +499,86 @@ function closePrizeModal() {
     }
 
 async function loadShop() {
-        const d = await apiFetch('/user?user_id=' + getUID());
-        document.getElementById('shop-balance-val').textContent = d ? d.balance : '—';
-        const g = document.getElementById('shop-categories');
-
-        const cats = await apiFetch('/shop/categories');
-        if (!cats || !cats.length) { g.style.display = ''; g.style.gridTemplateColumns = ''; g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Магазин пуст</div><div class="empty-d">Товары скоро появятся</div></div>'; return; }
-        var shopCat = cats.find(c => c.is_active && c.title === 'Истокъ');
-        if (!shopCat) { g.style.display = ''; g.style.gridTemplateColumns = ''; g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Товары пока отсутствуют</div></div>'; return; }
-
-        g.innerHTML = '<div style="text-align:center;padding:20px 0;color:var(--text-dim)">' + icon('hourglass') + ' Загрузка товаров...</div>';
-
-        const data = await apiFetch('/shop/categories/' + shopCat.id);
-        if (!data || !data.items || !data.items.length) { g.style.display = ''; g.style.gridTemplateColumns = ''; g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Товаров пока нет</div><div class="empty-d">Скоро здесь появятся призы</div></div>'; return; }
-
-        var items = data.items;
-        var accent = shopCat.color || '#C9A84C';
+        var uid = getUID();
+        var d = uid ? await apiFetch('/user?user_id=' + uid) : null;
         var bal = d ? d.balance : 0;
+        document.getElementById('shop-balance-val').textContent = bal;
 
-        g.style.display = 'grid';
-        g.style.gridTemplateColumns = '1fr 1fr';
-        g.style.gap = '10px';
-        g.style.flexDirection = '';
-        g.innerHTML = items.map(function(p, i) {
-            var ok = bal >= p.price_points;
-            var missing = Math.max(0, p.price_points - bal);
-            var imgHtml = p.image_url
-                ? '<div class="shop-prize-img-wrap"><img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-prize-img-fallback" style="display:none">' + icon('store') + '</div></div>'
-                : '<div class="shop-prize-img-wrap"><div class="shop-prize-img-fallback">' + icon('store') + '</div></div>';
-            var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
-            return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
-                + imgHtml
-                + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
-                + '<div class="shop-prize-desc">' + esc(p.description) + '</div>'
-                + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
-                + (ok
-                    ? '<button class="shop-prize-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
-                    : '<button class="shop-prize-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')" style="cursor:pointer">Не хватает ' + missing + ' баллов</button>')
-                + '</div></div>';
+        var partnerSection = document.getElementById('shop-partners-section');
+        var partnerList = document.getElementById('shop-partners-list');
+        var recSection = document.getElementById('shop-recommended-section');
+        var recGrid = document.getElementById('shop-recommended-grid');
+        var emptyEl = document.getElementById('shop-empty');
+
+        partnerSection.style.display = 'none';
+        recSection.style.display = 'none';
+        emptyEl.style.display = 'none';
+
+        var cats = await apiFetch('/shop/categories');
+        if (!cats) cats = [];
+
+        var partners = cats.filter(function(c) {
+            return c.is_active && c.subtitle && c.subtitle.toLowerCase().indexOf('партнёр') !== -1;
+        });
+
+        if (!partners.length) {
+            emptyEl.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Магазин пуст</div><div class="empty-d">Товары скоро появятся</div></div>';
+            emptyEl.style.display = 'block';
+            return;
+        }
+
+        partnerList.innerHTML = partners.map(function(c, i) {
+            var accent = c.color || '#0EA5E9';
+            var iconHtml = c.logo_url ? '<img src="' + esc(c.logo_url) + '">' : (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>');
+            var extra = '';
+            if (c.website || c.telegram) {
+                extra = '<div class="partner-cat-links">';
+                if (c.website) extra += '<span class="partner-cat-link">🌐</span>';
+                if (c.telegram) extra += '<span class="partner-cat-link">✈️</span>';
+                extra += '</div>';
+            }
+            return '<div class="partner-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openPartnerCategory(' + c.id + ')">'
+                + '<div class="partner-cat-icon" style="background:' + accent + '18">'
+                + iconHtml + '</div>'
+                + '<div class="partner-cat-info"><div class="partner-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
+                + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div>'
+                + extra + '</div>'
+                + '<div class="partner-cat-arrow">›</div></div>';
         }).join('');
+        partnerSection.style.display = 'block';
+
+        var allItems = [];
+        for (var i = 0; i < partners.length; i++) {
+            var data = await apiFetch('/shop/categories/' + partners[i].id);
+            if (data && data.items && data.items.length) {
+                data.items.forEach(function(item) {
+                    item._partner_name = partners[i].title;
+                    item._partner_color = partners[i].color || '#0EA5E9';
+                    allItems.push(item);
+                });
+            }
+        }
+
+        if (allItems.length) {
+            recGrid.innerHTML = allItems.map(function(p, i) {
+                var ok = bal >= p.price_points;
+                var missing = Math.max(0, p.price_points - bal);
+                var imgHtml = p.image_url
+                    ? '<div class="shop-prize-img-wrap"><img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-prize-img-fallback" style="display:none">' + icon('store') + '</div></div>'
+                    : '<div class="shop-prize-img-wrap"><div class="shop-prize-img-fallback">' + icon('store') + '</div></div>';
+                var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
+                return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
+                    + imgHtml
+                    + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
+                    + '<div style="font-size:11px;color:' + p._partner_color + ';margin-bottom:4px">' + esc(p._partner_name) + '</div>'
+                    + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
+                    + (ok
+                        ? '<button class="shop-prize-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                        : '<button class="shop-prize-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')" style="cursor:pointer">Не хватает ' + missing + ' баллов</button>')
+                    + '</div></div>';
+            }).join('');
+            recSection.style.display = 'block';
+        }
     }
 
     async function openShopCategory(catId) {
@@ -590,82 +630,35 @@ async function loadShop() {
     }
 
     // ═══════════════════════════════════════════
-// PAGE: PARTNERS
+// PAGE: PARTNER DETAIL
 // ═══════════════════════════════════════════
 
-var partnersData = { categories: [], balance: 0 };
-
-async function loadPartners() {
-        var uid = getUID();
-        if (!uid) return;
-        var d = await apiFetch('/user?user_id=' + uid);
-        partnersData.balance = d ? d.balance : 0;
-        document.getElementById('partners-balance').textContent = partnersData.balance;
-
-        var maxPoints = 5000;
-        var pct = Math.min(100, (partnersData.balance / maxPoints) * 100);
-        document.getElementById('partners-bar').style.width = pct + '%';
-
-        var nextMilestone = Math.ceil(partnersData.balance / 500) * 500;
-        if (nextMilestone <= partnersData.balance) nextMilestone += 500;
-        var needed = Math.max(0, nextMilestone - partnersData.balance);
-        document.getElementById('partners-hint').textContent = 'До следующего уровня: ' + needed + ' баллов';
-
-        var cats = await apiFetch('/shop/categories');
-        if (!cats) cats = [];
-        partnersData.categories = cats.filter(function(c) {
-            return c.is_active && c.subtitle && c.subtitle.toLowerCase().indexOf('партнёр') !== -1;
-        });
-
-        var g = document.getElementById('partners-categories');
-        var itemsGrid = document.getElementById('partners-items');
-        itemsGrid.style.display = 'none';
-
-        if (!partnersData.categories.length) {
-            g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Партнёры пока отсутствуют</div><div class="empty-d">Скоро здесь появятся товары от партнёров</div></div>';
-            return;
-        }
-
-        g.innerHTML = partnersData.categories.map(function(c, i) {
-            var accent = c.color || '#0EA5E9';
-            var iconHtml = c.logo_url ? '<img src="' + esc(c.logo_url) + '">' : (c.image_url ? '<img src="' + esc(c.image_url) + '">' : '<span>' + esc(c.icon) + '</span>');
-            var extra = '';
-            if (c.website || c.telegram) {
-                extra = '<div class="partner-cat-links">';
-                if (c.website) extra += '<span class="partner-cat-link">🌐</span>';
-                if (c.telegram) extra += '<span class="partner-cat-link">✈️</span>';
-                extra += '</div>';
-            }
-            return '<div class="partner-cat-card" style="animation-delay:' + (i * 0.06) + 's;border-color:' + accent + '25" onclick="openPartnerCategory(' + c.id + ')">'
-                + '<div class="partner-cat-icon" style="background:' + accent + '18">'
-                + iconHtml + '</div>'
-                + '<div class="partner-cat-info"><div class="partner-cat-title" style="color:' + accent + '">' + esc(c.title) + '</div>'
-                + '<div class="partner-cat-sub">' + esc(c.subtitle) + '</div>'
-                + extra + '</div>'
-                + '<div class="partner-cat-arrow">›</div></div>';
-        }).join('');
-    }
-
     async function openPartnerCategory(catId) {
-        var g = document.getElementById('partners-categories');
-        var itemsGrid = document.getElementById('partners-items');
-        var itemsContainer = document.getElementById('partners-items-grid');
+        var partnerSection = document.getElementById('shop-partners-section');
+        var recSection = document.getElementById('shop-recommended-section');
+        var emptyEl = document.getElementById('shop-empty');
+        var partnerList = document.getElementById('shop-partners-list');
 
-        g.innerHTML = '<div class="empty-state" style="padding:10px 0"><div class="empty-ico" style="width:40px;height:40px;font-size:20px;margin-bottom:6px">' + icon('hourglass') + '</div><div class="empty-t" style="font-size:13px">Загрузка...</div></div>';
-        itemsGrid.style.display = 'none';
+        partnerSection.style.display = 'none';
+        recSection.style.display = 'none';
+        emptyEl.style.display = 'none';
+
+        partnerList.innerHTML = '<div class="empty-state" style="padding:10px 0"><div class="empty-ico" style="width:40px;height:40px;font-size:20px;margin-bottom:6px">' + icon('hourglass') + '</div><div class="empty-t" style="font-size:13px">Загрузка...</div></div>';
+        partnerSection.style.display = 'block';
 
         var data = await apiFetch('/shop/categories/' + catId);
         if (!data || !data.category) {
-            g.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('question') + '</div><div class="empty-t">Категория не найдена</div></div>';
+            partnerList.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('question') + '</div><div class="empty-t">Категория не найдена</div></div>';
             return;
         }
 
         var cat = data.category;
         var items = data.items || [];
-        var bal = partnersData.balance;
+        var d = await apiFetch('/user?user_id=' + getUID());
+        var bal = d ? d.balance : 0;
 
         var logoSrc = cat.logo_url || cat.image_url || '';
-        var headerHtml = '<div class="partner-back-btn" onclick="loadPartners()"><span class="bb-icon">‹</span> Назад</div>'
+        var headerHtml = '<div class="partner-back-btn" onclick="loadShop()"><span class="bb-icon">‹</span> Назад к магазину</div>'
             + '<div class="partner-detail-header" style="animation:fadeIn .4s var(--ease-out)">';
 
         if (logoSrc) {
@@ -693,28 +686,29 @@ async function loadPartners() {
 
         headerHtml += '</div>';
 
-        g.innerHTML = headerHtml;
-
         if (!items.length) {
-            itemsGrid.style.display = 'block';
-            itemsContainer.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-ico" style="font-size:36px">' + esc(cat.icon) + '</div><div class="empty-t">Товаров пока нет</div><div class="empty-d">Скоро здесь появятся товары</div></div>';
+            headerHtml += '<div class="empty-state"><div class="empty-ico" style="font-size:36px">' + esc(cat.icon) + '</div><div class="empty-t">Товаров пока нет</div><div class="empty-d">Скоро здесь появятся товары</div></div>';
+            partnerList.innerHTML = headerHtml;
             return;
         }
 
-        itemsGrid.style.display = 'grid';
-        itemsContainer.innerHTML = items.map(function(p, i) {
-            var ok = bal >= p.price_points;
-            var missing = Math.max(0, p.price_points - bal);
-            return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's">'
-                + (p.image_url ? '<div class="partner-item-img-wrap"><img class="partner-item-img" src="' + esc(p.image_url) + '" onerror="this.parentElement.style.display=\'none\'">' + (ok ? '<div class="partner-item-badge">Доступно</div>' : '') + '</div>' : (ok ? '<div class="partner-item-badge" style="position:static;margin:10px 10px 0">Доступно</div>' : ''))
-                + '<div class="partner-item-body"><div class="partner-item-name">' + esc(p.name) + '</div>'
-                + '<div class="partner-item-desc">' + esc(p.description) + '</div>'
-                + '<div class="partner-item-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
-                + (ok
-                    ? '<button class="partner-item-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
-                    : '<button class="partner-item-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
-                + '</div></div>';
-        }).join('');
+        var itemsHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">'
+            + items.map(function(p, i) {
+                var ok = bal >= p.price_points;
+                var missing = Math.max(0, p.price_points - bal);
+                return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's">'
+                    + (p.image_url ? '<div class="partner-item-img-wrap"><img class="partner-item-img" src="' + esc(p.image_url) + '" onerror="this.parentElement.style.display=\'none\'">' + (ok ? '<div class="partner-item-badge">Доступно</div>' : '') + '</div>' : (ok ? '<div class="partner-item-badge" style="position:static;margin:10px 10px 0">Доступно</div>' : ''))
+                    + '<div class="partner-item-body"><div class="partner-item-name">' + esc(p.name) + '</div>'
+                    + '<div class="partner-item-desc">' + esc(p.description) + '</div>'
+                    + '<div class="partner-item-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
+                    + (ok
+                        ? '<button class="partner-item-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                        : '<button class="partner-item-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
+                    + '</div></div>';
+            }).join('')
+            + '</div>';
+
+        partnerList.innerHTML = headerHtml + itemsHtml;
     }
 
     async function processPartnerScan(qrCode) {
@@ -805,7 +799,7 @@ function startScan() {
             if (partnerResult && partnerResult.ok) {
                 if (partnerResult.already_scanned) {
                     showToast('Баллы уже начислены');
-                    openShopCategory(partnerResult.category_id);
+                    openPartnerCategory(partnerResult.category_id);
                 } else {
                     document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + esc(partnerResult.partner_name) + '»! Баланс: ' + partnerResult.balance;
                 }
@@ -1382,10 +1376,10 @@ var supportChatId = null;
                         if (result && result.ok) {
                             if (result.already_scanned) {
                                 showToast('Баллы уже начислены');
-                                openShopCategory(result.category_id);
+                                openPartnerCategory(result.category_id);
                             } else {
                                 showToast('+' + result.points_earned + ' баллов от «' + result.partner_name + '»');
-                                openShopCategory(result.category_id);
+                                openPartnerCategory(result.category_id);
                             }
                         } else {
                             showToast('Партнёр не найден');
