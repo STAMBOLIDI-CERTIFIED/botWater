@@ -518,7 +518,7 @@ async function loadShop() {
         if (!cats) cats = [];
 
         var partners = cats.filter(function(c) {
-            return c.is_active && c.subtitle && c.subtitle.toLowerCase().indexOf('партнёр') !== -1;
+            return c.is_active && c.title;
         });
 
         if (!partners.length) {
