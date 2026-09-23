@@ -556,6 +556,17 @@ async def handle_callback(db, cbd: dict):
     cid = cbd["id"]
     chat_id = cbd["message"]["chat"]["id"]
     data = cbd["data"]
+    try:
+        await _handle_callback_inner(db, cid, chat_id, data)
+    except Exception as e:
+        logger.error(f"handle_callback error: {e}", exc_info=True)
+        try:
+            await answer_callback(cid, "⚠️ Произошла ошибка. Попробуйте снова.")
+        except Exception:
+            pass
+
+
+async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
     user = await db.get_user(chat_id)
     s = get_settings()
 
