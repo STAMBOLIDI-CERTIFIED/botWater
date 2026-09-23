@@ -636,3 +636,42 @@
     border: 1px solid var(--glass-border);
     font-size: 10px;
 }
+
+/* ─── Coupons Section (Partner Detail) ─── */
+
+.shop-rec-section {
+    margin-bottom: 16px;
+}
+
+.shop-rec-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 0 2px;
+}
+
+.shop-rec-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.shop-rec-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: rgba(255,255,255,0.06);
+    padding: 3px 9px;
+    border-radius: 20px;
+}
+
+/* ─── Partner Detail (overrides horizontal scroll) ─── */
+
+#shop-partners-list:has(.partner-back-btn) {
+    display: block !important;
+    overflow-x: visible !important;
+    scroll-snap-type: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
