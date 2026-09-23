@@ -67,6 +67,22 @@
             </div>
             <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(14,165,233,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('store')</div>
         </div>
+        <div class="card card-full anim-in" id="card-my-coupons" onclick="openPage('my-coupons')" style="--i:0.5;display:none;background:linear-gradient(135deg,var(--glass-bg),rgba(234,179,8,0.06));border-color:rgba(234,179,8,0.2)">
+            <div class="card-left" style="flex:1">
+                <div class="card-tag" style="color:#EAB308">Мои купоны</div>
+                <div class="card-label">Купленные купоны</div>
+                <div class="card-desc">Активные и использованные купоны</div>
+            </div>
+            <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(234,179,8,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('gift')</div>
+        </div>
+        <div class="card card-full anim-in" id="card-partner-dashboard" onclick="openPage('partner-dashboard')" style="--i:0.6;display:none;background:linear-gradient(135deg,var(--glass-bg),rgba(168,85,247,0.06));border-color:rgba(168,85,247,0.2)">
+            <div class="card-left" style="flex:1">
+                <div class="card-tag" style="color:#A855F7">Панель партнёра</div>
+                <div class="card-label" id="card-partner-name">Бизнес-партнёр</div>
+                <div class="card-desc">Использованные купоны вашего заведения</div>
+            </div>
+            <div style="font-size:40px;filter:drop-shadow(0 4px 8px rgba(168,85,247,0.3));animation:treeEmojiFloat 3s ease-in-out infinite">icon('store')</div>
+        </div>
         <div class="card card-full anim-in" onclick="openPage('tree')" style="--i:1;background:linear-gradient(135deg,var(--glass-bg),rgba(61,158,106,0.06));border-color:rgba(61,158,106,0.2)">
             <div class="card-left" style="flex:1">
                 <div class="card-tag" style="color:var(--green)">Дерево</div>
@@ -223,6 +239,59 @@
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Прошедшие розыгрыши и победители</p>
     <div id="raffles-list">
         <div class="empty-state"><div class="empty-ico">icon('raffle')</div><div class="empty-t">Загрузка...</div></div>
+    </div>
+</div>
+
+<!-- МОИ КУПОНЫ -->
+<div id="page-my-coupons" class="page">
+    <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
+    <div class="section-title" style="margin-bottom:4px">Мои купоны</div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Купленные и использованные купоны</p>
+    <div id="my-coupons-list">
+        <div class="empty-state"><div class="empty-ico">icon('gift')</div><div class="empty-t">Загрузка...</div></div>
+    </div>
+</div>
+
+<!-- ПАНЕЛЬ ПАРТНЁРА -->
+<div id="page-partner-dashboard" class="page">
+    <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
+    <div class="section-title" style="margin-bottom:4px">Панель партнёра</div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px" id="partner-dash-subtitle">Использованные купоны</p>
+    <div id="partner-dash-stats"></div>
+    <div id="partner-dash-list">
+        <div class="empty-state"><div class="empty-ico">icon('store')</div><div class="empty-t">Загрузка...</div></div>
+    </div>
+</div>
+
+<!-- МОДАЛКА КУПОНА -->
+<div id="coupon-modal" class="prize-modal-overlay" onclick="if(event.target===this)closeCouponModal()">
+    <div class="prize-modal">
+        <button class="prize-modal-close" onclick="closeCouponModal()">✕</button>
+        <div id="coupon-modal-img" class="prize-modal-img"></div>
+        <div class="prize-modal-body">
+            <div id="coupon-modal-name" class="prize-modal-name"></div>
+            <div id="coupon-modal-desc" class="prize-modal-desc"></div>
+            <div id="coupon-modal-status" class="prize-modal-price"></div>
+            <div id="coupon-modal-qr" style="text-align:center;margin:16px 0"></div>
+            <div id="coupon-modal-action"></div>
+        </div>
+    </div>
+</div>
+
+<!-- СКАНЕР КУПОНА (для партнёра) -->
+<div id="coupon-scanner-modal" class="prize-modal-overlay" onclick="if(event.target===this)closeCouponScanner()">
+    <div class="prize-modal">
+        <button class="prize-modal-close" onclick="closeCouponScanner()">✕</button>
+        <div class="prize-modal-body" style="text-align:center">
+            <div style="font-size:48px;margin-bottom:16px">📱</div>
+            <div class="prize-modal-name">Сканирование купона</div>
+            <div id="coupon-scanner-result" class="prize-modal-desc" style="margin:16px 0"></div>
+            <div id="coupon-scanner-reader" style="display:none"></div>
+            <div id="coupon-scanner-zone">
+                <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px">Наведите камеру на QR-код купона</p>
+                <button class="prize-modal-btn primary" onclick="startCouponScanner()">Открыть камеру</button>
+            </div>
+        </div>
     </div>
 </div>
 

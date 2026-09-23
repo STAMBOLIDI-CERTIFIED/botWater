@@ -323,6 +323,18 @@ function countUp(el, target, duration) {
             }
 
             await updateNotifBadge();
+
+            var coupCard = document.getElementById('card-my-coupons');
+            if (coupCard) coupCard.style.display = 'block';
+
+            var partAccData = await apiFetch('/partner-account/' + uid);
+            var partCard = document.getElementById('card-partner-dashboard');
+            if (partAccData && partAccData.ok && partCard) {
+                var cat = (partAccData.account && partAccData.account.shop_categories) || {};
+                partCard.style.display = 'block';
+                var partName = document.getElementById('card-partner-name');
+                if (partName) partName.textContent = cat.title || 'Бизнес-партнёр';
+            }
         } catch(e) {}
     }
     loadUserData();
@@ -439,6 +451,191 @@ function stopScanner() {
         if (page === 'bottles') renderBottles();
         if (page === 'gift') {} // gift page is static
         if (page === 'support') openSupport();
+        if (page === 'my-coupons') loadMyCoupons();
+        if (page === 'partner-dashboard') loadPartnerDashboard();
+    }
+
+    // ═══════════════════════════════════════════
+// PAGE: MY COUPONS
+// ═══════════════════════════════════════════
+
+async function loadMyCoupons() {
+        var uid = getUID();
+        var list = document.getElementById('my-coupons-list');
+        if (!uid) { list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('warning') + '</div><div class="empty-t">Пользователь не найден</div></div>'; return; }
+        var data = await apiFetch('/user/' + uid + '/coupons');
+        if (!data || !data.ok || !data.coupons || !data.coupons.length) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('gift') + '</div><div class="empty-t">Купонов пока нет</div><div class="empty-d">Обменивайте баллы на призы в магазине</div></div>';
+            return;
+        }
+        var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк' };
+        var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444' };
+        list.innerHTML = data.coupons.map(function(c, i) {
+            var st = c.status || 'active';
+            var stColor = statusColors[st] || '#999';
+            var imgHtml = c.prize_image
+                ? '<img class="coupon-card-img" src="' + esc(c.prize_image) + '" onerror="this.style.display=\'none\'">'
+                : '<div class="coupon-card-img-fallback">' + esc(c.partner_icon || '🎁') + '</div>';
+            var btnHtml = st === 'active'
+                ? '<button class="coupon-card-btn" onclick="event.stopPropagation();openCouponModal(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')">Показать QR</button>'
+                : '';
+            return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + stColor + '">'
+                + '<div class="coupon-card-header">'
+                + '<div class="coupon-card-title">' + esc(c.prize_name || 'Приз') + '</div>'
+                + '<div class="coupon-card-status" style="color:' + stColor + '">' + statusLabels[st] + '</div>'
+                + '</div>'
+                + '<div class="coupon-card-meta">' + esc(c.partner_name || '') + ' • ' + (c.prize_price || 0) + ' баллов</div>'
+                + '<div class="coupon-card-date">' + icon('clock') + ' ' + new Date(c.created_at).toLocaleDateString('ru-RU') + '</div>'
+                + btnHtml
+                + '</div>';
+        }).join('');
+    }
+
+    function openCouponModal(coupon) {
+        var modal = document.getElementById('coupon-modal');
+        var imgEl = document.getElementById('coupon-modal-img');
+        var nameEl = document.getElementById('coupon-modal-name');
+        var descEl = document.getElementById('coupon-modal-desc');
+        var statusEl = document.getElementById('coupon-modal-status');
+        var qrEl = document.getElementById('coupon-modal-qr');
+        var actionEl = document.getElementById('coupon-modal-action');
+
+        if (coupon.prize_image) {
+            imgEl.innerHTML = '<img src="' + esc(coupon.prize_image) + '" onerror="this.parentElement.innerHTML=\'<div class=prize-modal-img-fallback>' + icon('gift') + '</div>\'">';
+            imgEl.style.display = 'block';
+        } else {
+            imgEl.style.display = 'none';
+        }
+
+        nameEl.textContent = coupon.prize_name || 'Приз';
+        descEl.textContent = coupon.prize_description || '';
+
+        var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк' };
+        var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444' };
+        var st = coupon.status || 'active';
+        statusEl.innerHTML = '<span style="color:' + (statusColors[st] || '#999') + '">' + statusLabels[st] + '</span>';
+
+        qrEl.innerHTML = '';
+        actionEl.innerHTML = '';
+        if (st === 'active' && coupon.qr_code) {
+            var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(coupon.qr_code);
+            qrEl.innerHTML = '<img src="' + qrUrl + '" style="width:200px;height:200px;border-radius:16px;background:#fff;padding:8px" alt="QR купон">'
+                + '<div style="margin-top:10px;font-size:12px;color:var(--text-dim);word-break:break-all">' + esc(coupon.qr_code) + '</div>';
+        } else if (st === 'used') {
+            qrEl.innerHTML = '<div style="padding:32px;text-align:center;font-size:48px">✅</div>';
+        }
+
+        modal.classList.add('active');
+    }
+
+    function closeCouponModal() {
+        document.getElementById('coupon-modal').classList.remove('active');
+    }
+
+    // ═══════════════════════════════════════════
+// PAGE: PARTNER DASHBOARD
+// ═══════════════════════════════════════════
+
+async function loadPartnerDashboard() {
+        var uid = getUID();
+        var list = document.getElementById('partner-dash-list');
+        var subtitle = document.getElementById('partner-dash-subtitle');
+        var statsEl = document.getElementById('partner-dash-stats');
+        if (!uid) return;
+
+        var accData = await apiFetch('/partner-account/' + uid);
+        if (!accData || !accData.ok) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('warning') + '</div><div class="empty-t">Вы не являетесь партнёром</div></div>';
+            return;
+        }
+
+        var account = accData.account;
+        var cat = account.shop_categories || {};
+        subtitle.textContent = 'Панель: ' + (cat.title || '');
+
+        var data = await apiFetch('/partner-account/' + account.id + '/used-coupons');
+        if (!data || !data.ok) return;
+
+        var stats = data.stats || {};
+        statsEl.innerHTML = '<div class="partner-stats-row">'
+            + '<div class="partner-stat-card"><div class="partner-stat-val">' + (stats.total_used || 0) + '</div><div class="partner-stat-label">Всего использовано</div></div>'
+            + '<div class="partner-stat-card"><div class="partner-stat-val">' + (stats.relevant_used || 0) + '</div><div class="partner-stat-label">Вашей категории</div></div>'
+            + '</div>';
+
+        var coupons = data.coupons || [];
+        if (!coupons.length) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('store') + '</div><div class="empty-t">Использованных купонов пока нет</div></div>';
+            return;
+        }
+
+        list.innerHTML = coupons.map(function(c, i) {
+            return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + (cat.color || '#0EA5E9') + '">'
+                + '<div class="coupon-card-header">'
+                + '<div class="coupon-card-title">' + esc(c.user_name || 'Пользователь') + '</div>'
+                + '<div class="coupon-card-status" style="color:#EAB308">Использован</div>'
+                + '</div>'
+                + '<div class="coupon-card-meta">' + esc(c.prize_name || 'Приз') + '</div>'
+                + '<div class="coupon-card-date">' + icon('clock') + ' ' + (c.used_at ? new Date(c.used_at).toLocaleDateString('ru-RU') : '—') + '</div>'
+                + '</div>';
+        }).join('');
+
+        var scanBtn = '<button class="prize-modal-btn primary" style="margin-top:16px" onclick="openCouponScanner()">Сканировать купон</button>';
+        list.innerHTML += scanBtn;
+    }
+
+    // ═══════════════════════════════════════════
+// COUPON SCANNER (for partners)
+// ═══════════════════════════════════════════
+
+var couponHtml5QrCode = null;
+
+function openCouponScanner() {
+        document.getElementById('coupon-scanner-modal').classList.add('active');
+        document.getElementById('coupon-scanner-result').textContent = '';
+        document.getElementById('coupon-scanner-zone').style.display = 'block';
+        document.getElementById('coupon-scanner-reader').style.display = 'none';
+    }
+
+function closeCouponScanner() {
+        document.getElementById('coupon-scanner-modal').classList.remove('active');
+        if (couponHtml5QrCode && couponHtml5QrCode.isScanning) couponHtml5QrCode.stop().catch(() => {});
+    }
+
+async function startCouponScanner() {
+        var zone = document.getElementById('coupon-scanner-zone');
+        var reader = document.getElementById('coupon-scanner-reader');
+        zone.style.display = 'none';
+        reader.style.display = 'block';
+        if (!couponHtml5QrCode) couponHtml5QrCode = new Html5Qrcode('coupon-scanner-reader');
+        try {
+            await couponHtml5QrCode.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                async function(qrCode) {
+                    if (couponHtml5QrCode && couponHtml5QrCode.isScanning) couponHtml5QrCode.stop().catch(() => {});
+                    reader.style.display = 'none';
+                    document.getElementById('coupon-scanner-result').textContent = 'Код: ' + qrCode;
+                    var uid = getUID();
+                    var resp = await fetch(API_BASE + '/coupon/activate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ qr_code: qrCode, partner_telegram_id: uid })
+                    });
+                    var result = await resp.json();
+                    if (result.ok) {
+                        document.getElementById('coupon-scanner-result').innerHTML = '✅ Купон использован!<br><b>' + esc(result.prize_name) + '</b><br>Пользователь: ' + esc(result.user_name);
+                        showToast('Купон активирован!');
+                    } else {
+                        document.getElementById('coupon-scanner-result').innerHTML = '❌ Ошибка: ' + esc(result.error || 'Неизвестная ошибка');
+                        zone.style.display = 'block';
+                    }
+                },
+                function() {}
+            );
+        } catch(e) {
+            document.getElementById('coupon-scanner-result').textContent = 'Камера недоступна';
+            zone.style.display = 'block';
+        }
     }
 
     // ═══════════════════════════════════════════

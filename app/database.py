@@ -623,7 +623,10 @@ class Database:
 
     async def create_order(self, user_id: int, prize_id: int) -> int:
         rows = await self._fetch("orders", method="POST", json_data={"user_id": user_id, "prize_id": prize_id})
-        return rows[0]["id"] if rows else 0
+        order_id = rows[0]["id"] if rows else 0
+        if order_id:
+            await self.create_user_coupon(user_id, prize_id, order_id)
+        return order_id
 
     async def get_pending_orders(self) -> list[dict]:
         rows = await self._fetch("orders", "select=*&status=eq.pending&order=created_at.desc")
@@ -699,6 +702,121 @@ class Database:
             )
 
         return {"ok": True, "reward": reward, "order_id": order_id}
+
+    # ─── Partner Accounts ─────────────────────────────
+
+    async def get_partner_account_by_telegram_id(self, telegram_id: int) -> dict | None:
+        return await self._fetch_one("partner_accounts",
+            f"telegram_id=eq.{telegram_id}&is_active=eq.true&select=*,shop_categories(title,icon,color)")
+
+    async def get_partner_account(self, account_id: int) -> dict | None:
+        return await self._fetch_one("partner_accounts",
+            f"id=eq.{account_id}&select=*,shop_categories(title,icon,color)")
+
+    async def get_partner_accounts(self) -> list[dict]:
+        return await self._fetch("partner_accounts",
+            "select=*,shop_categories(title,icon,color)&order=created_at.desc")
+
+    async def add_partner_account(self, telegram_id: int, name: str, category_id: int) -> int:
+        rows = await self._fetch("partner_accounts", method="POST", json_data={
+            "telegram_id": telegram_id, "name": name, "category_id": category_id
+        })
+        return rows[0]["id"] if rows else 0
+
+    async def update_partner_account(self, account_id: int, telegram_id: int, name: str, category_id: int, is_active: bool = True):
+        await self._fetch("partner_accounts", f"id=eq.{account_id}", "PATCH", {
+            "telegram_id": telegram_id, "name": name, "category_id": category_id, "is_active": is_active
+        })
+
+    async def delete_partner_account(self, account_id: int):
+        await self._fetch("partner_accounts", f"id=eq.{account_id}", "DELETE")
+
+    async def get_partner_used_coupons(self, category_id: int) -> list[dict]:
+        rows = await self._fetch("user_coupons",
+            f"status=eq.used&select=*,prizes(name),users(name,telegram_id)&order=used_at.desc")
+        result = []
+        for r in rows:
+            if r.get("prizes"):
+                r["prize_name"] = r["prizes"].get("name", "")
+                del r["prizes"]
+            if r.get("users"):
+                r["user_name"] = r["users"].get("name", "")
+                r["user_telegram_id"] = r["users"].get("telegram_id", 0)
+                del r["users"]
+            if r.get("prize"):
+                r["prize_name"] = r["prize"].get("name", "")
+                del r["prize"]
+            result.append(r)
+        return result
+
+    # ─── User Coupons ─────────────────────────────────
+
+    async def create_user_coupon(self, user_id: int, prize_id: int, order_id: int) -> str:
+        import secrets
+        qr_code = f"coupon_{order_id}_{secrets.token_hex(4)}"
+        await self._fetch("user_coupons", method="POST", json_data={
+            "user_id": user_id, "prize_id": prize_id, "order_id": order_id, "qr_code": qr_code
+        })
+        return qr_code
+
+    async def get_user_coupons(self, user_id: int) -> list[dict]:
+        rows = await self._fetch("user_coupons",
+            f"user_id=eq.{user_id}&select=*,prizes(name,price_points,image_url,description),shop_categories(title,color,icon)&order=created_at.desc")
+        for r in rows:
+            if r.get("prizes"):
+                r["prize_name"] = r["prizes"].get("name", "")
+                r["prize_price"] = r["prizes"].get("price_points", 0)
+                r["prize_image"] = r["prizes"].get("image_url", "")
+                r["prize_description"] = r["prizes"].get("description", "")
+                del r["prizes"]
+            if r.get("shop_categories"):
+                r["partner_name"] = r["shop_categories"].get("title", "")
+                r["partner_color"] = r["shop_categories"].get("color", "#0EA5E9")
+                r["partner_icon"] = r["shop_categories"].get("icon", "")
+                del r["shop_categories"]
+        return rows
+
+    async def get_user_coupon_by_qr(self, qr_code: str) -> dict | None:
+        return await self._fetch_one("user_coupons",
+            f"qr_code=eq.{qr_code}&select=*,prizes(name,price_points),users(name,telegram_id)")
+
+    async def activate_user_coupon(self, qr_code: str, partner_account_id: int) -> dict:
+        coupon = await self.get_user_coupon_by_qr(qr_code)
+        if not coupon:
+            return {"ok": False, "error": "coupon_not_found"}
+        if coupon["status"] != "active":
+            return {"ok": False, "error": "coupon_already_used"}
+
+        from datetime import datetime
+        await self._fetch("user_coupons", f"qr_code=eq.{qr_code}", "PATCH", {
+            "status": "used",
+            "used_at": datetime.utcnow().isoformat(),
+            "used_by_partner_id": partner_account_id
+        })
+
+        if coupon.get("users"):
+            user_name = coupon["users"].get("name", "")
+            prize_name = coupon.get("prizes", {}).get("name", "") if coupon.get("prizes") else ""
+        else:
+            user_name = ""
+            prize_name = ""
+
+        return {
+            "ok": True,
+            "coupon_id": coupon["id"],
+            "user_name": user_name,
+            "prize_name": prize_name,
+        }
+
+    async def get_partner_coupon_stats(self, category_id: int) -> dict:
+        rows = await self._fetch("user_coupons",
+            f"status=eq.used&select=*&order=used_at.desc")
+        cat_prizes = await self._fetch("prizes", f"category_id=eq.{category_id}&select=id")
+        prize_ids = [p["id"] for p in (cat_prizes or [])]
+        used_at_partner = [r for r in rows if r.get("used_by_partner_id")]
+        total = len(rows)
+        relevant = sum(1 for r in rows if r.get("prize_id") in prize_ids)
+        return {"total_used": total, "relevant_used": relevant}
 
     # ─── Raffles ────────────────────────────────────────
 

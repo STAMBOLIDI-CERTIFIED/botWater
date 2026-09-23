@@ -360,6 +360,34 @@ class WaterPrize_DB {
         return $this->delete('DELETE FROM prizes WHERE id = ?', [(int)$id]);
     }
 
+    // ─── Partner Accounts ──────────────────────────────
+    public function get_partner_accounts() {
+        return $this->query('SELECT * FROM partner_accounts ORDER BY created_at DESC');
+    }
+
+    public function get_partner_account($id) {
+        $rows = $this->query('SELECT * FROM partner_accounts WHERE id = ?', [(int)$id]);
+        return $rows[0] ?? null;
+    }
+
+    public function add_partner_account($telegram_id, $name, $category_id) {
+        return $this->execute(
+            'INSERT INTO partner_accounts (telegram_id, name, category_id) VALUES (?, ?, ?)',
+            [(int)$telegram_id, $name, (int)$category_id]
+        );
+    }
+
+    public function update_partner_account($id, $telegram_id, $name, $category_id, $is_active = true) {
+        return $this->execute(
+            'UPDATE partner_accounts SET telegram_id = ?, name = ?, category_id = ?, is_active = ? WHERE id = ?',
+            [(int)$telegram_id, $name, (int)$category_id, $is_active ? 1 : 0, (int)$id]
+        );
+    }
+
+    public function delete_partner_account($id) {
+        return $this->delete('DELETE FROM partner_accounts WHERE id = ?', [(int)$id]);
+    }
+
     // ─── Shop Categories ──────────────────────────────
     public function get_categories() {
         return $this->query('SELECT * FROM shop_categories ORDER BY sort_order ASC');

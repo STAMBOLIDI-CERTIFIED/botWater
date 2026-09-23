@@ -8,6 +8,7 @@ $tab = $tab ?? 'list';
     <!-- Tab Navigation -->
     <nav class="nav-tab-wrapper" style="margin-bottom:20px;">
         <a href="?page=wpz-partners&tab=list" class="nav-tab <?php echo $tab === 'list' ? 'nav-tab-active' : ''; ?>">Партнёры</a>
+        <a href="?page=wpz-partners&tab=accounts" class="nav-tab <?php echo $tab === 'accounts' ? 'nav-tab-active' : ''; ?>">🏢 Бизнес-партнёры</a>
         <a href="?page=wpz-partners&tab=prizes" class="nav-tab <?php echo $tab === 'prizes' ? 'nav-tab-active' : ''; ?>">Призы</a>
         <a href="?page=wpz-partners&tab=orders" class="nav-tab <?php echo $tab === 'orders' ? 'nav-tab-active' : ''; ?>">Заказы</a>
         <a href="?page=wpz-partners&tab=stats" class="nav-tab <?php echo $tab === 'stats' ? 'nav-tab-active' : ''; ?>">Статистика</a>
@@ -559,6 +560,10 @@ $tab = $tab ?? 'list';
             </table>
         </div>
     </div>
+
+    <?php elseif ($tab === 'accounts'): ?>
+    <!-- ═══ TAB: Бизнес-партнёры ═══ -->
+    <?php include __DIR__ . '/partner-accounts.php'; ?>
 
     <?php elseif ($tab === 'orders'): ?>
     <!-- ═══ TAB: Заказы ═══ -->

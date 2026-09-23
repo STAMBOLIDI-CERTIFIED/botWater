@@ -64,7 +64,7 @@ BTN_STATS = "📈 Статистика"
 BTN_RAFFLE = "🎯 Розыгрыши"
 
 
-def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0) -> dict:
+def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0, is_partner: bool = False, partner_category_id: int = 0) -> dict:
     """Reply keyboard that stays pinned under the text input box (not tied to
     a single message like an inline keyboard). web_app buttons open the mini
     app directly; the rest are plain text buttons handled in handle_message.
@@ -73,6 +73,8 @@ def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: i
     if chat_id:
         sep = "&" if "?" in app_url else "?"
         app_url = app_url + sep + "user_id=" + str(chat_id)
+    if is_partner:
+        app_url = app_url + "&is_partner=true&partner_category_id=" + str(partner_category_id)
 
     rows = [
         [{"text": BTN_OPEN_APP, "web_app": {"url": app_url}}],
@@ -510,14 +512,21 @@ async def show_main_menu(db, chat_id: int, user: dict | None = None):
         await db.update_user_step(chat_id, "menu")
     s = get_settings()
     is_admin = await db.is_admin(chat_id)
+    partner_account = await db.get_partner_account_by_telegram_id(chat_id)
+    is_partner = partner_account is not None
+    partner_category_id = partner_account.get("category_id", 0) if partner_account else 0
     name = user['name'] or 'друг'
     balance = user['balance']
+    partner_info = ""
+    if is_partner:
+        cat = await db.get_shop_category(partner_category_id)
+        partner_info = f"\n\n🏢 <b>Бизнес-партнёр:</b> {cat.get('title', '') if cat else ''}"
     msg = await db.get_bot_setting("msg_welcome",
-        f"💧 <b>Главное меню</b>\n\nПривет, {name}! 👋\n🪙 Баланс: <b>{balance} баллов</b>\n\n"
+        f"💧 <b>Главное меню</b>\n\nПривет, {name}! 👋\n🪙 Баланс: <b>{balance} баллов</b>{partner_info}\n\n"
         f"Сканируйте QR-коды на бутылках и получайте баллы!\n"
         f"Кнопки для быстрого доступа теперь под полем ввода 👇")
     msg = msg.replace("{name}", name).replace("{balance}", str(balance))
-    await send_message(chat_id, msg, reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id))
+    await send_message(chat_id, msg, reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id, is_partner, partner_category_id))
 
 
 # ─── Profile ────────────────────────────────────────────

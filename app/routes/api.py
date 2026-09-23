@@ -371,6 +371,59 @@ async def api_user_journey(user_id: int):
     return {"ok": True, "journey": journey}
 
 
+# ─── User Coupons ────────────────────────────────────
+
+@router.get("/user/{user_id}/coupons")
+async def api_user_coupons(user_id: int):
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+    coupons = await db.get_user_coupons(user["id"])
+    return {"ok": True, "coupons": coupons}
+
+
+# ─── Partner Dashboard ────────────────────────────────
+
+@router.get("/partner-account/{telegram_id}")
+async def api_partner_account(telegram_id: int):
+    account = await db.get_partner_account_by_telegram_id(telegram_id)
+    if not account:
+        return JSONResponse({"ok": False, "error": "partner not found"}, status_code=404)
+    return {"ok": True, "account": account}
+
+
+@router.get("/partner-account/{partner_id}/used-coupons")
+async def api_partner_used_coupons(partner_id: int):
+    account = await db.get_partner_account(partner_id)
+    if not account:
+        return JSONResponse({"ok": False, "error": "partner not found"}, status_code=404)
+    category_id = account.get("category_id")
+    coupons = await db.get_partner_used_coupons(category_id)
+    stats = await db.get_partner_coupon_stats(category_id)
+    return {"ok": True, "coupons": coupons, "stats": stats, "account": account}
+
+
+# ─── Coupon Activate (scan by partner) ────────────────
+
+@router.post("/coupon/activate")
+async def api_coupon_activate(request: Request):
+    body = await request.json()
+    qr_code = body.get("qr_code", "")
+    partner_telegram_id = body.get("partner_telegram_id", 0)
+
+    if not qr_code or not partner_telegram_id:
+        return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
+
+    account = await db.get_partner_account_by_telegram_id(partner_telegram_id)
+    if not account:
+        return JSONResponse({"ok": False, "error": "partner_not_found"}, status_code=403)
+
+    result = await db.activate_user_coupon(qr_code, account["id"])
+    if not result.get("ok"):
+        return JSONResponse(result, status_code=400)
+    return result
+
+
 # ─── Support Chat ─────────────────────────────────────
 
 @router.get("/support/chat")

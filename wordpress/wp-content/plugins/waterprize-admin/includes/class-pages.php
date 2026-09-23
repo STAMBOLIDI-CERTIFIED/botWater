@@ -203,6 +203,32 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Приз удалён')));
                 exit;
 
+            // ─── Partner Accounts CRUD ──────────────
+            case 'add_partner_account':
+                $db->add_partner_account(
+                    (int)($_POST['telegram_id'] ?? 0),
+                    sanitize_text_field($_POST['account_name'] ?? ''),
+                    (int)($_POST['category_id'] ?? 0)
+                );
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=accounts&msg=' . urlencode('Партнёр добавлен')));
+                exit;
+
+            case 'update_partner_account':
+                $db->update_partner_account(
+                    (int)($_POST['account_id'] ?? 0),
+                    (int)($_POST['telegram_id'] ?? 0),
+                    sanitize_text_field($_POST['account_name'] ?? ''),
+                    (int)($_POST['category_id'] ?? 0),
+                    isset($_POST['is_active'])
+                );
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=accounts&msg=' . urlencode('Партнёр обновлён')));
+                exit;
+
+            case 'delete_partner_account':
+                $db->delete_partner_account((int)($_POST['account_id'] ?? 0));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=accounts&msg=' . urlencode('Партнёр удалён')));
+                exit;
+
             // ─── Categories CRUD ───────────────────
             case 'add_category':
                 $db->add_category(
@@ -536,6 +562,13 @@ class WaterPrize_Pages {
         $edit_category = null;
         if (!empty($_GET['edit'])) {
             $edit_category = $db->get_category((int)$_GET['edit']);
+        }
+
+        // Partner accounts data
+        $accounts = $db->get_partner_accounts();
+        $edit_account = null;
+        if (!empty($_GET['edit_account'])) {
+            $edit_account = $db->get_partner_account((int)$_GET['edit_account']);
         }
 
         // Prizes data
