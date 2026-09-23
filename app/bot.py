@@ -713,22 +713,28 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
             return
         await answer_callback(cid, "⏳ Обработка...")
         try:
+            logger.info(f"exchange: deducting {prize['price_points']} points for user {chat_id}")
             await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
+            logger.info(f"exchange: creating order for user_id={user_row['id']}, prize_id={prize_id}")
             order_id = await db.create_order(user_row["id"], prize_id)
+            logger.info(f"exchange: order created id={order_id}")
 
             last_scan = await db.get_first_partner_for_user(user_row["id"])
+            logger.info(f"exchange: recording journey, partner_id={last_scan['partner_id'] if last_scan else None}")
             await db.record_journey(
                 user_row["id"], "coupon_buy",
                 partner_id=last_scan["partner_id"] if last_scan else None,
                 related_id=order_id,
                 points_used=prize["price_points"]
             )
-
+            logger.info(f"exchange: creating notification")
             await db.create_notification(chat_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
+            logger.info(f"exchange: sending success message")
             msg = await db.get_bot_setting("msg_exchange_success",
                 f"🥳 <b>Заказ оформлен!</b>\n\nПриз: {prize['name']}\nНомер заказа: #{order_id}\n\nМы свяжемся с вами для уточнения получения.")
             msg = msg.replace("{name}", prize['name']).replace("{order_id}", str(order_id))
             success_msg = await send_message(chat_id, msg)
+            logger.info(f"exchange: deleting confirmation message")
             msg_id = cbd.get("message", {}).get("message_id")
             if msg_id:
                 await _delete_message(chat_id, msg_id)
@@ -738,6 +744,7 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
                     await asyncio.sleep(5)
                     await _delete_message(chat_id, mid)
                 asyncio.create_task(_delayed_delete())
+            logger.info(f"exchange: completed successfully")
         except Exception as e:
             logger.error(f"exchange_prize error: {e}", exc_info=True)
             await send_message(chat_id, "⚠️ Ошибка при обмене. Попробуйте позже.")
