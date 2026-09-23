@@ -727,6 +727,14 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
 # ─── WebApp Data Handler ───────────────────────────────
 
 async def handle_webapp_data(db, data: str, chat_id: int):
+    try:
+        await _handle_webapp_data_inner(db, data, chat_id)
+    except Exception as e:
+        logger.error(f"handle_webapp_data error: {e}", exc_info=True)
+        await send_message(chat_id, "⚠️ Ошибка при обработке запроса. Попробуйте снова.")
+
+
+async def _handle_webapp_data_inner(db, data: str, chat_id: int):
     s = get_settings()
     logger.info(f"handle_webapp_data chat_id={chat_id} data={data!r}")
 

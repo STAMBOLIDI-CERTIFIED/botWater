@@ -1,8 +1,11 @@
 """Webhook route."""
+import logging
 from fastapi import APIRouter, Request, HTTPException
 
 from .. import bot
 from ..deps import db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -25,5 +28,8 @@ async def webhook(request: Request):
         await bot.process_expired_payouts(db)
         _counter = 0
 
-    await bot.handle_update(db, body)
+    try:
+        await bot.handle_update(db, body)
+    except Exception as e:
+        logger.error(f"webhook handle_update error: {e}", exc_info=True)
     return {"ok": True}
