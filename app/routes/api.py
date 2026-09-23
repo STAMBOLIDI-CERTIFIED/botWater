@@ -39,18 +39,6 @@ def _validate_init_data(init_data: str, bot_token: str) -> dict | None:
     return {}
 
 
-@router.middleware("http")
-async def api_auth_middleware(request: Request, call_next):
-    if request.url.path.startswith("/api/"):
-        init_data = request.headers.get("X-Telegram-Init-Data", "")
-        s = get_settings()
-        user = _validate_init_data(init_data, s.get("BOT_TOKEN", ""))
-        if user is None:
-            return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
-        request.state.tg_user = user
-    return await call_next(request)
-
-
 @router.get("/user")
 async def api_user(user_id: int = 0):
     if not user_id:

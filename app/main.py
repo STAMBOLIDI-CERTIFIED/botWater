@@ -11,7 +11,7 @@ from starlette.requests import Request
 from .config import get_settings
 from .deps import db, BASE_DIR
 from .routes.webhook import router as webhook_router
-from .routes.api import router as api_router
+from .routes.api import router as api_router, _validate_init_data
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(name)s %(levelname)s %(message)s')
 logger = logging.getLogger(__name__)
@@ -30,6 +30,22 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(NoCacheMiddleware)
+
+
+class ApiAuthMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path.startswith("/api/"):
+            init_data = request.headers.get("X-Telegram-Init-Data", "")
+            s = get_settings()
+            user = _validate_init_data(init_data, s.get("BOT_TOKEN", ""))
+            if user is None:
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+            request.state.tg_user = user
+        return await call_next(request)
+
+
+app.add_middleware(ApiAuthMiddleware)
 
 # ─── Include routers ───────────────────────────────────
 
