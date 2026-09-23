@@ -1,4 +1,8 @@
-.env.example
+.env
+.env.*
+!.env.example
+prod.env
+docker-compose.yml
 .idea
 __pycache__
 *.pyc
@@ -9,4 +13,5 @@ tunnel.sh
 deploy.sh
 entrypoint.sh
 wordpress/
-
+.opencode/
+node_modules/
