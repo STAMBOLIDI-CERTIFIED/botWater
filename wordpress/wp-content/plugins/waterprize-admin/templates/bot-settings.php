@@ -34,6 +34,8 @@ foreach (array_merge(array_keys($reward_keys), array_keys($message_keys)) as $ke
     $values[$key] = $db->get_setting($key) ?: '';
 }
 $values['bot_username'] = $db->get_setting('bot_username') ?: 'WaterPrizeBot';
+$values['partner_referral_reward'] = $db->get_setting('partner_referral_reward') ?: 'fixed';
+$values['partner_referral_value'] = $db->get_setting('partner_referral_value') ?: '50';
 ?>
 <div class="wrap">
     <?php WaterPrize_Pages::flash_message(); ?>
@@ -102,8 +104,43 @@ $values['bot_username'] = $db->get_setting('bot_username') ?: 'WaterPrizeBot';
             </table>
         </div>
 
+        <!-- ═══ Partner Referral Rewards ═══ -->
+        <div class="wpz-card">
+            <h2>🎯 Вознаграждения за привлечение</h2>
+            <p style="color:#646970;font-size:13px;margin:0 0 16px;">Настройки награды первому партнёру, когда привлечённый пользователь использует купон у другого партнёра.</p>
+            <table class="form-table">
+                <tr>
+                    <th><label for="partner_referral_reward">Тип награды</label></th>
+                    <td>
+                        <select id="partner_referral_reward" name="partner_referral_reward">
+                            <option value="fixed" <?php selected($values['partner_referral_reward'], 'fixed'); ?>>Фиксированная сумма</option>
+                            <option value="percent" <?php selected($values['partner_referral_reward'], 'percent'); ?>>Процент от стоимости</option>
+                        </select>
+                        <p class="description">Фиксированная сумма — конкретное количество баллов. Процент — % от стоимости приза.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="partner_referral_value">Значение награды</label></th>
+                    <td>
+                        <input type="number" id="partner_referral_value"
+                               name="partner_referral_value"
+                               value="<?php echo esc_attr($values['partner_referral_value']); ?>"
+                               min="0" class="small-text">
+                        <span style="color:#999;font-size:12px;margin-left:6px;" id="partner-referral-hint">баллов</span>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         <p class="submit">
             <button type="submit" name="action" value="save_bot_settings" class="button button-primary">💾 Сохранить все настройки</button>
         </p>
     </form>
 </div>
+
+<script>
+document.getElementById('partner_referral_reward').addEventListener('change', function() {
+    var hint = document.getElementById('partner-referral-hint');
+    hint.textContent = this.value === 'percent' ? '% от стоимости' : 'баллов';
+});
+</script>

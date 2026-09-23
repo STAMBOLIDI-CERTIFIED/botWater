@@ -335,6 +335,42 @@ async def api_partner_scan(request: Request):
     return result
 
 
+# ─── Coupon Redeem ──────────────────────────────────
+
+@router.post("/coupon/redeem")
+async def api_coupon_redeem(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    order_id = body.get("order_id", 0)
+    partner_id = body.get("partner_id", 0)
+
+    if not user_id or not order_id or not partner_id:
+        return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
+
+    result = await db.redeem_coupon(user_id, order_id, partner_id)
+    if not result.get("ok"):
+        return JSONResponse(result, status_code=400)
+    return result
+
+
+@router.get("/user/{user_id}/available-coupons")
+async def api_available_coupons(user_id: int):
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+    orders = await db.get_user_completed_orders(user["id"])
+    return {"ok": True, "orders": orders}
+
+
+@router.get("/user/{user_id}/journey")
+async def api_user_journey(user_id: int):
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+    journey = await db.get_user_journey(user["id"])
+    return {"ok": True, "journey": journey}
+
+
 # ─── Support Chat ─────────────────────────────────────
 
 @router.get("/support/chat")

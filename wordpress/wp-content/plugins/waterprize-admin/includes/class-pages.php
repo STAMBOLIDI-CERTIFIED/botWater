@@ -305,6 +305,12 @@ class WaterPrize_Pages {
                 if (isset($_POST['bot_username'])) {
                     $db->set_setting('bot_username', sanitize_text_field($_POST['bot_username']));
                 }
+                if (isset($_POST['partner_referral_reward'])) {
+                    $db->set_setting('partner_referral_reward', sanitize_text_field($_POST['partner_referral_reward']));
+                }
+                if (isset($_POST['partner_referral_value'])) {
+                    $db->set_setting('partner_referral_value', sanitize_text_field($_POST['partner_referral_value']));
+                }
                 foreach ($reward_keys as $k) {
                     if (isset($_POST[$k])) {
                         $db->set_setting($k, sanitize_text_field($_POST[$k]));
@@ -486,10 +492,15 @@ class WaterPrize_Pages {
         $from = sanitize_text_field($_GET['from'] ?? '');
         $to = sanitize_text_field($_GET['to'] ?? '');
         $chart = sanitize_text_field($_GET['chart'] ?? 'registrations');
+        $tab = sanitize_text_field($_GET['tab'] ?? 'stats');
 
         $reg_chart = $db->get_registrations_analytics($period, $from, $to);
         $pts_chart = $db->get_points_analytics($period, $from, $to);
         $scans_chart = $db->get_scans_analytics($period, $from, $to);
+
+        $journey_stats = $db->get_journey_stats();
+        $journeys = $db->get_user_journeys_with_details(200);
+
         include __DIR__ . '/../templates/analytics.php';
     }
 

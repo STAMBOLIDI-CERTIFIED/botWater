@@ -688,6 +688,22 @@ async function loadShop() {
             return;
         }
 
+        var coupons = await getAvailableCoupons();
+        var couponsHtml = '';
+        if (coupons.length > 0) {
+            couponsHtml = '<div class="shop-rec-section" style="margin-top:16px">'
+                + '<div class="shop-rec-header"><div class="shop-rec-title">Ваши купоны</div><div class="shop-rec-count">' + coupons.length + '</div></div>'
+                + '<div style="display:grid;grid-template-columns:1fr;gap:10px">'
+                + coupons.map(function(c, i) {
+                    return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + (cat.color || '#0EA5E9') + '">'
+                        + '<div class="partner-item-body"><div class="partner-item-name">' + esc(c.prize_name || 'Приз') + '</div>'
+                        + '<div class="partner-item-desc">Заказ #' + c.id + '</div>'
+                        + '<button class="partner-item-btn primary" onclick="handleRedeemCoupon(' + c.id + ',' + cat.id + ')">' + icon('check') + ' Использовать купон</button>'
+                        + '</div></div>';
+                }).join('')
+                + '</div></div>';
+        }
+
         var itemsHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">'
             + items.map(function(p, i) {
                 var ok = bal >= p.price_points;
@@ -704,7 +720,7 @@ async function loadShop() {
             }).join('')
             + '</div>';
 
-        partnerList.innerHTML = headerHtml + itemsHtml;
+        partnerList.innerHTML = headerHtml + couponsHtml + itemsHtml;
     }
 
     async function processPartnerScan(qrCode) {
@@ -724,6 +740,41 @@ async function loadShop() {
             return result;
         } catch(e) {}
         return { ok: false, error: 'network_error' };
+    }
+
+    async function getAvailableCoupons() {
+        var uid = getUID();
+        if (!uid) return [];
+        try {
+            var resp = await fetch(API_BASE + '/user/' + uid + '/available-coupons');
+            var data = await resp.json();
+            return data.ok ? data.orders : [];
+        } catch(e) {}
+        return [];
+    }
+
+    async function redeemCoupon(orderId, partnerId) {
+        var uid = getUID();
+        if (!uid) return { ok: false, error: 'no_user' };
+        try {
+            var resp = await fetch(API_BASE + '/coupon/redeem', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: uid, order_id: orderId, partner_id: partnerId }),
+            });
+            return await resp.json();
+        } catch(e) {}
+        return { ok: false, error: 'network_error' };
+    }
+
+    async function handleRedeemCoupon(orderId, partnerId) {
+        var result = await redeemCoupon(orderId, partnerId);
+        if (result.ok) {
+            showToast('Купон использован!' + (result.reward > 0 ? ' + ' + result.reward + ' баллов партнёру' : ''));
+            openPartnerCategory(partnerId);
+        } else {
+            showToast('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+        }
     }
 
     // ═══════════════════════════════════════════

@@ -592,6 +592,8 @@ class Database:
             "points_earned": scan_points,
         })
 
+        await self.record_journey(user["id"], "partner_scan", partner_id=category.get("id"))
+
         await self.add_balance(telegram_id, scan_points, "partner_scan", f"Сканирование QR партнёра «{partner_name}»")
         await self.add_tree_xp(telegram_id, scan_points)
         await self.create_notification(
@@ -638,6 +640,65 @@ class Database:
 
     async def complete_order(self, order_id: int):
         await self._fetch("orders", f"id=eq.{order_id}", "PATCH", {"status": "completed"})
+
+    async def get_user_completed_orders(self, user_id: int) -> list[dict]:
+        rows = await self._fetch("orders",
+            f"user_id=eq.{user_id}&status=eq.approved&select=*,prizes(name,price_points)&order=created_at.desc")
+        for o in rows:
+            if o.get("prizes"):
+                o["prize_name"] = o["prizes"].get("name", "")
+                o["prize_price"] = o["prizes"].get("price_points", 0)
+                del o["prizes"]
+        return rows
+
+    async def redeem_coupon(self, user_id: int, order_id: int, partner_id: int) -> dict:
+        user = await self._fetch_one("users", f"telegram_id=eq.{user_id}&select=id,telegram_id,name")
+        if not user:
+            return {"ok": False, "error": "user_not_found"}
+
+        order = await self._fetch_one("orders", f"id=eq.{order_id}&select=*")
+        if not order:
+            return {"ok": False, "error": "order_not_found"}
+        if order["user_id"] != user["id"]:
+            return {"ok": False, "error": "not_your_order"}
+        if order["status"] != "approved":
+            return {"ok": False, "error": "order_not_ready"}
+
+        await self._fetch("orders", f"id=eq.{order_id}", "PATCH", {"status": "completed"})
+
+        first_scan = await self.get_first_partner_for_user(user["id"])
+        reward = 0
+        if first_scan and first_scan.get("partner_id") != partner_id:
+            reward_type = await self.get_bot_setting("partner_referral_reward", "fixed")
+            reward_value = await self.get_bot_setting_int("partner_referral_value", 50)
+            prize = await self._fetch_one("prizes", f"id=eq.{order['prize_id']}&select=price_points")
+            if prize:
+                if reward_type == "percent":
+                    reward = int(prize["price_points"] * reward_value / 100)
+                else:
+                    reward = reward_value
+
+        await self.record_journey(
+            user["id"], "coupon_redeem", partner_id=partner_id,
+            related_id=order_id, partner_reward=reward,
+            metadata={"first_partner_id": first_scan["partner_id"] if first_scan else None}
+        )
+
+        if reward > 0 and first_scan:
+            await self.record_journey(
+                first_scan.get("partner_id", 0), "coupon_redeem",
+                partner_id=first_scan["partner_id"], related_id=order_id,
+                partner_reward=reward,
+                metadata={"reward_for_user": user["id"], "redeem_partner_id": partner_id}
+            )
+            await self.create_notification(
+                user["telegram_id"], "reward",
+                "Вознаграждение партнёра",
+                f"+{reward} баллов за привлечение пользователя",
+                "history"
+            )
+
+        return {"ok": True, "reward": reward, "order_id": order_id}
 
     # ─── Raffles ────────────────────────────────────────
 
@@ -1109,3 +1170,68 @@ class Database:
             return int(val)
         except (ValueError, TypeError):
             return default
+
+    # ─── User Journey ───────────────────────────────────
+
+    async def record_journey(self, user_id: int, action_type: str, partner_id: int = None,
+                             related_id: int = None, points_used: int = 0,
+                             partner_reward: int = 0, metadata: dict = None) -> int:
+        data = {
+            "user_id": user_id,
+            "action_type": action_type,
+            "partner_id": partner_id,
+            "related_id": related_id,
+            "points_used": points_used,
+            "partner_reward": partner_reward,
+            "metadata": metadata or {},
+        }
+        rows = await self._fetch("user_journey", method="POST", json_data=data)
+        return rows[0]["id"] if rows else 0
+
+    async def get_first_partner_for_user(self, user_id: int) -> dict | None:
+        row = await self._fetch_one("user_journey",
+            f"user_id=eq.{user_id}&action_type=eq.partner_scan&order=created_at.asc")
+        return row
+
+    async def get_user_journey(self, user_id: int) -> list[dict]:
+        return await self._fetch("user_journey",
+            f"user_id=eq.{user_id}&order=created_at.asc")
+
+    async def get_all_user_journeys(self, limit: int = 100) -> list[dict]:
+        return await self._fetch("user_journey", f"order=created_at.desc&limit={limit}")
+
+    async def get_journey_stats(self) -> dict:
+        scans = await self._fetch_one("user_journey",
+            "action_type=eq.partner_scan&select=count")
+        buys = await self._fetch_one("user_journey",
+            "action_type=eq.coupon_buy&select=count")
+        redeems = await self._fetch_one("user_journey",
+            "action_type=eq.coupon_redeem&select=count")
+        rewards = await self._fetch_one("user_journey",
+            "action_type=eq.coupon_redeem&select=partner_reward.sum")
+        return {
+            "total_scans": scans.get("count", 0) if scans else 0,
+            "total_buys": buys.get("count", 0) if buys else 0,
+            "total_redeems": redeems.get("count", 0) if redeems else 0,
+            "total_rewards": rewards.get("sum", 0) if rewards else 0,
+        }
+
+    async def get_partner_rewards_summary(self) -> list[dict]:
+        return await self._fetch("user_journey",
+            "action_type=eq.coupon_redeem&select=partner_id,partner_reward,created_at&order=created_at.desc")
+
+    async def get_user_journeys_with_details(self, limit: int = 200) -> list[dict]:
+        rows = await self._fetch("user_journey",
+            f"select=*&order=created_at.desc&limit={limit}")
+        for r in rows:
+            if r.get("user_id"):
+                user = await self._fetch_one("users", f"id=eq.{r['user_id']}&select=telegram_id,name")
+                r["user_name"] = user.get("name", "") if user else ""
+                r["telegram_id"] = user.get("telegram_id", 0) if user else 0
+            if r.get("partner_id"):
+                cat = await self._fetch_one("shop_categories", f"id=eq.{r['partner_id']}&select=title")
+                r["partner_name"] = cat.get("title", "") if cat else ""
+            if r.get("related_id") and r.get("action_type") == "coupon_buy":
+                order = await self._fetch_one("orders", f"id=eq.{r['related_id']}&select=prize_name")
+                r["prize_name"] = order.get("prize_name", "") if order else ""
+        return rows

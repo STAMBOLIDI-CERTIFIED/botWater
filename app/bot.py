@@ -685,6 +685,15 @@ async def handle_callback(db, cbd: dict):
             return
         await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user_row["id"], prize_id)
+
+        last_scan = await db.get_first_partner_for_user(user_row["id"])
+        await db.record_journey(
+            user_row["id"], "coupon_buy",
+            partner_id=last_scan["partner_id"] if last_scan else None,
+            related_id=order_id,
+            points_used=prize["price_points"]
+        )
+
         await db.create_notification(chat_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
         msg = await db.get_bot_setting("msg_exchange_success",
             f"🥳 <b>Заказ оформлен!</b>\n\nПриз: {prize['name']}\nНомер заказа: #{order_id}\n\nМы свяжемся с вами для уточнения получения.")

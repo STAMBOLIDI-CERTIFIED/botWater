@@ -665,6 +665,33 @@ class WaterPrize_DB {
         );
     }
 
+    // ─── User Journey ────────────────────────────────
+    public function get_journey_stats() {
+        $scans = $this->query_one("SELECT COUNT(*)::int as cnt FROM user_journey WHERE action_type = 'partner_scan'");
+        $buys = $this->query_one("SELECT COUNT(*)::int as cnt FROM user_journey WHERE action_type = 'coupon_buy'");
+        $redeems = $this->query_one("SELECT COUNT(*)::int as cnt FROM user_journey WHERE action_type = 'coupon_redeem'");
+        $rewards = $this->query_one("SELECT COALESCE(SUM(partner_reward), 0)::int as total FROM user_journey WHERE action_type = 'coupon_redeem'");
+        return [
+            'total_scans' => $scans['cnt'] ?? 0,
+            'total_buys' => $buys['cnt'] ?? 0,
+            'total_redeems' => $redeems['cnt'] ?? 0,
+            'total_rewards' => $rewards['total'] ?? 0,
+        ];
+    }
+
+    public function get_user_journeys_with_details($limit = 200) {
+        $rows = $this->query(
+            "SELECT j.*, u.telegram_id, u.name as user_name, c.title as partner_name
+             FROM user_journey j
+             LEFT JOIN users u ON j.user_id = u.id
+             LEFT JOIN shop_categories c ON j.partner_id = c.id
+             ORDER BY j.created_at DESC
+             LIMIT ?",
+            [$limit]
+        );
+        return $rows ?: [];
+    }
+
     // ─── Partner Statistics ──────────────────────────────
     public function get_partner_stats_summary() {
         return $this->query(
