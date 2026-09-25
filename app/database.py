@@ -158,7 +158,7 @@ class Database:
 
     _TS_COLUMNS = {
         "scheduled_at", "payout_deadline", "expires_at", "created_at", "updated_at",
-        "activated_at", "scanned_at", "assigned_at",
+        "activated_at", "scanned_at", "assigned_at", "used_at",
     }
 
     @classmethod
