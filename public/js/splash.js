@@ -1,6 +1,12 @@
-function hideSplash() {
+    window._splashHidden = false;
+    function hideSplash() {
         var s = document.getElementById('splash');
-        if (s) { s.classList.add('hide'); setTimeout(function(){ s.remove(); }, 600); }
+        if (s && !s.classList.contains('hide')) {
+            s.classList.add('hide');
+            setTimeout(function(){ if(s.parentNode) s.remove(); }, 600);
+        }
+        window._splashHidden = true;
+        if (window.tryRevealMenu) window.tryRevealMenu();
     }
     async function loadSplashLogo() {
         try {

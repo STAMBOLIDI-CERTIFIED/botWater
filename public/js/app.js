@@ -361,18 +361,35 @@ function countUp(el, target, duration) {
 
         try {
             var coupCard = document.getElementById('card-my-coupons');
-            if (coupCard) coupCard.style.display = 'block';
+            if (coupCard) coupCard.style.display = 'flex';
 
             var partAccData = await apiFetch('/partner-account/' + uid);
             var partCard = document.getElementById('card-partner-dashboard');
             if (partAccData && partAccData.ok && partCard) {
                 var cat = (partAccData.account && partAccData.account.shop_categories) || {};
-                partCard.style.display = 'block';
+                partCard.style.display = 'flex';
                 var partName = document.getElementById('card-partner-name');
                 if (partName) partName.textContent = cat.title || 'Бизнес-партнёр';
+            } else if (partCard) {
+                partCard.style.display = 'none';
             }
         } catch(e) {}
+        window._menuDataReady = true;
+        if (window.tryRevealMenu) window.tryRevealMenu();
     }
+    // Simultaneous reveal: wait for both splash and data
+    window._menuDataReady = false;
+    window.tryRevealMenu = function() {
+        if (!window._menuDataReady || !window._splashHidden) return;
+        var menu = document.getElementById('page-menu');
+        if (menu && !menu.classList.contains('menu-revealed')) {
+            menu.classList.add('menu-revealed');
+            // Remove anim-in after animation to avoid re-trigger on navigation
+            setTimeout(function(){
+                menu.querySelectorAll('.anim-in').forEach(function(el){ el.classList.remove('anim-in'); });
+            }, 900);
+        }
+    };
     loadUserData();
 
     setTimeout(function() {

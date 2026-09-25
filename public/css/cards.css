@@ -1,7 +1,6 @@
 .section-title {
     font-size: 18px; font-weight: 700;
     margin-bottom: 14px;
-    animation: slideInLeft .4s var(--ease-out) .15s both;
     letter-spacing: -0.2px;
 }
 
@@ -19,9 +18,22 @@
     box-shadow: var(--shadow-sm);
 }
 .card.anim-in {
-    animation: slideUp .5s var(--ease-out) both;
-    animation-delay: calc(var(--i, 0) * 80ms + 200ms);
+    animation: slideUp .6s var(--ease-out) both;
+    animation-delay: 0s;
 }
+/* Simultaneous reveal for main menu */
+#page-menu .top-bar,
+#page-menu .hero-banner,
+#page-menu .section-title,
+#page-menu .card-grid .card {
+    opacity: 0;
+    transform: translateY(14px);
+}
+#page-menu.menu-revealed .top-bar { animation: slideUp .6s var(--ease-out) .05s both; }
+#page-menu.menu-revealed .hero-banner { animation: slideUp .6s var(--ease-out) .1s both; }
+#page-menu.menu-revealed .section-title { animation: slideUp .6s var(--ease-out) .15s both; }
+#page-menu.menu-revealed .card-grid .card { animation: slideUp .6s var(--ease-out) .2s both; }
+#page-menu.menu-revealed .card-grid { opacity: 1; transform: none; }
 .card:active { transform: scale(0.96); }
 .card:hover {
     border-color: rgba(255,255,255,0.1);
