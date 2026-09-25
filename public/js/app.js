@@ -1134,20 +1134,26 @@ function startScan() {
                 var cStatus = document.getElementById('coupon-activate-status');
                 if (cBtn) cBtn.onclick = async function(){
                     cBtn.disabled = true; cBtn.textContent = 'Проверка...';
+                    cStatus.innerHTML = '';
                     try {
+                        console.log('[coupon] activate', couponCode, 'uid', _uid, 'initData len', (tg.initData||'').length);
                         var resp = await fetch(API_BASE + '/coupon/activate', { method:'POST', headers:_h({'Content-Type':'application/json'}), body: JSON.stringify({ qr_code: couponCode, partner_telegram_id: _uid }) });
-                        var res = await resp.json();
-                        if (res.ok) {
+                        var txt = await resp.text();
+                        console.log('[coupon] raw resp', resp.status, txt);
+                        var res = null; try { res = JSON.parse(txt); } catch(_e){ res = { ok:false, error: txt.slice(0,120) }; }
+                        if (resp.ok && res && res.ok) {
                             cStatus.innerHTML = icon('check') + ' Купон активирован: ' + esc(res.prize_name) + ' (' + esc(res.user_name) + ')';
                             showToast('Купон использован!');
                             try{ tg.HapticFeedback.notificationOccurred('success'); }catch(e){}
                             cBtn.textContent = 'Готово'; cBtn.disabled = true;
                         } else {
-                            var errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'partner_not_found':'Вы не партнёр' };
-                            cStatus.innerHTML = icon('warning') + ' ' + esc(errMap[res.error] || res.error || 'Ошибка');
+                            var errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'partner_not_found':'Вы не партнёр', 'unauthorized':'Ошибка авторизации (откройте через Telegram)' };
+                            var msg = (res && (res.error || res.detail)) || ('HTTP ' + resp.status);
+                            cStatus.innerHTML = icon('warning') + ' ' + esc(errMap[msg] || msg || 'Ошибка');
                             cBtn.disabled = false; cBtn.textContent = 'Попробовать снова';
+                            if (resp.status===401) showToast('Откройте мини-приложение через кнопку в боте');
                         }
-                    } catch(e){ cStatus.innerHTML = icon('warning') + ' Ошибка сети'; cBtn.disabled=false; }
+                    } catch(e){ console.error('[coupon] network', e); cStatus.innerHTML = icon('warning') + ' Ошибка сети: ' + esc(e.message||String(e)); cBtn.disabled=false; cBtn.textContent = 'Попробовать снова'; }
                 };
             } else {
                 scanDataEl.innerHTML = esc(raw) + '<br><br><div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:14px;padding:12px;text-align:center">'
