@@ -588,12 +588,31 @@ async function loadPartnerDashboard() {
         var account = accData.account;
         var cat = account.shop_categories || {};
         subtitle.textContent = 'Панель: ' + (cat.title || '');
+        // Show partner QR for self-test (scan via mini-app scanner → activate)
+        var catId = account.category_id;
+        if (catId && statsEl) {
+            var qrUrl = API_BASE + '/partner/qr/' + catId;
+            statsEl.innerHTML = '<div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;text-align:center;margin-bottom:16px">'
+                + '<div style="font-size:13px;color:var(--text-dim);margin-bottom:8px">Ваш QR для клиентов</div>'
+                + '<img src="' + qrUrl + '" style="width:180px;height:180px;border-radius:12px;background:#fff;padding:8px" onerror="this.style.display=\'none\'">'
+                + '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;word-break:break-all" id="partner-qr-code"></div>'
+                + '<div style="font-size:11px;color:var(--text-dim)">Сканируйте через Сканер в мини-приложении → появится кнопка «Активировать»</div></div>';
+            // Load actual qr_code text
+            apiFetch('/shop/categories').then(function(cats){
+                if (Array.isArray(cats)) {
+                    for (var i=0;i<cats.length;i++) if (cats[i].id===catId) {
+                        var q = document.getElementById('partner-qr-code');
+                        if (q) q.textContent = cats[i].qr_code || '';
+                    }
+                }
+            });
+        }
 
         var data = await apiFetch('/partner-account/' + account.id + '/used-coupons');
         if (!data || !data.ok) return;
 
         var stats = data.stats || {};
-        statsEl.innerHTML = '<div class="partner-stats-row">'
+        statsEl.innerHTML += '<div class="partner-stats-row">'
             + '<div class="partner-stat-card"><div class="partner-stat-val">' + (stats.total_used || 0) + '</div><div class="partner-stat-label">Всего использовано</div></div>'
             + '<div class="partner-stat-card"><div class="partner-stat-val">' + (stats.relevant_used || 0) + '</div><div class="partner-stat-label">Вашей категории</div></div>'
             + '</div>';
@@ -1067,47 +1086,83 @@ function startScan() {
         document.getElementById('scan-btn').disabled = false;
         try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
 
+        var raw = (data || '').trim();
         var partnerCode = null;
-        if (data && data.startsWith('partner_')) {
-            partnerCode = data;
-        } else if (data && data.includes('start=partner_')) {
-            try {
-                var urlObj = new URL(data);
-                partnerCode = urlObj.searchParams.get('start');
-            } catch(e) {
-                var m = data.match(/start=(partner_[^&]+)/);
-                if (m) partnerCode = m[1];
+        // Robust extraction: partner_ codes may be bare or inside t.me URL
+        if (raw) {
+            // Try URL param start=partner_*
+            var mUrl = raw.match(/partner_[A-Za-z0-9_]+/);
+            // If raw is URL, extract start param properly
+            if (raw.indexOf('start=partner_') !== -1) {
+                try {
+                    var urlObj = new URL(raw);
+                    var sp = urlObj.searchParams.get('start');
+                    if (sp && sp.indexOf('partner_') === 0) partnerCode = sp;
+                    else if (mUrl) partnerCode = mUrl[0];
+                } catch(e) {
+                    var m = raw.match(/start=(partner_[^&\s]+)/);
+                    if (m) partnerCode = m[1];
+                    else if (mUrl) partnerCode = mUrl[0];
+                }
+            } else if (raw.indexOf('partner_') === 0) {
+                partnerCode = raw.split(/\s+/)[0];
+            } else if (mUrl && raw.indexOf('partner_') !== -1) {
+                partnerCode = mUrl[0];
             }
+            if (partnerCode) partnerCode = partnerCode.trim();
         }
 
         if (partnerCode) {
-            var partnerResult = await processPartnerScan(partnerCode);
-            if (partnerResult && partnerResult.ok) {
-                if (partnerResult.already_scanned) {
-                    showToast('Баллы уже начислены');
-                    openPartnerCategory(partnerResult.category_id);
-                } else {
-                    document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + esc(partnerResult.partner_name) + '»! Баланс: ' + partnerResult.balance;
-                }
-            } else {
-                document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' ' + (partnerResult ? esc(partnerResult.error || 'Ошибка') : 'Партнёр не найден');
+            // Show activation button first (as expected: "должна появляться кнопка активировать")
+            var scanDataEl = document.getElementById('scan-data');
+            scanDataEl.innerHTML = esc(raw) + '<br><br><div style="background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.2);border-radius:14px;padding:12px;margin-top:8px">'
+                + '<div style="font-weight:700;color:#0EA5E9;margin-bottom:6px">' + icon('store') + ' Партнёрский QR</div>'
+                + '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;word-break:break-all">' + esc(partnerCode) + '</div>'
+                + '<button id="partner-activate-btn" class="prize-modal-btn primary" style="width:100%">' + icon('check') + ' Активировать</button>'
+                + '<div id="partner-activate-status" style="margin-top:8px;font-size:13px"></div></div>';
+            var btn = document.getElementById('partner-activate-btn');
+            var statusEl = document.getElementById('partner-activate-status');
+            if (btn) {
+                btn.onclick = async function() {
+                    btn.disabled = true; btn.textContent = 'Активация...';
+                    var partnerResult = await processPartnerScan(partnerCode);
+                    if (partnerResult && partnerResult.ok) {
+                        try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+                        if (partnerResult.already_scanned) {
+                            statusEl.innerHTML = icon('warning') + ' Баллы уже начислены ранее';
+                            showToast('Баллы уже начислены');
+                            setTimeout(function(){ openPartnerCategory(partnerResult.category_id); }, 800);
+                        } else {
+                            statusEl.innerHTML = icon('check') + ' +' + partnerResult.points_earned + ' баллов от «' + esc(partnerResult.partner_name) + '»! Баланс: ' + partnerResult.balance;
+                            document.getElementById('top-balance').textContent = partnerResult.balance;
+                            showToast('+' + partnerResult.points_earned + ' баллов!');
+                            btn.textContent = 'Открыть партнёра';
+                            btn.disabled = false;
+                            btn.onclick = function(){ openPartnerCategory(partnerResult.category_id); };
+                        }
+                    } else {
+                        statusEl.innerHTML = icon('warning') + ' ' + esc((partnerResult && partnerResult.error) || 'Партнёр не найден');
+                        btn.disabled = false; btn.textContent = 'Попробовать снова';
+                    }
+                };
             }
         } else {
             var uid = getUID();
             if (uid && data) {
                 try {
-                    const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: _h({ 'Content-Type': 'application/json' }), body: JSON.stringify({ user_id: uid, bottle_id: data }) });
+                    const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: _h({ 'Content-Type': 'application/json' }), body: JSON.stringify({ user_id: uid, bottle_id: raw }) });
                     const res = await r.json();
                     if (res.ok) {
                         document.getElementById('top-balance').textContent = res.balance;
-                        document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
+                        document.getElementById('scan-data').innerHTML = esc(raw) + '<br><br>' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
                     } else {
-                        document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' ' + esc(res.error || 'Ошибка');
+                        document.getElementById('scan-data').innerHTML = esc(raw) + '<br><br>' + icon('warning') + ' ' + esc(res.error || 'Ошибка');
                     }
-                } catch (e) { document.getElementById('scan-data').innerHTML = esc(data) + '<br><br>' + icon('warning') + ' Ошибка сети'; }
+                } catch (e) { document.getElementById('scan-data').innerHTML = esc(raw) + '<br><br>' + icon('warning') + ' Ошибка сети'; }
             }
+            // Only for bottles forward to bot as fallback (partner is handled via API activation button)
+            try { tg.sendData(raw); } catch(e) {}
         }
-        tg.sendData(data);
     }
 
     function closeScannerAndBack() {
