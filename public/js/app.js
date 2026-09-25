@@ -3,22 +3,40 @@
 // ═══════════════════════════════════════════
 
 if (!window.Telegram || !window.Telegram.WebApp) {
-        document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#111318;color:#F0EDE8;font-family:Plus Jakarta Sans,sans-serif;text-align:center;padding:32px"><div><div style="font-size:56px;margin-bottom:14px">' + icon('tree') + '</div><h1 style="font-size:22px;margin-bottom:6px;color:#C9A84C">ИСТОКЪ</h1><p style="color:#5C5854;font-size:13px">Только для Telegram</p></div></div>';
-        throw new Error('Not in Telegram');
+        console.warn('Not in Telegram — running in browser preview mode. API calls will use ?user_id fallback.');
+        // Show subtle banner but keep app UI for testing
+        document.addEventListener('DOMContentLoaded', function() {
+            var banner = document.createElement('div');
+            banner.textContent = '⚠️ Предпросмотр в браузере — откройте в Telegram для полной функциональности';
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#C9A84C;color:#111318;text-align:center;font-size:11px;padding:6px;z-index:9999';
+            document.body.prepend(banner);
+        });
     }
 
-    const tg = window.Telegram.WebApp;
-    tg.ready(); tg.expand();
+    const tg = (window.Telegram && window.Telegram.WebApp) ? window.Telegram.WebApp : {
+        initData: '',
+        initDataUnsafe: { user: {} },
+        ready: function(){}, expand: function(){},
+        setBackgroundColor: function(){}, setHeaderColor: function(){},
+        disableVerticalSwipes: function(){}, onEvent: function(){},
+        sendData: function(d){ console.log('[stub] sendData', d); if (typeof showToast !== 'undefined') showToast('Откройте в Telegram для отправки'); },
+        HapticFeedback: { impactOccurred: function(){}, notificationOccurred: function(){} },
+        BackButton: { isVisible: false, onClick: function(){}, show: function(){}, hide: function(){} },
+        showAlert: function(m){ alert(m); }
+    };
+    try { tg.ready(); tg.expand(); } catch(e) {}
     try { tg.setBackgroundColor('#111318'); } catch(e) {}
     try { tg.setHeaderColor('#111318'); } catch(e) {}
     try { tg.disableVerticalSwipes(); } catch(e) {}
     document.documentElement.style.colorScheme = 'dark';
     document.body.style.background = '#111318';
-    tg.onEvent('themeChanged', function() {
-        try { tg.setBackgroundColor('#111318'); } catch(e) {}
-        try { tg.setHeaderColor('#111318'); } catch(e) {}
-        document.body.style.background = '#111318';
-    });
+    try {
+        tg.onEvent('themeChanged', function() {
+            try { tg.setBackgroundColor('#111318'); } catch(e) {}
+            try { tg.setHeaderColor('#111318'); } catch(e) {}
+            document.body.style.background = '#111318';
+        });
+    } catch(e) {}
 
     var user = {};
     try {
@@ -212,8 +230,23 @@ function setUserUI(data) {
 // API HELPERS
 // ═══════════════════════════════════════════
 
-async function apiFetch(p) { try { return await (await fetch(API_BASE + p, { headers: { 'X-Telegram-Init-Data': tg.initData || '' } })).json(); } catch(e) { return null; } }
-function _h(extra) { return Object.assign({ 'X-Telegram-Init-Data': tg.initData || '' }, extra || {}); }
+    async function apiFetch(p) {
+        try {
+            var resp = await fetch(API_BASE + p, { headers: { 'X-Telegram-Init-Data': tg.initData || '' } });
+            var data = await resp.json();
+            if (!resp.ok) {
+                // 401 or other error — return null so callers show proper empty state instead of throwing
+                console.warn('[apiFetch] ' + p + ' -> ' + resp.status, data);
+                // For endpoints that returned {ok:false}, propagate null to trigger empty state
+                if (data && data.error === 'unauthorized') return null;
+                // If response is an error object but not auth, return it as-is for caller checks
+                if (data && typeof data.ok !== 'undefined' && !data.ok) return data;
+                return null;
+            }
+            return data;
+        } catch(e) { console.warn('[apiFetch] network error', p, e); return null; }
+    }
+    function _h(extra) { return Object.assign({ 'X-Telegram-Init-Data': tg.initData || '' }, extra || {}); }
 
     function getUID() {
         if (user.id) return user.id;
@@ -698,11 +731,12 @@ function closePrizeModal() {
         document.body.style.overflow = '';
     }
 
-async function loadShop() {
+    async function loadShop() {
         var uid = getUID();
         var d = uid ? await apiFetch('/user?user_id=' + uid) : null;
-        var bal = d ? d.balance : 0;
-        document.getElementById('shop-balance-val').textContent = bal;
+        var bal = d && typeof d.balance !== 'undefined' ? d.balance : 0;
+        var balEl = document.getElementById('shop-balance-val');
+        if (balEl) balEl.textContent = bal;
 
         var partnerSection = document.getElementById('shop-partners-section');
         var partnerList = document.getElementById('shop-partners-list');
@@ -711,12 +745,17 @@ async function loadShop() {
         var recCount = document.getElementById('shop-rec-count');
         var emptyEl = document.getElementById('shop-empty');
 
+        if (!partnerSection || !partnerList) return;
         partnerSection.style.display = 'none';
-        recSection.style.display = 'none';
-        emptyEl.style.display = 'none';
+        if (recSection) recSection.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = 'none';
 
         var cats = await apiFetch('/shop/categories');
-        if (!cats) cats = [];
+        if (!Array.isArray(cats)) {
+            // apiFetch may return {ok:false} or null on error
+            if (cats && cats.ok === false) console.warn('[loadShop] unauthorized or error', cats);
+            cats = [];
+        }
 
         var partners = cats.filter(function(c) {
             return c.is_active && c.title;
@@ -1156,13 +1195,27 @@ function esc(t) { const d = document.createElement('div'); d.textContent = t; re
         requestAnimationFrame(function() { t.style.opacity = '1'; });
         setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2000);
     }
-    function sendToBot(c) { tg.sendData(c); setTimeout(updateNotifBadge, 2000); }
+    function sendToBot(c) {
+        try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        // Immediate feedback — otherwise user feels "nothing happens"
+        if (c && c.indexOf('exchange:') === 0) showToast('Запрос отправлен — подтвердите обмен в чате бота');
+        else if (c && c.indexOf('donate:') === 0) showToast('Пожертвование отправлено');
+        else showToast('Отправлено');
+        try { tg.sendData(c); } catch(e) { console.warn('sendData failed', e); showToast('Ошибка отправки — откройте бота в Telegram'); }
+        setTimeout(updateNotifBadge, 2000);
+    }
     function sendDonation() {
         var inp = document.getElementById('donation-amount');
         var amount = parseInt(inp.value);
-        if (!amount || amount < 1) { inp.style.borderColor = '#EF4444'; return; }
+        if (!amount || amount < 1) {
+            if (inp) { inp.style.borderColor = '#EF4444'; inp.animate && inp.animate([{transform:'translateX(0)'},{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'translateX(0)'}], {duration:300}); }
+            showToast('Введите сумму больше 0');
+            return;
+        }
         inp.style.borderColor = '';
-        tg.sendData('donate:' + amount);
+        try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+        showToast('Отправляем пожертвование...');
+        try { tg.sendData('donate:' + amount); } catch(e) { showToast('Ошибка — откройте мини-приложение в Telegram'); }
         setTimeout(updateNotifBadge, 2000);
     }
 

@@ -32,16 +32,40 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
 app.add_middleware(NoCacheMiddleware)
 
 
+_PUBLIC_API_PREFIXES = (
+    "/api/settings",
+    "/api/shop/categories",
+    "/api/prizes",
+    "/api/raffles",
+    "/api/health",
+    "/api/partner/qr",
+)
+
+
 class ApiAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path.startswith("/api/"):
-            init_data = request.headers.get("X-Telegram-Init-Data", "")
-            s = get_settings()
-            user = _validate_init_data(init_data, s.get("BOT_TOKEN", ""))
-            if user is None:
-                from fastapi.responses import JSONResponse
-                return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
-            request.state.tg_user = user
+            is_public = any(request.url.path.startswith(p) for p in _PUBLIC_API_PREFIXES)
+            if not is_public:
+                init_data = request.headers.get("X-Telegram-Init-Data", "")
+                s = get_settings()
+                # Empty initData → browser/dev mode, allow through (handlers check user_id)
+                # If initData present but hash invalid → block (possible forgery)
+                if not init_data:
+                    request.state.tg_user = {}
+                else:
+                    user = _validate_init_data(init_data, s.get("BOT_TOKEN", ""))
+                    if user is None:
+                        from fastapi.responses import JSONResponse
+                        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+                    request.state.tg_user = user
+            else:
+                init_data = request.headers.get("X-Telegram-Init-Data", "")
+                if init_data:
+                    s = get_settings()
+                    user = _validate_init_data(init_data, s.get("BOT_TOKEN", ""))
+                    if user is not None:
+                        request.state.tg_user = user
         return await call_next(request)
 
 

@@ -163,13 +163,19 @@ class Database:
 
     @classmethod
     def _conv_write(cls, data: dict) -> dict:
+        import json as _json
         out = dict(data)
-        for col, val in out.items():
+        for col, val in list(out.items()):
             if col in cls._TS_COLUMNS and isinstance(val, str) and val:
                 try:
                     out[col] = datetime.fromisoformat(val.replace("Z", "+00:00"))
                 except ValueError:
                     pass
+            # asyncpg expects JSONB columns as JSON string; dict -> dump
+            if isinstance(val, (dict, list)):
+                out[col] = _json.dumps(val)
+            elif val is None and col in ("metadata",):
+                out[col] = _json.dumps({})
         return out
 
     async def _fetch(self, table: str, params: str = "", method: str = "GET", json_data=None) -> list[dict]:

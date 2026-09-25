@@ -290,16 +290,17 @@ async def handle_message(db, msg: dict):
     # ── Persistent reply-keyboard text buttons ──
     # These replace the old inline "balance"/"stats"/"raffle_info" callbacks
     # since the buttons now live on the persistent keyboard, not attached to
-    # a specific message.
-    if text == BTN_BALANCE:
+    # a specific message. Also handle stripped versions (some clients drop emoji).
+    t_stripped = text.strip()
+    if t_stripped == BTN_BALANCE or t_stripped == "Баланс" or t_stripped.endswith("Баланс"):
         await send_balance(db, chat_id)
         return
 
-    if text == BTN_STATS:
+    if t_stripped == BTN_STATS or t_stripped == "Статистика" or t_stripped.endswith("Статистика"):
         await send_stats(db, chat_id)
         return
 
-    if text == BTN_RAFFLE:
+    if t_stripped == BTN_RAFFLE or t_stripped == "Розыгрыши" or t_stripped.endswith("Розыгрыши"):
         await send_raffle_info(db, chat_id)
         return
 
@@ -566,7 +567,7 @@ async def handle_callback(db, cbd: dict):
     chat_id = cbd["message"]["chat"]["id"]
     data = cbd["data"]
     try:
-        await _handle_callback_inner(db, cid, chat_id, data)
+        await _handle_callback_inner(db, cid, chat_id, data, cbd)
     except Exception as e:
         logger.error(f"handle_callback error: {e}", exc_info=True)
         try:
@@ -575,7 +576,7 @@ async def handle_callback(db, cbd: dict):
             pass
 
 
-async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
+async def _handle_callback_inner(db, cid: str, chat_id: int, data: str, cbd: dict | None = None):
     user = await db.get_user(chat_id)
     s = get_settings()
 
@@ -735,7 +736,7 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str):
             msg = msg.replace("{name}", prize['name']).replace("{order_id}", str(order_id))
             success_msg = await send_message(chat_id, msg)
             logger.info(f"exchange: deleting confirmation message")
-            msg_id = cbd.get("message", {}).get("message_id")
+            msg_id = (cbd or {}).get("message", {}).get("message_id")
             if msg_id:
                 await _delete_message(chat_id, msg_id)
             if success_msg and success_msg.get("result", {}).get("message_id"):
