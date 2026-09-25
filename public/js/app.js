@@ -509,20 +509,25 @@ async function loadMyCoupons() {
         list.innerHTML = data.coupons.map(function(c, i) {
             var st = c.status || 'active';
             var stColor = statusColors[st] || '#999';
+            var shortCode = (c.qr_code || '').replace('coupon_','');
+            var uidLabel = 'Купон #' + c.id + (c.order_id ? ' • Заказ #' + c.order_id : '') + (shortCode ? ' • ' + shortCode : '');
+            var idBadge = '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:2px 8px;font-size:11px;color:var(--text-dim);font-family:monospace">' + esc(uidLabel) + '</span>';
             var imgHtml = c.prize_image
                 ? '<img class="coupon-card-img" src="' + esc(c.prize_image) + '" onerror="this.style.display=\'none\'">'
                 : '<div class="coupon-card-img-fallback">' + esc(c.partner_icon || '🎁') + '</div>';
             var btnHtml = st === 'active'
                 ? '<button class="coupon-card-btn" onclick="event.stopPropagation();openCouponModal(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')">Показать QR</button>'
                 : '';
+            var copyBtn = '<button class="coupon-card-btn" style="margin-left:8px;background:var(--surface);border:1px solid var(--border)" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText(\'' + esc(c.qr_code) + '\');showToast(\'Код скопирован\')">' + icon('clipboard') + ' Копировать код</button>';
             return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + stColor + '">'
                 + '<div class="coupon-card-header">'
                 + '<div class="coupon-card-title">' + esc(c.prize_name || 'Приз') + '</div>'
                 + '<div class="coupon-card-status" style="color:' + stColor + '">' + statusLabels[st] + '</div>'
                 + '</div>'
                 + '<div class="coupon-card-meta">' + esc(c.partner_name || '') + ' • ' + (c.prize_price || 0) + ' баллов</div>'
-                + '<div class="coupon-card-date">' + icon('clock') + ' ' + new Date(c.created_at).toLocaleDateString('ru-RU') + '</div>'
-                + btnHtml
+                + '<div style="margin:6px 0">' + idBadge + '</div>'
+                + '<div class="coupon-card-date">' + icon('clock') + ' ' + new Date(c.created_at).toLocaleString('ru-RU') + (c.used_at ? ' → ' + new Date(c.used_at).toLocaleString('ru-RU') : '') + '</div>'
+                + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' + btnHtml + copyBtn + '</div>'
                 + '</div>';
         }).join('');
     }
@@ -553,12 +558,20 @@ async function loadMyCoupons() {
 
         qrEl.innerHTML = '';
         actionEl.innerHTML = '';
+        // Always show unique ID block
+        var idBlock = '<div style="display:flex;flex-direction:column;gap:4px;align-items:center;margin-bottom:12px">'
+            + '<span style="font-size:11px;color:var(--text-dim)">Уникальный ID</span>'
+            + '<span style="font-family:monospace;font-size:13px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:4px 10px;word-break:break-all">#' + coupon.id + ' • Заказ #' + (coupon.order_id||'—') + ' • ' + esc(coupon.qr_code||'') + '</span>'
+            + '<button class="coupon-card-btn" style="margin-top:4px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + esc(coupon.qr_code) + '\');showToast(\'Код скопирован\')">' + icon('clipboard') + ' Копировать код</button>'
+            + '</div>';
         if (st === 'active' && coupon.qr_code) {
             var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(coupon.qr_code);
-            qrEl.innerHTML = '<img src="' + qrUrl + '" style="width:200px;height:200px;border-radius:16px;background:#fff;padding:8px" alt="QR купон">'
-                + '<div style="margin-top:10px;font-size:12px;color:var(--text-dim);word-break:break-all">' + esc(coupon.qr_code) + '</div>';
+            qrEl.innerHTML = idBlock + '<img src="' + qrUrl + '" style="width:200px;height:200px;border-radius:16px;background:#fff;padding:8px" alt="QR купон">'
+                + '<div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Покажите QR партнёру для списания</div>';
         } else if (st === 'used') {
-            qrEl.innerHTML = '<div style="padding:32px;text-align:center;font-size:48px">✅</div>';
+            qrEl.innerHTML = idBlock + '<div style="padding:16px;text-align:center;font-size:48px">✅</div><div style="font-size:12px;color:var(--text-dim)">Использован ' + (coupon.used_at ? new Date(coupon.used_at).toLocaleString('ru-RU') : '') + '</div>';
+        } else {
+            qrEl.innerHTML = idBlock;
         }
 
         modal.classList.add('active');
