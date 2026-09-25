@@ -735,7 +735,7 @@ function openPrizeModal(p, bal) {
         var ok = bal >= p.price_points;
         var missing = Math.max(0, p.price_points - bal);
         if (ok) {
-            actionEl.innerHTML = '<button class="prize-modal-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\');closePrizeModal()">' + icon('gift') + ' Обменять</button>';
+            actionEl.innerHTML = '<button class="prize-modal-btn primary" onclick="doExchange(' + p.id + ')">' + icon('gift') + ' Обменять</button>';
         } else {
             actionEl.innerHTML = '<button class="prize-modal-btn disabled" disabled>Не хватает ' + missing + ' баллов</button>';
         }
@@ -827,7 +827,7 @@ function closePrizeModal() {
                     + '<div class="shop-rec-partner" style="color:' + p._partner_color + '">' + esc(p._partner_name) + '</div>'
                     + '<div class="shop-rec-price">' + icon('target') + ' ' + p.price_points + '</div>'
                     + (ok
-                        ? '<button class="shop-rec-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                        ? '<button class="shop-rec-btn primary" onclick="event.stopPropagation();doExchange(' + p.id + ')">' + icon('gift') + ' Обменять</button>'
                         : '<button class="shop-rec-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')">Не хватает ' + missing + '</button>')
                     + '</div></div>';
             }).join('');
@@ -876,8 +876,8 @@ function closePrizeModal() {
                 + '<div class="shop-prize-body"><div class="shop-prize-name">' + esc(p.name) + '</div>'
                 + '<div class="shop-prize-desc">' + esc(p.description) + '</div>'
                 + '<div class="shop-prize-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
-                + (ok
-                    ? '<button class="shop-prize-btn primary" onclick="event.stopPropagation();sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                 + (ok
+                    ? '<button class="shop-prize-btn primary" onclick="event.stopPropagation();doExchange(' + p.id + ')">' + icon('gift') + ' Обменять</button>'
                     : '<button class="shop-prize-btn outline" onclick="event.stopPropagation();openPrizeModal(JSON.parse(this.closest(\'[data-prize]\').dataset.prize),' + bal + ')" style="cursor:pointer">Не хватает ' + missing + ' баллов</button>')
                 + '</div></div>';
         }).join('');
@@ -972,7 +972,7 @@ function closePrizeModal() {
                     + '<div class="partner-item-desc">' + esc(p.description) + '</div>'
                     + '<div class="partner-item-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'
                     + (ok
-                        ? '<button class="partner-item-btn primary" onclick="sendToBot(\'exchange:' + p.id + '\')">' + icon('gift') + ' Обменять</button>'
+                        ? '<button class="partner-item-btn primary" onclick="doExchange(' + p.id + ')">' + icon('gift') + ' Обменять</button>'
                         : '<button class="partner-item-btn outline" disabled>Не хватает ' + missing + ' баллов</button>')
                     + '</div></div>';
             }).join('')
@@ -1301,10 +1301,39 @@ function esc(t) { const d = document.createElement('div'); d.textContent = t; re
         requestAnimationFrame(function() { t.style.opacity = '1'; });
         setTimeout(function() { t.style.opacity = '0'; setTimeout(function() { t.remove(); }, 300); }, 2000);
     }
+    async function doExchange(prizeId) {
+        var uid = getUID();
+        if (!uid) { showToast('Откройте мини-приложение в Telegram'); return; }
+        try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
+        showToast('Обмен...');
+        closePrizeModal();
+        try {
+            var resp = await fetch(API_BASE + '/exchange', { method:'POST', headers:_h({'Content-Type':'application/json'}), body: JSON.stringify({ user_id: uid, prize_id: prizeId }) });
+            var txt = await resp.text(); var res=null; try{res=JSON.parse(txt);}catch(_e){res={ok:false,error:txt};}
+            if (resp.ok && res && res.ok) {
+                showToast('Заказ #' + res.order_id + ' — ' + res.prize_name);
+                document.getElementById('top-balance').textContent = res.balance;
+                await loadUserData();
+                // also send to bot chat for history (fallback)
+                try{ tg.sendData('exchange:'+prizeId); }catch(e){}
+                setTimeout(function(){ openPage('my-coupons'); }, 800);
+            } else {
+                var msg = (res && res.error) || 'Ошибка';
+                if (msg==='not_enough_points') msg = 'Недостаточно баллов';
+                else if (msg==='prize_not_found') msg='Приз не найден';
+                showToast(msg);
+                if (res && res.need) showToast('Не хватает ' + res.need + ' баллов');
+            }
+        } catch(e){ console.error('exchange',e); showToast('Ошибка сети: '+ (e.message||'')); }
+        setTimeout(updateNotifBadge, 1500);
+    }
     function sendToBot(c) {
         try { tg.HapticFeedback.impactOccurred('light'); } catch(e) {}
-        // Immediate feedback — otherwise user feels "nothing happens"
-        if (c && c.indexOf('exchange:') === 0) showToast('Запрос отправлен — подтвердите обмен в чате бота');
+        // For exchange now use direct API (doExchange) — keep sendToBot as fallback for donate etc
+        if (c && c.indexOf('exchange:') === 0) {
+            var pid = parseInt(c.split(':')[1]||0); if (pid) { doExchange(pid); return; }
+            showToast('Запрос отправлен — подтвердите обмен в чате бота');
+        }
         else if (c && c.indexOf('donate:') === 0) showToast('Пожертвование отправлено');
         else showToast('Отправлено');
         try { tg.sendData(c); } catch(e) { console.warn('sendData failed', e); showToast('Ошибка отправки — откройте бота в Telegram'); }

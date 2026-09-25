@@ -382,6 +382,34 @@ async def api_coupon_redeem(request: Request):
     return result
 
 
+@router.post("/exchange")
+async def api_exchange(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    prize_id = body.get("prize_id", 0)
+    if not user_id or not prize_id:
+        return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user_not_found"}, status_code=404)
+    prize = await db.get_prize(prize_id)
+    if not prize:
+        return JSONResponse({"ok": False, "error": "prize_not_found"}, status_code=404)
+    if (user.get("balance") or 0) < prize["price_points"]:
+        return JSONResponse({"ok": False, "error": "not_enough_points", "need": prize["price_points"] - (user.get("balance") or 0)}, status_code=400)
+    try:
+        await db.add_balance(user_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
+        order_id = await db.create_order(user["id"], prize_id)
+        last_scan = await db.get_first_partner_for_user(user["id"])
+        await db.record_journey(user["id"], "coupon_buy", partner_id=last_scan["partner_id"] if last_scan else None, related_id=order_id, points_used=prize["price_points"])
+        await db.create_notification(user_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
+        return {"ok": True, "order_id": order_id, "prize_name": prize["name"], "balance": (user.get("balance") or 0) - prize["price_points"]}
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).exception(f"exchange error: {e}")
+        return JSONResponse({"ok": False, "error": "internal_error"}, status_code=500)
+
+
 @router.get("/user/{user_id}/available-coupons")
 async def api_available_coupons(user_id: int):
     user = await db.get_user(user_id)
