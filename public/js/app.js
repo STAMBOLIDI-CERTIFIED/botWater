@@ -1112,7 +1112,52 @@ function startScan() {
             if (partnerCode) partnerCode = partnerCode.trim();
         }
 
-        if (partnerCode) {
+        // Coupon QR detection must be before partner/bottle: coupon_*
+        var couponCode = null;
+        if (raw && raw.indexOf('coupon_') !== -1) {
+            var mC = raw.match(/coupon_[A-Za-z0-9_]+/);
+            if (mC) couponCode = mC[0];
+        }
+        if (couponCode) {
+            var scanDataEl = document.getElementById('scan-data');
+            // Check if current user is partner
+            var _uid = getUID();
+            var _acc = await apiFetch('/partner-account/' + _uid);
+            var isPartner = _acc && _acc.ok;
+            if (isPartner) {
+                scanDataEl.innerHTML = esc(raw) + '<br><br><div style="background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);border-radius:14px;padding:12px">'
+                    + '<div style="font-weight:700;color:#10B981;margin-bottom:6px">' + icon('gift') + ' Купон</div>'
+                    + '<div style="font-size:12px;color:var(--text-dim);margin-bottom:10px;word-break:break-all">' + esc(couponCode) + '</div>'
+                    + '<button id="coupon-activate-btn" class="prize-modal-btn primary" style="width:100%">' + icon('check') + ' Использовать купон</button>'
+                    + '<div id="coupon-activate-status" style="margin-top:8px;font-size:13px"></div></div>';
+                var cBtn = document.getElementById('coupon-activate-btn');
+                var cStatus = document.getElementById('coupon-activate-status');
+                if (cBtn) cBtn.onclick = async function(){
+                    cBtn.disabled = true; cBtn.textContent = 'Проверка...';
+                    try {
+                        var resp = await fetch(API_BASE + '/coupon/activate', { method:'POST', headers:_h({'Content-Type':'application/json'}), body: JSON.stringify({ qr_code: couponCode, partner_telegram_id: _uid }) });
+                        var res = await resp.json();
+                        if (res.ok) {
+                            cStatus.innerHTML = icon('check') + ' Купон активирован: ' + esc(res.prize_name) + ' (' + esc(res.user_name) + ')';
+                            showToast('Купон использован!');
+                            try{ tg.HapticFeedback.notificationOccurred('success'); }catch(e){}
+                            cBtn.textContent = 'Готово'; cBtn.disabled = true;
+                        } else {
+                            var errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'partner_not_found':'Вы не партнёр' };
+                            cStatus.innerHTML = icon('warning') + ' ' + esc(errMap[res.error] || res.error || 'Ошибка');
+                            cBtn.disabled = false; cBtn.textContent = 'Попробовать снова';
+                        }
+                    } catch(e){ cStatus.innerHTML = icon('warning') + ' Ошибка сети'; cBtn.disabled=false; }
+                };
+            } else {
+                scanDataEl.innerHTML = esc(raw) + '<br><br><div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:14px;padding:12px;text-align:center">'
+                    + '<div style="font-size:32px;margin-bottom:8px">' + icon('warning') + '</div>'
+                    + '<div style="font-weight:700;color:#EF4444;margin-bottom:4px">Невозможно отсканировать</div>'
+                    + '<div style="font-size:13px;color:var(--text-dim)">Купон может активировать только партнёр. Покажите этот QR партнёру для списания.</div>'
+                    + '<div style="font-size:11px;color:var(--text-dim);margin-top:8px;word-break:break-all">' + esc(couponCode) + '</div></div>';
+                showToast('Купон активируется только у партнёра');
+            }
+        } else if (partnerCode) {
             // Show activation button first (as expected: "должна появляться кнопка активировать")
             var scanDataEl = document.getElementById('scan-data');
             scanDataEl.innerHTML = esc(raw) + '<br><br><div style="background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.2);border-radius:14px;padding:12px;margin-top:8px">'
