@@ -696,12 +696,6 @@ class Database:
         )
 
         if reward > 0 and first_scan:
-            await self.record_journey(
-                first_scan.get("partner_id", 0), "coupon_redeem",
-                partner_id=first_scan["partner_id"], related_id=order_id,
-                partner_reward=reward,
-                metadata={"reward_for_user": user["id"], "redeem_partner_id": partner_id}
-            )
             await self.create_notification(
                 user["telegram_id"], "reward",
                 "Вознаграждение партнёра",
@@ -835,6 +829,14 @@ class Database:
             "used_at": datetime.utcnow().isoformat(),
             "used_by_partner_id": partner_account_id
         })
+
+        partner = await self.get_partner_account(partner_account_id)
+        await self.record_journey(
+            coupon["user_id"], "coupon_redeem",
+            partner_id=partner.get("category_id") if partner else None,
+            related_id=coupon.get("order_id"),
+            metadata={"via": "partner_qr", "account_id": partner_account_id},
+        )
 
         user_name = coupon.get("user_name", "")
         prize_name = coupon.get("prize_name", "")

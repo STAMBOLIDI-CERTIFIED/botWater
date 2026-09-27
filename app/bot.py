@@ -720,11 +720,10 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str, cbd: dic
             order_id = await db.create_order(user_row["id"], prize_id)
             logger.info(f"exchange: order created id={order_id}")
 
-            last_scan = await db.get_first_partner_for_user(user_row["id"])
-            logger.info(f"exchange: recording journey, partner_id={last_scan['partner_id'] if last_scan else None}")
+            logger.info(f"exchange: recording journey, partner_id={prize.get('category_id')}")
             await db.record_journey(
                 user_row["id"], "coupon_buy",
-                partner_id=last_scan["partner_id"] if last_scan else None,
+                partner_id=prize.get("category_id"),
                 related_id=order_id,
                 points_used=prize["price_points"]
             )

@@ -400,8 +400,7 @@ async def api_exchange(request: Request):
     try:
         await db.add_balance(user_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user["id"], prize_id)
-        last_scan = await db.get_first_partner_for_user(user["id"])
-        await db.record_journey(user["id"], "coupon_buy", partner_id=last_scan["partner_id"] if last_scan else None, related_id=order_id, points_used=prize["price_points"])
+        await db.record_journey(user["id"], "coupon_buy", partner_id=prize.get("category_id"), related_id=order_id, points_used=prize["price_points"])
         await db.create_notification(user_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
         return {"ok": True, "order_id": order_id, "prize_name": prize["name"], "balance": (user.get("balance") or 0) - prize["price_points"]}
     except Exception as e:
