@@ -591,6 +591,13 @@ class WaterPrize_Pages {
         }
         $top_users = $db->get_top_partners_users(20);
 
+        // Movement (path) data
+        $m_search = sanitize_text_field($_GET['m_search'] ?? '');
+        $m_partner = (int)($_GET['m_partner'] ?? 0);
+        $m_status = sanitize_text_field($_GET['m_status'] ?? '');
+        $movement = $tab === 'movement' ? $db->get_user_movement($m_search, $m_partner, $m_status, 500) : [];
+        $movement_summary = $tab === 'movement' ? $db->get_movement_summary($m_partner) : [];
+
         // Orders data
         $all_orders = $db->get_all_orders(500);
         $order_search = sanitize_text_field($_GET['order_search'] ?? '');

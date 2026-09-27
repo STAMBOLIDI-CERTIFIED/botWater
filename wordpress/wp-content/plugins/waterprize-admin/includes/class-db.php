@@ -58,6 +58,11 @@ class WaterPrize_DB {
         }
     }
 
+    public function query_one($sql, $params = []) {
+        $rows = $this->query($sql, $params);
+        return $rows ? $rows[0] : [];
+    }
+
     public function execute($sql, $params = []) {
         if (!$this->conn) return false;
         try {
@@ -718,6 +723,121 @@ class WaterPrize_DB {
             [$limit]
         );
         return $rows ?: [];
+    }
+
+    // ─── User Movement (path) ─────────────────────────
+    private function movement_paths_sql() {
+        return "
+            SELECT
+                u.id, u.telegram_id, u.name, u.created_at AS registered_at,
+                COALESCE(js.partner_id, ps.category_id) AS from_partner_id,
+                COALESCE(js.created_at, ps.scanned_at) AS joined_at,
+                COALESCE(jb.partner_id, jpr.category_id, lpr.category_id) AS buy_partner_id,
+                COALESCE(jb.created_at, lo.created_at) AS buy_at,
+                COALESCE(jb.related_id, lo.id) AS order_id,
+                COALESCE(jr.partner_id, lpa.category_id) AS redeem_partner_id,
+                COALESCE(jr.created_at, lc.used_at) AS redeem_at
+            FROM users u
+            LEFT JOIN LATERAL (
+                SELECT partner_id, created_at FROM user_journey
+                WHERE user_id = u.id AND action_type = 'partner_scan'
+                ORDER BY created_at ASC LIMIT 1
+            ) js ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT category_id, scanned_at FROM partner_scans
+                WHERE user_id = u.id
+                ORDER BY scanned_at ASC LIMIT 1
+            ) ps ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT partner_id, created_at, related_id FROM user_journey
+                WHERE user_id = u.id AND action_type = 'coupon_buy'
+                ORDER BY created_at DESC LIMIT 1
+            ) jb ON TRUE
+            LEFT JOIN orders jo ON jo.id = jb.related_id
+            LEFT JOIN prizes jpr ON jpr.id = jo.prize_id
+            LEFT JOIN LATERAL (
+                SELECT id, prize_id, created_at FROM orders
+                WHERE user_id = u.id
+                ORDER BY created_at DESC LIMIT 1
+            ) lo ON TRUE
+            LEFT JOIN prizes lpr ON lpr.id = lo.prize_id
+            LEFT JOIN LATERAL (
+                SELECT partner_id, created_at, related_id FROM user_journey
+                WHERE user_id = u.id AND action_type = 'coupon_redeem'
+                ORDER BY created_at DESC LIMIT 1
+            ) jr ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT used_at, used_by_partner_id FROM user_coupons
+                WHERE user_id = u.id AND used_at IS NOT NULL
+                ORDER BY used_at DESC LIMIT 1
+            ) lc ON TRUE
+            LEFT JOIN partner_accounts lpa ON lpa.id = lc.used_by_partner_id
+        ";
+    }
+
+    public function get_user_movement($search = '', $partner_id = 0, $status = '', $limit = 500) {
+        $sql = "WITH paths AS (" . $this->movement_paths_sql() . ")
+            SELECT p.*,
+                cf.title AS from_partner_name, cf.color AS from_partner_color, cf.icon AS from_partner_icon,
+                cb.title AS buy_partner_name, cb.color AS buy_partner_color, cb.icon AS buy_partner_icon,
+                cr.title AS redeem_partner_name, cr.color AS redeem_partner_color, cr.icon AS redeem_partner_icon
+            FROM paths p
+            LEFT JOIN shop_categories cf ON cf.id = p.from_partner_id
+            LEFT JOIN shop_categories cb ON cb.id = p.buy_partner_id
+            LEFT JOIN shop_categories cr ON cr.id = p.redeem_partner_id
+            WHERE 1=1";
+        $params = [];
+        if ($search !== '') {
+            $sql .= " AND (p.name ILIKE ? OR p.telegram_id::text LIKE ?)";
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
+        if ($partner_id > 0) {
+            $sql .= " AND (p.from_partner_id = ? OR p.buy_partner_id = ? OR p.redeem_partner_id = ?)";
+            $params[] = $partner_id;
+            $params[] = $partner_id;
+            $params[] = $partner_id;
+        }
+        switch ($status) {
+            case 'joined':
+                $sql .= " AND p.joined_at IS NOT NULL AND p.buy_at IS NULL AND p.redeem_at IS NULL";
+                break;
+            case 'bought':
+                $sql .= " AND p.buy_at IS NOT NULL AND p.redeem_at IS NULL";
+                break;
+            case 'redeemed':
+                $sql .= " AND p.redeem_at IS NOT NULL";
+                break;
+            case 'full':
+                $sql .= " AND p.joined_at IS NOT NULL AND p.buy_at IS NOT NULL AND p.redeem_at IS NOT NULL";
+                break;
+            case 'none':
+                $sql .= " AND p.joined_at IS NULL AND p.buy_at IS NULL AND p.redeem_at IS NULL";
+                break;
+        }
+        $sql .= " ORDER BY COALESCE(p.redeem_at, p.buy_at, p.joined_at, p.registered_at) DESC LIMIT ?";
+        $params[] = $limit;
+        return $this->query($sql, $params);
+    }
+
+    public function get_movement_summary($partner_id = 0) {
+        $sql = "WITH paths AS (" . $this->movement_paths_sql() . ")
+            SELECT
+                COUNT(*)::int AS total,
+                COUNT(*) FILTER (WHERE from_partner_id IS NOT NULL)::int AS joined,
+                COUNT(*) FILTER (WHERE buy_partner_id IS NOT NULL)::int AS bought,
+                COUNT(*) FILTER (WHERE redeem_partner_id IS NOT NULL)::int AS redeemed,
+                COUNT(*) FILTER (WHERE from_partner_id IS NOT NULL AND buy_partner_id IS NOT NULL AND redeem_partner_id IS NOT NULL)::int AS full_path
+            FROM paths";
+        $params = [];
+        if ($partner_id > 0) {
+            $sql .= " WHERE (from_partner_id = ? OR buy_partner_id = ? OR redeem_partner_id = ?)";
+            $params[] = $partner_id;
+            $params[] = $partner_id;
+            $params[] = $partner_id;
+        }
+        $rows = $this->query($sql, $params);
+        return $rows[0] ?? ['total' => 0, 'joined' => 0, 'bought' => 0, 'redeemed' => 0, 'full_path' => 0];
     }
 
     // ─── Partner Statistics ──────────────────────────────

@@ -12,6 +12,7 @@ $tab = $tab ?? 'list';
         <a href="?page=wpz-partners&tab=prizes" class="nav-tab <?php echo $tab === 'prizes' ? 'nav-tab-active' : ''; ?>">Призы</a>
         <a href="?page=wpz-partners&tab=orders" class="nav-tab <?php echo $tab === 'orders' ? 'nav-tab-active' : ''; ?>">Заказы</a>
         <a href="?page=wpz-partners&tab=stats" class="nav-tab <?php echo $tab === 'stats' ? 'nav-tab-active' : ''; ?>">Статистика</a>
+        <a href="?page=wpz-partners&tab=movement" class="nav-tab <?php echo $tab === 'movement' ? 'nav-tab-active' : ''; ?>">🚶 Перемещения</a>
     </nav>
 
     <?php if ($tab === 'list'): ?>
@@ -648,6 +649,137 @@ $tab = $tab ?? 'list';
                 <?php endforeach; endif; ?>
             </tbody>
         </table>
+    </div>
+
+    <?php elseif ($tab === 'movement'): ?>
+    <!-- ═══ TAB: Перемещения ═══ -->
+    <?php
+    $mv_joined = $movement_summary['joined'] ?? 0;
+    $mv_bought = $movement_summary['bought'] ?? 0;
+    $mv_redeemed = $movement_summary['redeemed'] ?? 0;
+    $mv_full = $movement_summary['full_path'] ?? 0;
+    $mv_conv = $mv_joined > 0 ? round($mv_redeemed / $mv_joined * 100, 1) : 0;
+    ?>
+    <div class="wpz-stats-grid" style="margin-bottom:20px;">
+        <div class="wpz-stat-card wpz-blue">
+            <div class="wpz-stat-icon">📡</div>
+            <div class="wpz-stat-val"><?php echo number_format_i18n($mv_joined); ?></div>
+            <div class="wpz-stat-label">Пришли по QR</div>
+        </div>
+        <div class="wpz-stat-card wpz-green">
+            <div class="wpz-stat-icon">🛒</div>
+            <div class="wpz-stat-val"><?php echo number_format_i18n($mv_bought); ?></div>
+            <div class="wpz-stat-label">Купили купон</div>
+        </div>
+        <div class="wpz-stat-card wpz-purple">
+            <div class="wpz-stat-icon">🎫</div>
+            <div class="wpz-stat-val"><?php echo number_format_i18n($mv_redeemed); ?></div>
+            <div class="wpz-stat-label">Потратили купон</div>
+        </div>
+        <div class="wpz-stat-card wpz-orange">
+            <div class="wpz-stat-icon">🎯</div>
+            <div class="wpz-stat-val"><?php echo number_format_i18n($mv_full); ?></div>
+            <div class="wpz-stat-label">Прошли полный путь</div>
+        </div>
+        <div class="wpz-stat-card wpz-red">
+            <div class="wpz-stat-icon">🔄</div>
+            <div class="wpz-stat-val"><?php echo $mv_conv; ?>%</div>
+            <div class="wpz-stat-label">Конверсия приход → списание</div>
+        </div>
+    </div>
+
+    <div class="wpz-card" style="margin-bottom:20px;">
+        <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="hidden" name="page" value="wpz-partners">
+            <input type="hidden" name="tab" value="movement">
+            <input type="search" name="m_search" placeholder="Имя или Telegram ID..." value="<?php echo esc_attr($m_search); ?>" class="regular-text">
+            <select name="m_partner">
+                <option value="">Все партнёры</option>
+                <?php foreach ($categories as $c): ?>
+                    <option value="<?php echo (int)$c['id']; ?>" <?php echo $m_partner === (int)$c['id'] ? 'selected' : ''; ?>><?php echo esc_html($c['title']); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <select name="m_status">
+                <option value="">Все статусы</option>
+                <option value="none" <?php echo $m_status === 'none' ? 'selected' : ''; ?>>Без действий</option>
+                <option value="joined" <?php echo $m_status === 'joined' ? 'selected' : ''; ?>>Пришли (не покупали)</option>
+                <option value="bought" <?php echo $m_status === 'bought' ? 'selected' : ''; ?>>Купили (не погасили)</option>
+                <option value="redeemed" <?php echo $m_status === 'redeemed' ? 'selected' : ''; ?>>Погасили</option>
+                <option value="full" <?php echo $m_status === 'full' ? 'selected' : ''; ?>>Полный путь</option>
+            </select>
+            <button type="submit" class="button">🔍 Найти</button>
+        </form>
+    </div>
+
+    <div class="wpz-card">
+        <h2>🚶 Перемещение пользователей <span style="font-weight:400;font-size:13px;color:#777;">откуда пришёл → у кого купил → у кого потратил</span></h2>
+        <table class="wp-list-table widefat fixed striped">
+            <thead>
+                <tr>
+                    <th>Пользователь</th>
+                    <th>Откуда пришёл</th>
+                    <th>Купил купон у</th>
+                    <th>Потратил купон у</th>
+                    <th style="width:200px">Путь</th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php if (empty($movement)): ?>
+                <tr><td colspan="5">Нет данных</td></tr>
+            <?php else: foreach ($movement as $r):
+                $has_f = !empty($r['from_partner_id']);
+                $has_b = !empty($r['buy_partner_id']);
+                $has_r = !empty($r['redeem_partner_id']);
+                $switched = $has_f && $has_r && (int)$r['from_partner_id'] !== (int)$r['redeem_partner_id'];
+                if ($has_f && $has_b && $has_r) { $badge = ['🎯 Полный путь', '#00a32a']; }
+                elseif ($has_b && $has_r) { $badge = ['✅ Купил и погасил', '#00a32a']; }
+                elseif ($has_f && $has_b) { $badge = ['🛒 Купил, не погасил', '#f0ad4e']; }
+                elseif ($has_f) { $badge = ['🚶 Пришёл, не покупал', '#007cba']; }
+                elseif ($has_r) { $badge = ['✅ Погасил', '#00a32a']; }
+                elseif ($has_b) { $badge = ['🛒 Купил', '#f0ad4e']; }
+                else { $badge = ['Нет данных', '#999']; }
+            ?>
+                <tr>
+                    <td>
+                        <strong><?php echo esc_html($r['name'] ?: '—'); ?></strong>
+                        <br><small style="color:#999">@<?php echo esc_html($r['telegram_id']); ?></small>
+                    </td>
+                    <td>
+                        <?php if ($has_f): ?>
+                            <span style="display:inline-flex;gap:6px;align-items:center;">
+                                <span style="width:14px;height:14px;border-radius:3px;background:<?php echo esc_attr($r['from_partner_color'] ?: '#999'); ?>;display:inline-block;"></span>
+                                <strong><?php echo esc_html($r['from_partner_name']); ?></strong>
+                            </span>
+                            <br><small style="color:#999"><?php echo esc_html($r['joined_at'] ? date('d.m.Y H:i', strtotime($r['joined_at'])) : '—'); ?></small>
+                        <?php else: ?><span style="color:#bbb">—</span><?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($has_b): ?>
+                            <span style="display:inline-flex;gap:6px;align-items:center;">
+                                <span style="width:14px;height:14px;border-radius:3px;background:<?php echo esc_attr($r['buy_partner_color'] ?: '#999'); ?>;display:inline-block;"></span>
+                                <strong><?php echo esc_html($r['buy_partner_name']); ?></strong>
+                            </span>
+                            <br><small style="color:#999">Заказ #<?php echo esc_html($r['order_id'] ?? '—'); ?><?php echo $r['buy_at'] ? ' · ' . date('d.m.Y H:i', strtotime($r['buy_at'])) : ''; ?></small>
+                        <?php else: ?><span style="color:#bbb">—</span><?php endif; ?>
+                    </td>
+                    <td>
+                        <?php if ($has_r): ?>
+                            <span style="display:inline-flex;gap:6px;align-items:center;">
+                                <span style="width:14px;height:14px;border-radius:3px;background:<?php echo esc_attr($r['redeem_partner_color'] ?: '#999'); ?>;display:inline-block;"></span>
+                                <strong><?php echo esc_html($r['redeem_partner_name']); ?></strong>
+                            </span>
+                            <br><small style="color:#999"><?php echo esc_html($r['redeem_at'] ? date('d.m.Y H:i', strtotime($r['redeem_at'])) : '—'); ?></small>
+                            <?php if ($switched): ?>
+                                <br><span style="color:#f0ad4e;font-weight:600;font-size:11px;">↗️ потратил у другого, чем откуда пришёл</span>
+                            <?php endif; ?>
+                        <?php else: ?><span style="color:#bbb">—</span><?php endif; ?>
+                    </td>
+                    <td><span style="display:inline-block;padding:3px 10px;border-radius:12px;background:<?php echo esc_attr($badge[1]); ?>;color:#fff;font-size:11px;font-weight:600;white-space:nowrap;"><?php echo esc_html($badge[0]); ?></span></td>
+                </tr>
+            <?php endforeach; endif; ?>
+            </tbody>
+        </table>
+        <p><small style="color:#999">Показано: <?php echo count($movement); ?> из 500 макс.</small></p>
     </div>
 
     <?php elseif ($tab === 'stats'): ?>
