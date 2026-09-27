@@ -21,18 +21,33 @@
     animation: slideUp .6s var(--ease-out) both;
     animation-delay: 0s;
 }
-/* Simultaneous reveal for main menu */
+/* Main menu: every block hidden until the synchronized reveal */
 #page-menu .top-bar,
 #page-menu .hero-banner,
 #page-menu .section-title,
 #page-menu .card-grid .card {
     opacity: 0;
     transform: translateY(14px);
+    animation: none;
 }
-#page-menu.menu-revealed .top-bar { animation: slideUp .6s var(--ease-out) .05s both; }
-#page-menu.menu-revealed .hero-banner { animation: slideUp .6s var(--ease-out) .1s both; }
-#page-menu.menu-revealed .section-title { animation: slideUp .6s var(--ease-out) .15s both; }
-#page-menu.menu-revealed .card-grid .card { animation: slideUp .6s var(--ease-out) .2s both; }
+/* Synchronized reveal: one wave, identical timing for every block */
+#page-menu.menu-revealed .top-bar,
+#page-menu.menu-revealed .hero-banner,
+#page-menu.menu-revealed .section-title,
+#page-menu.menu-revealed .card-grid .card {
+    opacity: 1;
+    transform: none;
+    animation: slideUp .65s var(--ease-out) .05s both;
+}
+/* Restore card glows on top of the reveal entrance */
+#page-menu.menu-revealed .card-grid .card-tree {
+    animation: cardTreeGlow 3s ease-in-out infinite, slideUp .65s var(--ease-out) .05s both;
+    animation-delay: 0s, .05s;
+}
+#page-menu.menu-revealed .card-grid .card-shop {
+    animation: cardShopGlow 3s ease-in-out infinite, slideUp .65s var(--ease-out) .05s both;
+    animation-delay: 0s, .05s;
+}
 #page-menu.menu-revealed .card-grid { opacity: 1; transform: none; }
 .card:active { transform: scale(0.96); }
 .card:hover {
@@ -197,7 +212,8 @@
 
 .card-full {
     grid-column: 1 / -1;
-    display: flex; align-items: center; gap: 18px;
+    display: flex; align-items: center; gap: 14px;
+    padding: 15px 16px;
     border-radius: var(--radius-md);
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
@@ -217,7 +233,25 @@
     background: linear-gradient(135deg, rgba(201,168,76,0.04), transparent 50%);
     pointer-events: none;
 }
-.card-full .card-left { flex: 1; position: relative; z-index: 1; }
+.card-full .card-left { flex: 1; position: relative; z-index: 1; min-width: 0; }
+/* Icon tile on the right of menu cards */
+.card-ico {
+    width: 54px; height: 54px;
+    border-radius: 15px;
+    border: 1px solid rgba(255,255,255,0.1);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    position: relative; z-index: 1;
+    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+    animation: treeEmojiFloat 3s ease-in-out infinite;
+}
+.card-ico .icn, .card-ico svg { width: 26px; height: 26px; }
+.card-ico svg { stroke: currentColor; }
+.card:hover .card-ico {
+    animation: none;
+    transform: scale(1.1);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
 .card-full .card-tag {
     font-size: 10px; font-weight: 600; color: var(--gold);
     text-transform: uppercase; letter-spacing: 0.5px;

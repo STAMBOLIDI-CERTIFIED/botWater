@@ -1,4 +1,5 @@
     window._splashHidden = false;
+    var _splashStart = Date.now();
     function hideSplash() {
         var s = document.getElementById('splash');
         if (s && !s.classList.contains('hide')) {
@@ -20,6 +21,16 @@
             }
         } catch(e) {}
     }
+    // Hide splash only after the menu data is ready (no blank-screen gap),
+    // but never wait longer than 3.5s in total.
+    function tryHideSplash() {
+        if (window._splashHidden) return;
+        if (window._menuDataReady || (Date.now() - _splashStart) >= 3500) {
+            hideSplash();
+        } else {
+            setTimeout(tryHideSplash, 120);
+        }
+    }
     loadSplashLogo();
-    window.addEventListener('load', function() { setTimeout(hideSplash, 1000); });
-    setTimeout(hideSplash, 3000);
+    window.addEventListener('load', function() { setTimeout(tryHideSplash, 700); });
+    setTimeout(tryHideSplash, 3500);

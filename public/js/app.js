@@ -315,33 +315,52 @@ function countUp(el, target, duration) {
 
     async function loadUserData() {
         var uid = getUID();
-        if (!uid) return;
+        if (!uid) {
+            window._menuDataReady = true;
+            if (window.tryRevealMenu) window.tryRevealMenu();
+            return;
+        }
 
+        var d = null;
         try {
             var rawD = await fetch(API_BASE + '/user?user_id=' + uid, { headers: _h() });
             var txt = await rawD.text();
-            var d = null;
             try { d = JSON.parse(txt); } catch(e) {}
 
             if (d) {
-                var fullName = user.first_name || '';
-                if (user.last_name) fullName += ' ' + user.last_name;
                 var displayName = d.name || user.first_name || 'Пользователь';
                 document.getElementById('top-name').textContent = displayName;
                 document.getElementById('profile-name').textContent = displayName;
                 document.getElementById('profile-id').innerHTML = 'ID: <span>' + (user.id || d.telegram_id || uid || '—') + '</span>';
-                countUp(document.getElementById('top-balance'), d.balance);
                 countUp(document.getElementById('profile-balance'), d.balance);
                 countUp(document.getElementById('profile-scans'), d.total_scans);
+                // top balance is on the hidden main screen — count it when the reveal happens
+                var menuEl = document.getElementById('page-menu');
+                if (menuEl && menuEl.classList.contains('menu-revealed')) {
+                    countUp(document.getElementById('top-balance'), d.balance);
+                } else {
+                    window._pendingTopBalance = d.balance;
+                }
                 if (d.photo_url) {
                     console.log('[avatar] photo_url from API:', d.photo_url);
                     setAvatarPhoto(d.photo_url);
                 } else if (user.photo_url) {
                     console.log('[avatar] photo_url from TG initData:', user.photo_url);
                     setAvatarPhoto(user.photo_url);
-                } else {
-                    console.log('[avatar] no photo_url, trying fallback');
+                }
+            }
+        } catch(e) {}
+
+        try {
+            var coupCard = document.getElementById('card-my-coupons');
+            if (coupCard) coupCard.style.display = 'flex';
+
+            // non-critical requests in parallel so the reveal isn't delayed by them
+            var extras = [];
+            if (d && !d.photo_url && !user.photo_url) {
+                extras.push((async function() {
                     try {
+                        console.log('[avatar] no photo_url, trying fallback');
                         var photoResp = await fetch(API_BASE + '/user-photo?user_id=' + uid, { headers: _h() });
                         var photoData = await photoResp.json();
                         if (photoData && photoData.photo_url) {
@@ -349,54 +368,47 @@ function countUp(el, target, duration) {
                             setAvatarPhoto(photoData.photo_url);
                         }
                     } catch(e) {}
-                }
+                })());
             }
             if (!initGiftChecked) {
                 initGiftChecked = true;
-                await checkGift();
+                extras.push(checkGift().catch(function(){}));
             }
-
-            await updateNotifBadge();
-        } catch(e) {}
-
-        try {
-            var coupCard = document.getElementById('card-my-coupons');
-            if (coupCard) coupCard.style.display = 'flex';
-
-            var partAccData = await apiFetch('/partner-account/' + uid);
-            var partCard = document.getElementById('card-partner-dashboard');
-            if (partAccData && partAccData.ok && partCard) {
-                var cat = (partAccData.account && partAccData.account.shop_categories) || {};
-                partCard.style.display = 'flex';
-                var partName = document.getElementById('card-partner-name');
-                if (partName) partName.textContent = cat.title || 'Бизнес-партнёр';
-            } else if (partCard) {
-                partCard.style.display = 'none';
-            }
+            extras.push(updateNotifBadge().catch(function(){}));
+            extras.push((async function() {
+                try {
+                    var partAccData = await apiFetch('/partner-account/' + uid);
+                    var partCard = document.getElementById('card-partner-dashboard');
+                    if (partAccData && partAccData.ok && partCard) {
+                        var cat = (partAccData.account && partAccData.account.shop_categories) || {};
+                        partCard.style.display = 'flex';
+                        var partName = document.getElementById('card-partner-name');
+                        if (partName) partName.textContent = cat.title || 'Бизнес-партнёр';
+                    } else if (partCard) {
+                        partCard.style.display = 'none';
+                    }
+                } catch(e) {}
+            })());
+            await Promise.all(extras);
         } catch(e) {}
         window._menuDataReady = true;
         if (window.tryRevealMenu) window.tryRevealMenu();
     }
     // Simultaneous reveal: wait for both splash and data
     window._menuDataReady = false;
+    window._pendingTopBalance = null;
     window.tryRevealMenu = function() {
         if (!window._menuDataReady || !window._splashHidden) return;
         var menu = document.getElementById('page-menu');
         if (menu && !menu.classList.contains('menu-revealed')) {
             menu.classList.add('menu-revealed');
-            // Remove anim-in after animation to avoid re-trigger on navigation
-            setTimeout(function(){
-                menu.querySelectorAll('.anim-in').forEach(function(el){ el.classList.remove('anim-in'); });
-            }, 900);
+            if (window._pendingTopBalance != null) {
+                countUp(document.getElementById('top-balance'), window._pendingTopBalance);
+                window._pendingTopBalance = null;
+            }
         }
     };
     loadUserData();
-
-    setTimeout(function() {
-        document.querySelectorAll('.anim-in').forEach(function(el) {
-            el.addEventListener('animationend', function() { el.classList.remove('anim-in'); }, { once: true });
-        });
-    }, 1000);
 
     // ═══════════════════════════════════════════
 // NOTIFICATIONS
@@ -691,6 +703,15 @@ async function startCouponScanner() {
         var reader = document.getElementById('coupon-scanner-reader');
         zone.style.display = 'none';
         reader.style.display = 'block';
+        var ready = await new Promise(function(resolve) {
+            whenQrReady(function() { resolve(true); }, function() { resolve(false); });
+        });
+        if (!ready) {
+            zone.style.display = 'block';
+            reader.style.display = 'none';
+            document.getElementById('coupon-scanner-result').textContent = 'Не удалось загрузить сканер, попробуйте ещё раз';
+            return;
+        }
         if (!couponHtml5QrCode) couponHtml5QrCode = new Html5Qrcode('coupon-scanner-reader');
         try {
             await couponHtml5QrCode.start(
@@ -1092,12 +1113,26 @@ async function loadRaffles() {
 // PAGE: SCANNER
 // ═══════════════════════════════════════════
 
+// html5-qrcode loads async (non-blocking) — wait for it before starting a scan
+function whenQrReady(cb, onFail) {
+        var tries = 0;
+        (function poll() {
+            if (typeof Html5Qrcode !== 'undefined') return cb();
+            if (++tries > 60) return onFail ? onFail() : undefined;
+            setTimeout(poll, 100);
+        })();
+    }
+
 function startScan() {
         const btn = document.getElementById('scan-btn'), reader = document.getElementById('reader'), zone = document.getElementById('scan-zone');
         document.getElementById('scan-result').classList.remove('show');
         btn.textContent = 'Запуск...'; btn.disabled = true;
-        if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().then(() => doScan());
-        else { html5QrCode = new Html5Qrcode('reader'); doScan(); }
+        whenQrReady(function() {
+            if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop().then(() => doScan());
+            else { html5QrCode = new Html5Qrcode('reader'); doScan(); }
+        }, function() {
+            btn.textContent = 'Ошибка загрузки сканера'; btn.disabled = false;
+        });
         function doScan() {
             zone.style.display = 'none'; reader.style.display = 'block';
             html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 250 } },
