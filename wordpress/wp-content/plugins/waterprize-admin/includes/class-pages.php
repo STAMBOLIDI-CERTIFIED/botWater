@@ -6,6 +6,35 @@ class WaterPrize_Pages {
 
     private static function db() { return WaterPrize_DB::instance(); }
 
+    /**
+     * Локальные медиа WP (127.0.0.1/localhost) недоступны с телефона и по HTTPS.
+     * Копируем файл в public/uploads репозитория и возвращаем относительный URL /uploads/...
+     * Остальные URL (абсолютные на другие домены, пустые) возвращаем без изменений.
+     */
+    private static function normalize_media_url($url) {
+        $url = trim((string)$url);
+        if ($url === '') return '';
+        if (!preg_match('#^https?://(?:127\.0\.0\.1|localhost)(?::\d+)?/wp-content/uploads/(.+)$#', $url, $m)) {
+            return $url;
+        }
+        $rel = ltrim($m[1], '/');
+        $src = (defined('ABSPATH') ? ABSPATH : '') . 'wp-content/uploads/' . $rel;
+        if (!is_readable($src)) return $url;
+        $base = dirname(__FILE__, 6) . '/public/uploads/';
+        if (!is_dir($base)) return $url;
+        $rel_dir = str_replace('\\', '/', dirname($rel));
+        if ($rel_dir === '.') $rel_dir = '';
+        $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+        $name = 'wpz_' . substr(md5($rel . '|' . filesize($src) . '|' . filemtime($src)), 0, 14) . ($ext ? '.' . $ext : '');
+        $dst_rel = ($rel_dir ? $rel_dir . '/' : '') . $name;
+        $dst = $base . $dst_rel;
+        if (!is_file($dst)) {
+            if (!is_dir(dirname($dst))) @mkdir(dirname($dst), 0755, true);
+            if (!@copy($src, $dst)) return $url;
+        }
+        return '/uploads/' . $dst_rel;
+    }
+
     public static function flash_message() {
         if (!empty($_GET['msg'])) {
             $type = isset($_GET['err']) ? 'error' : 'success';
@@ -187,7 +216,7 @@ class WaterPrize_Pages {
                 $db->add_prize(
                     sanitize_text_field($_POST['name'] ?? ''),
                     sanitize_textarea_field($_POST['description'] ?? ''),
-                    esc_url_raw($_POST['image_url'] ?? ''),
+                    self::normalize_media_url($_POST['image_url'] ?? ''),
                     (int)($_POST['price_points'] ?? 0),
                     (int)($_POST['category_id'] ?? 0),
                     isset($_POST['active']) ? 1 : 0
@@ -200,7 +229,7 @@ class WaterPrize_Pages {
                     (int)($_POST['prize_id'] ?? 0),
                     sanitize_text_field($_POST['name'] ?? ''),
                     sanitize_textarea_field($_POST['description'] ?? ''),
-                    esc_url_raw($_POST['image_url'] ?? ''),
+                    self::normalize_media_url($_POST['image_url'] ?? ''),
                     (int)($_POST['price_points'] ?? 0),
                     (int)($_POST['category_id'] ?? 0),
                     isset($_POST['active']) ? 1 : 0
@@ -250,8 +279,8 @@ class WaterPrize_Pages {
                     (int)($_POST['sort_order'] ?? 0),
                     isset($_POST['is_active']),
                     (int)($_POST['scan_points'] ?? 10),
-                    esc_url_raw($_POST['image_url'] ?? ''),
-                    esc_url_raw($_POST['logo_url'] ?? ''),
+                    self::normalize_media_url($_POST['image_url'] ?? ''),
+                    self::normalize_media_url($_POST['logo_url'] ?? ''),
                     esc_url_raw($_POST['website'] ?? ''),
                     esc_url_raw($_POST['telegram'] ?? ''),
                     sanitize_textarea_field($_POST['info'] ?? '')
@@ -270,8 +299,8 @@ class WaterPrize_Pages {
                     (int)($_POST['sort_order'] ?? 0),
                     isset($_POST['is_active']),
                     (int)($_POST['scan_points'] ?? 10),
-                    esc_url_raw($_POST['image_url'] ?? ''),
-                    esc_url_raw($_POST['logo_url'] ?? ''),
+                    self::normalize_media_url($_POST['image_url'] ?? ''),
+                    self::normalize_media_url($_POST['logo_url'] ?? ''),
                     esc_url_raw($_POST['website'] ?? ''),
                     esc_url_raw($_POST['telegram'] ?? ''),
                     sanitize_textarea_field($_POST['info'] ?? '')
