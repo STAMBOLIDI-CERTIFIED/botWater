@@ -185,7 +185,7 @@ class WaterPrize_Pages {
                 exit;
 
             case 'save_splash_logo':
-                $url = esc_url_raw($_POST['splash_logo_url'] ?? '');
+                $url = self::normalize_media_url($_POST['splash_logo_url'] ?? '');
                 $db->set_setting('splash_logo_url', $url);
                 $msg = $url ? 'Логотип обновлён!' : 'Логотип удалён.';
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode($msg)));
