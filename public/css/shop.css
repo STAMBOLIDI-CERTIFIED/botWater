@@ -264,6 +264,107 @@
 }
 
 /* ═══════════════════════════════════════════
+   ЕЖЕДЕВНЫЙ БОНУС — МОДАЛКА СО ШКАЛОЙ 7 ДНЕЙ
+   ═══════════════════════════════════════════ */
+
+.daily-bonus-modal {
+    text-align: center;
+    padding: 28px 20px 24px;
+}
+.dbm-head {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.dbm-ico {
+    width: 64px; height: 64px; border-radius: 20px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(135deg, rgba(201,168,76,0.28), rgba(201,168,76,0.08));
+    border: 1px solid rgba(201,168,76,0.4);
+    box-shadow: 0 8px 28px rgba(201,168,76,0.22);
+    color: var(--gold);
+    animation: dbmIconFloat 2.6s ease-in-out infinite;
+}
+.dbm-ico svg { width: 30px; height: 30px; }
+.dbm-title {
+    font-size: 19px; font-weight: 800; color: #fff;
+    letter-spacing: -0.3px; margin-top: 10px;
+}
+.dbm-sub { font-size: 12.5px; color: var(--text-dim); }
+.dbm-scale {
+    display: flex; gap: 7px; justify-content: center;
+    margin: 20px 0 16px;
+}
+.dbm-day {
+    position: relative; overflow: hidden;
+    width: 38px; height: 50px; border-radius: 13px;
+    background: rgba(255,255,255,0.045);
+    border: 1px solid rgba(255,255,255,0.09);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: var(--text-dim);
+    opacity: 0; transform: scale(0.4);
+    animation: dbmPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    animation-delay: calc(var(--i) * 0.08s);
+}
+.dbm-day-num { font-size: 12px; font-weight: 700; position: relative; z-index: 1; }
+.dbm-day-pts { display: flex; position: relative; z-index: 1; opacity: 0.7; }
+.dbm-day-pts svg { width: 13px; height: 13px; stroke: currentColor; }
+.dbm-day::before {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0;
+    height: 0;
+    background: linear-gradient(180deg, rgba(201,168,76,0.5), rgba(201,168,76,0.24));
+    transition: height 0.7s var(--ease-out);
+}
+.dbm-day.done {
+    color: var(--gold);
+    border-color: rgba(201,168,76,0.55);
+}
+.dbm-day.done::before { height: 100%; }
+.dbm-day.today {
+    color: #fff;
+    border-color: rgba(201,168,76,0.85);
+    box-shadow: 0 0 0 1px rgba(201,168,76,0.25);
+    animation:
+        dbmPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+        dbmPulse 1.3s 0.6s ease-in-out infinite;
+    animation-delay: calc(var(--i) * 0.08s), 0.6s;
+}
+.dbm-day.just-done {
+    opacity: 1;
+    transform: scale(1);
+    animation: dbmBurst 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.dbm-amount {
+    font-size: 32px; font-weight: 800; color: var(--gold);
+    letter-spacing: -0.5px; line-height: 1.1;
+    min-height: 38px;
+    opacity: 0; transform: translateY(16px) scale(0.7);
+    transition: all 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+    text-shadow: 0 2px 18px rgba(201,168,76,0.45);
+}
+.dbm-amount.show { opacity: 1; transform: none; }
+.dbm-hint {
+    font-size: 11.5px; color: var(--text-dim);
+    margin-top: 8px; min-height: 16px;
+}
+.daily-bonus-modal .prize-modal-btn { margin-top: 18px; }
+
+@keyframes dbmPop {
+    to { opacity: 1; transform: scale(1); }
+}
+@keyframes dbmPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.4); }
+    50% { box-shadow: 0 0 0 7px rgba(201,168,76,0); }
+}
+@keyframes dbmBurst {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.22); }
+    100% { transform: scale(1); }
+}
+@keyframes dbmIconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* ═══════════════════════════════════════════
    МАГАЗИН КУПОНОВ — НОВЫЙ ДИЗАЙН
    ═══════════════════════════════════════════ */
 

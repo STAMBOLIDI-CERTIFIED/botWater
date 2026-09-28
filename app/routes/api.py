@@ -292,6 +292,21 @@ async def api_settings():
     return {"splash_logo_url": splash_logo_url or ""}
 
 
+@router.get("/daily-bonus/status")
+async def api_daily_bonus_status(user_id: int = 0):
+    user = await db.get_user(user_id) if user_id else None
+    if not user:
+        return {"enabled": False}
+    return await db.daily_bonus_state(user)
+
+
+@router.get("/daily-bonus/claim")
+async def api_daily_bonus_claim(user_id: int = 0):
+    if not user_id:
+        return JSONResponse({"ok": False, "error": "missing user_id"}, status_code=400)
+    return await db.claim_daily_bonus(user_id)
+
+
 @router.get("/partner/qr/{category_id}")
 async def api_partner_qr(category_id: int):
     category = await db.get_shop_category(category_id)

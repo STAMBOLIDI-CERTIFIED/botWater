@@ -429,5 +429,20 @@
     </div>
 </div>
 
+<!-- MODAL: Daily Bonus -->
+<div id="daily-bonus-modal" class="prize-modal-overlay" onclick="if(event.target===this)closeDailyBonus()">
+    <div class="prize-modal daily-bonus-modal">
+        <div class="dbm-head">
+            <div class="dbm-ico">icon('party')</div>
+            <div class="dbm-title">Ежедневный бонус</div>
+            <div class="dbm-sub">Серия из 7 дней — заходите каждый день</div>
+        </div>
+        <div class="dbm-scale" id="dbm-scale"></div>
+        <div class="dbm-amount" id="dbm-amount"></div>
+        <div class="dbm-hint" id="dbm-hint">Завтра ждём вас за новым бонусом</div>
+        <button class="prize-modal-btn primary" id="dbm-close-btn" style="display:none" onclick="closeDailyBonus()">Продолжить</button>
+    </div>
+</div>
+
 <script src="/js/app.js" defer></script>
 </body>

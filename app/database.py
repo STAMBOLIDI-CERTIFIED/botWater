@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import asyncpg
 
@@ -63,6 +63,11 @@ class Database:
                 return v
         if coltype == "boolean":
             return v.lower() in ("true", "t", "1")
+        if coltype == "date":
+            try:
+                return date.fromisoformat(v[:10])
+            except (TypeError, ValueError):
+                return v
         if coltype in ("timestamp with time zone", "timestamp without time zone"):
             try:
                 return datetime.fromisoformat(v.replace("Z", "+00:00"))
@@ -1328,6 +1333,87 @@ class Database:
             return int(val)
         except (ValueError, TypeError):
             return default
+
+    # ─── Daily Bonus ──────────────────────────────────────
+
+    @staticmethod
+    def _as_date(value) -> date | None:
+        if value is None:
+            return None
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, date):
+            return value
+        try:
+            return date.fromisoformat(str(value)[:10])
+        except ValueError:
+            return None
+
+    async def daily_bonus_state(self, user: dict) -> dict:
+        """Состояние ежедневного бонуса: день серии, начислено ли сегодня."""
+        points = await self.get_bot_setting_int("daily_bonus_points", 50)
+        today = date.today()
+        last = self._as_date(user.get("daily_last_bonus"))
+        streak = int(user.get("daily_streak") or 0)
+        claimed_today = last == today
+        if claimed_today:
+            day = streak if streak > 0 else 1
+        elif last is not None and last == today - timedelta(days=1):
+            day = streak + 1 if streak > 0 else 1
+            if day > 7:
+                day = 1
+        else:
+            day = 1
+        return {
+            "enabled": points > 0,
+            "points": points,
+            "day": day,
+            "claimed_today": claimed_today,
+            "streak": streak,
+        }
+
+    async def claim_daily_bonus(self, telegram_id: int) -> dict:
+        """Атомарно начисляет бонус за сегодня. Возвращает ok/already + новый баланс."""
+        user = await self.get_user(telegram_id)
+        if not user:
+            return {"ok": False, "error": "user_not_found"}
+        state = await self.daily_bonus_state(user)
+        if not state["enabled"]:
+            return {"ok": False, "enabled": False}
+        if state["claimed_today"]:
+            return {
+                "ok": False, "already": True,
+                "day": state["day"], "points": state["points"],
+                "balance": user.get("balance") or 0,
+            }
+
+        today = date.today()
+        day = state["day"]
+        points = state["points"]
+        new_balance = (user.get("balance") or 0) + points
+
+        # Атомарный условный апдейт: если кто-то уже успел начислить — 0 строк
+        rows = await self._fetch(
+            "users",
+            f"telegram_id=eq.{telegram_id}&daily_last_bonus=neq.{today.isoformat()}",
+            "PATCH",
+            {"daily_last_bonus": today, "daily_streak": day, "balance": new_balance},
+        )
+        if not rows:
+            fresh = await self.get_user(telegram_id) or {}
+            return {
+                "ok": False, "already": True,
+                "day": state["day"], "points": points,
+                "balance": fresh.get("balance") or 0,
+            }
+
+        await self._fetch("points_log", method="POST", json_data={
+            "user_id": user["id"],
+            "amount": points,
+            "type": "daily_bonus",
+            "description": f"Ежедневный бонус — день {day} из 7",
+        })
+        return {"ok": True, "day": day, "points": points, "balance": new_balance, "streak": day}
 
     # ─── User Journey ───────────────────────────────────
 

@@ -162,6 +162,16 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode($msg)));
                 exit;
 
+            case 'save_daily_bonus':
+                $points = (int)($_POST['daily_bonus_points'] ?? 0);
+                if ($points < 0) {
+                    $points = 0;
+                }
+                $db->set_setting('daily_bonus_points', (string)$points);
+                $msg = $points > 0 ? "Ежедневный бонус обновлён: {$points} баллов" : 'Ежедневный бонус отключён.';
+                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode($msg)));
+                exit;
+
             case 'update_order_status':
                 $order_id = (int)($_POST['order_id'] ?? 0);
                 $new_status = sanitize_text_field($_POST['new_status'] ?? '');

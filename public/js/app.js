@@ -109,8 +109,16 @@ const ICONS = {
         chat:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-chat)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-chat" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F59E0B"/><stop offset="1" stop-color="#D97706"/></linearGradient></defs><path d="M21 15a2 2 0 0 1 -2 2h-14l-4 4v-14a2 2 0 0 1 2 -2h14a2 2 0 0 1 2 2z" /><path d="M9 10h.01" /><path d="M12 10h.01" /><path d="M15 10h.01" /></svg>',
         send:'<svg width="20" height="20" viewBox="0 0 24 24" fill="#111318" stroke="none"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>',
     };
+    var _icoUid = 0;
+    function icoRaw(name) {
+        var svg = ICONS[name];
+        if (!svg) return '';
+        _icoUid++;
+        return svg.replace(/id="(ig-[\w-]+)"/g, 'id="$1-' + _icoUid + '"')
+                  .replace(/url\(#(ig-[\w-]+)\)/g, 'url(#$1-' + _icoUid + ')');
+    }
     function icon(name, cls) {
-        var svg = ICONS[name] || '';
+        var svg = icoRaw(name);
         return '<span class="icn ' + (cls||'') + '">' + svg + '</span>';
     }
 
@@ -128,7 +136,8 @@ const ICONS = {
         for (var i = 0; i < nodes.length; i++) {
             var el = nodes[i], parent = el.parentNode;
             var html = el.nodeValue.replace(/icon\('(\w+)'\)/g, function(m, name) {
-                return ICONS[name] ? '<span class="icn">' + ICONS[name] + '</span>' : m;
+                var s = icoRaw(name);
+                return s ? '<span class="icn">' + s + '</span>' : m;
             });
             var temp = document.createElement('span');
             temp.innerHTML = html;
@@ -407,6 +416,9 @@ function countUp(el, target, duration) {
                 window._pendingTopBalance = null;
             }
         }
+        setTimeout(function() {
+            if (typeof maybeShowDailyBonus === 'function') maybeShowDailyBonus();
+        }, 1100);
     };
     loadUserData();
 
@@ -1441,6 +1453,89 @@ function esc(t) { const d = document.createElement('div'); d.textContent = t; re
         return false;
     }
 
+    // ═══════════════════════════════════════════
+// DAILY BONUS — ШКАЛА 7 ДНЕЙ
+// ═══════════════════════════════════════════
+
+var dailyModalOpen = false;
+
+    function renderDailyScale(day, filledUpTo) {
+        var scale = document.getElementById('dbm-scale');
+        if (!scale) return;
+        scale.innerHTML = '';
+        for (var i = 1; i <= 7; i++) {
+            var cell = document.createElement('div');
+            var cls = 'dbm-day';
+            if (i <= filledUpTo) cls += ' done';
+            else if (i === day) cls += ' today';
+            cell.className = cls;
+            cell.style.setProperty('--i', i);
+            cell.innerHTML = '<span class="dbm-day-num">' + i + '</span>'
+                + '<span class="dbm-day-pts">' + icon('coin') + '</span>';
+            scale.appendChild(cell);
+        }
+    }
+
+    async function maybeShowDailyBonus() {
+        var uid = getUID();
+        if (!uid || dailyModalOpen) return;
+        if (currentPage !== 'menu') return;
+        var st = await apiFetch('/daily-bonus/status?user_id=' + uid);
+        if (!st || !st.enabled || st.claimed_today) return;
+        if (currentPage !== 'menu' || dailyModalOpen) return;
+
+        dailyModalOpen = true;
+        var day = st.day || 1;
+        var points = st.points || 0;
+        renderDailyScale(day, day - 1);
+
+        var amount = document.getElementById('dbm-amount');
+        var hint = document.getElementById('dbm-hint');
+        var closeBtn = document.getElementById('dbm-close-btn');
+        amount.classList.remove('show');
+        amount.textContent = '';
+        hint.textContent = 'Завтра ждём вас за новым бонусом';
+        closeBtn.style.display = 'none';
+        document.getElementById('daily-bonus-modal').classList.add('active');
+        try { tg.HapticFeedback.impactOccurred('medium'); } catch(e) {}
+
+        var r = await apiFetch('/daily-bonus/claim?user_id=' + uid);
+
+        // Заполнение сегодняшнего дня + начисление
+        setTimeout(function() {
+            var todayCell = document.querySelector('#dbm-scale .dbm-day.today');
+            if (todayCell) {
+                todayCell.classList.remove('today');
+                todayCell.classList.add('done', 'just-done');
+            }
+            if (r && r.ok) {
+                amount.textContent = '+' + (r.points || points) + ' баллов';
+                amount.classList.add('show');
+                if (typeof r.balance === 'number') {
+                    countUp(document.getElementById('top-balance'), r.balance, 900);
+                    countUp(document.getElementById('profile-balance'), r.balance, 900);
+                }
+                try { tg.HapticFeedback.notificationOccurred('success'); } catch(e) {}
+            } else if (r && r.already) {
+                hint.textContent = 'Сегодняшний бонус уже начислен.';
+                if (typeof r.balance === 'number') {
+                    countUp(document.getElementById('top-balance'), r.balance, 900);
+                }
+            } else {
+                hint.textContent = 'Не удалось начислить бонус, попробуйте позже.';
+            }
+        }, 700);
+        setTimeout(function() {
+            closeBtn.style.display = '';
+        }, 1500);
+    }
+
+    function closeDailyBonus() {
+        var modal = document.getElementById('daily-bonus-modal');
+        if (modal) modal.classList.remove('active');
+        dailyModalOpen = false;
+    }
+
     function showPostGift(points, balance) {
         document.getElementById('post-gift-points').textContent = '+' + points;
         document.getElementById('post-gift-balance').textContent = balance + ' / ' + (balance + 475) + ' баллов';
@@ -1675,9 +1770,9 @@ var supportChatId = null;
         var avatars = document.querySelectorAll('.support-header-avatar .icn');
         var emptyIcons = document.querySelectorAll('.support-empty-icon .icn');
         var sendBtns = document.querySelectorAll('.support-send-btn .icn');
-        avatars.forEach(function(el) { el.innerHTML = ICONS['chat'] ? '<span class="icn">' + ICONS['chat'] + '</span>' : '💬'; });
-        emptyIcons.forEach(function(el) { el.innerHTML = ICONS['chat'] ? '<span class="icn">' + ICONS['chat'] + '</span>' : '💬'; });
-        sendBtns.forEach(function(el) { el.innerHTML = ICONS['send'] ? '<span class="icn">' + ICONS['send'] + '</span>' : '➤'; });
+        avatars.forEach(function(el) { var s = icoRaw('chat'); el.innerHTML = s ? '<span class="icn">' + s + '</span>' : '💬'; });
+        emptyIcons.forEach(function(el) { var s = icoRaw('chat'); el.innerHTML = s ? '<span class="icn">' + s + '</span>' : '💬'; });
+        sendBtns.forEach(function(el) { var s = icoRaw('send'); el.innerHTML = s ? '<span class="icn">' + s + '</span>' : '➤'; });
     }
 
     function formatDateSep(dateStr) {
@@ -1714,7 +1809,8 @@ var supportChatId = null;
         var uid = getUID();
         if (!uid) return;
         var msgsEl = document.getElementById('support-messages');
-        msgsEl.innerHTML = '<div class="support-loading">' + (ICONS['hourglass'] ? '<span class="icn">' + ICONS['hourglass'] + '</span>' : '') + ' Загрузка...</div>';
+        var hgIco = icoRaw('hourglass');
+        msgsEl.innerHTML = '<div class="support-loading">' + (hgIco ? '<span class="icn">' + hgIco + '</span>' : '') + ' Загрузка...</div>';
 
         initSupportIcons();
 
@@ -1735,7 +1831,8 @@ var supportChatId = null;
                 supportLastMsgCount = (d.messages || []).length;
             }
         } catch(e) {
-            msgsEl.innerHTML = '<div class="support-empty"><div class="support-empty-icon"><span class="icn">' + (ICONS['warning'] ? ICONS['warning'] : '⚠') + '</span></div><div class="support-empty-text">Ошибка загрузки чата</div></div>';
+            var warnIco = icoRaw('warning');
+            msgsEl.innerHTML = '<div class="support-empty"><div class="support-empty-icon"><span class="icn">' + (warnIco || '⚠') + '</span></div><div class="support-empty-text">Ошибка загрузки чата</div></div>';
         }
 
         if (supportPollTimer) clearInterval(supportPollTimer);
@@ -1745,11 +1842,13 @@ var supportChatId = null;
     function renderSupportMessages(messages) {
         var el = document.getElementById('support-messages');
         if (!messages.length) {
-            el.innerHTML = '<div class="support-empty"><div class="support-empty-icon"><span class="icn">' + (ICONS['chat'] ? ICONS['chat'] : '💬') + '</span></div><div class="support-empty-text">Напишите нам — мы ответим <strong>в ближайшее время</strong></div></div>';
+            var emptyChatIco = icoRaw('chat');
+            el.innerHTML = '<div class="support-empty"><div class="support-empty-icon"><span class="icn">' + (emptyChatIco || '💬') + '</span></div><div class="support-empty-text">Напишите нам — мы ответим <strong>в ближайшее время</strong></div></div>';
             return;
         }
 
         var html = '';
+        var shieldIco = icoRaw('shield');
         for (var i = 0; i < messages.length; i++) {
             var m = messages[i];
             var isUser = m.sender_type === 'user';
@@ -1764,7 +1863,7 @@ var supportChatId = null;
             html += '<div class="support-msg ' + (isUser ? 'support-msg-user' : 'support-msg-admin') + (consecutive ? ' is-consecutive' : '') + '">';
 
             if (!isUser && !consecutive) {
-                html += '<div class="support-msg-avatar"><span class="icn">' + (ICONS['shield'] ? ICONS['shield'] : '🛡') + '</span></div>';
+                html += '<div class="support-msg-avatar"><span class="icn">' + (shieldIco || '🛡') + '</span></div>';
             }
 
             html += '<div class="support-msg-bubble">' + esc(m.message) + '</div>';
