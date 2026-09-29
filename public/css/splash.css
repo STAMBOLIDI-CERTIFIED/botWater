@@ -25,10 +25,6 @@
     color: var(--gold); letter-spacing: 4px;
     text-transform: uppercase;
 }
-#splash .splash-sub {
-    font-size: 12px; color: var(--text-dim);
-    margin-top: 6px; letter-spacing: 1px;
-}
 #splash .splash-dots {
     display: flex; gap: 6px; margin-top: 24px;
 }
