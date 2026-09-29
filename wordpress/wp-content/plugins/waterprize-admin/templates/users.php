@@ -224,7 +224,10 @@ $banned_count = $banned_count ?? 0;
                             <td><?php echo esc_html($u['id']); ?></td>
                             <td><code style="font-size:12px;"><?php echo esc_html($u['telegram_id']); ?></code></td>
                             <td>
+                                <a href="<?php echo esc_url(admin_url('admin.php?page=wpz-users&user=' . (int)$u['id'])); ?>"
+                                   style="text-decoration:none;color:inherit;" title="Открыть карточку пользователя: вся информация и история">
                                 <strong><?php echo esc_html($u['name'] ?: '—'); ?></strong>
+                                </a>
                                 <?php if (!empty($u['username'])): ?>
                                     <br><small style="color:#999;">@<?php echo esc_html($u['username']); ?></small>
                                 <?php endif; ?>

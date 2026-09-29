@@ -472,6 +472,14 @@ class WaterPrize_Pages {
 
     // ─── Users ────────────────────────────────────────
     public static function users() {
+        // ── User detail card (?page=wpz-users&user=<id>) ──
+        if (!empty($_GET['user'])) {
+            $detail_user = self::db()->get_user_by_id((int)$_GET['user']);
+            $detail_history = $detail_user ? self::db()->get_user_history($detail_user['id']) : [];
+            include __DIR__ . '/../templates/user-detail.php';
+            return;
+        }
+
         $search = sanitize_text_field($_GET['search'] ?? '');
         $page = max(1, (int)($_GET['paged'] ?? 1));
         $per_page = 50;

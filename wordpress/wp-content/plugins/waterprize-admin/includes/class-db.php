@@ -122,6 +122,59 @@ class WaterPrize_DB {
         return $rows[0] ?? null;
     }
 
+    public function get_user_by_id($user_id) {
+        $rows = $this->query('SELECT * FROM users WHERE id = ?', [(int)$user_id]);
+        return $rows[0] ?? null;
+    }
+
+    public function get_user_history($user_id) {
+        $uid = (int)$user_id;
+        return [
+            'journey' => $this->query(
+                'SELECT * FROM user_journey WHERE user_id = ? ORDER BY created_at DESC LIMIT 300', [$uid]),
+            'points' => $this->query(
+                'SELECT * FROM points_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 300', [$uid]),
+            'partner_scans' => $this->query(
+                'SELECT ps.id, ps.qr_code, ps.points_earned, ps.scanned_at, sc.title AS category_title
+                 FROM partner_scans ps LEFT JOIN shop_categories sc ON sc.id = ps.category_id
+                 WHERE ps.user_id = ? ORDER BY ps.scanned_at DESC LIMIT 300', [$uid]),
+            'scans' => $this->query(
+                'SELECT s.id, s.scanned_at, q.code, q.batch, q.status
+                 FROM scans s LEFT JOIN qr_codes q ON q.id = s.code_id
+                 WHERE s.user_id = ? ORDER BY s.scanned_at DESC LIMIT 300', [$uid]),
+            'coupons' => $this->query(
+                'SELECT uc.id, uc.prize_id, uc.status, uc.qr_code, uc.created_at, uc.used_at, p.name AS prize_name
+                 FROM user_coupons uc LEFT JOIN prizes p ON p.id = uc.prize_id
+                 WHERE uc.user_id = ? ORDER BY uc.created_at DESC LIMIT 300', [$uid]),
+            'orders' => $this->query(
+                'SELECT o.*, p.name AS prize_joined
+                 FROM orders o LEFT JOIN prizes p ON p.id = o.prize_id
+                 WHERE o.user_id = ? ORDER BY o.created_at DESC LIMIT 300', [$uid]),
+            'checkins' => $this->query(
+                'SELECT * FROM daily_checkins WHERE user_id = ? ORDER BY checkin_date DESC LIMIT 300', [$uid]),
+            'notifications' => $this->query(
+                'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 200', [$uid]),
+            'activations' => $this->query(
+                'SELECT * FROM user_qr_activations WHERE user_id = ? ORDER BY activated_at DESC LIMIT 200', [$uid]),
+            'raffle_wins' => $this->query(
+                'SELECT r.id, r.scheduled_at, r.prize_amount, r.status, r.payout_status, r.payout_choice,
+                        r.winner_name, r.winning_code, r.created_at
+                 FROM raffles r JOIN scans s ON s.id = r.winner_scan_id
+                 WHERE s.user_id = ? ORDER BY r.created_at DESC LIMIT 100', [$uid]),
+            'bottles' => $this->query(
+                'SELECT * FROM bottles WHERE assigned_to = ? ORDER BY created_at DESC LIMIT 200', [$uid]),
+            'support_chats' => $this->query(
+                'SELECT sc.id, sc.status, sc.created_at, sc.updated_at,
+                        (SELECT COUNT(*)::int FROM support_messages sm WHERE sm.chat_id = sc.id) AS msg_count
+                 FROM support_chats sc WHERE sc.user_id = ? ORDER BY sc.updated_at DESC LIMIT 50', [$uid]),
+            'support_messages' => $this->query(
+                'SELECT sm.id, sm.chat_id, sm.sender_type, sm.message, sm.created_at
+                 FROM support_messages sm JOIN support_chats sc ON sc.id = sm.chat_id
+                 WHERE sc.user_id = ? ORDER BY sm.created_at DESC LIMIT 300', [$uid]),
+            'categories' => $this->query('SELECT id, title FROM shop_categories'),
+        ];
+    }
+
     public function update_balance($telegram_id, $amount) {
         $user = $this->get_user($telegram_id);
         if (!$user) return false;
