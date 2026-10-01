@@ -695,13 +695,6 @@ class WaterPrize_Pages {
         include __DIR__ . '/../templates/notifications.php';
     }
 
-    // ─── Admin Codes ──────────────────────────────────
-    public static function admin_codes() {
-        $admin_codes = self::db()->get_admin_codes(200);
-        $total = self::db()->count_admin_codes();
-        include __DIR__ . '/../templates/admin_codes.php';
-    }
-
     // ─── User QR Activations ──────────────────────────
     public static function user_qr_activations() {
         $activations = self::db()->get_user_qr_activations(200);

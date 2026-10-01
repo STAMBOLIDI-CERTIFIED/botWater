@@ -552,18 +552,6 @@ class WaterPrize_DB {
         return $row[0]['cnt'] ?? 0;
     }
 
-    // ─── Admin Codes ──────────────────────────────────
-    public function get_admin_codes($limit = 200, $offset = 0) {
-        return $this->query(
-            "SELECT * FROM admin_codes ORDER BY id DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset
-        );
-    }
-
-    public function count_admin_codes() {
-        $row = $this->query('SELECT COUNT(*) as cnt FROM admin_codes');
-        return $row[0]['cnt'] ?? 0;
-    }
-
     // ─── User QR Activations ──────────────────────────
     public function get_user_qr_activations($limit = 200, $offset = 0) {
         return $this->query(
