@@ -459,3 +459,37 @@
     .wpz-search-form { flex-direction: column; }
     .wpz-search-form input[type="search"] { width: 100%; min-width: 0 !important; }
 }
+/* ─── Mini cards (user-detail style) ─── */
+.wpz-mini-cards {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+}
+.wpz-mini {
+    background: #fff;
+    border: 1px solid #e2e2e2;
+    border-radius: 10px;
+    padding: 10px 16px;
+    min-width: 110px;
+    text-align: center;
+}
+.wpz-mini b { display: block; font-size: 20px; color: #1d2327; }
+.wpz-mini span {
+    font-size: 11px; color: #777;
+    text-transform: uppercase; letter-spacing: 0.04em;
+}
+.wpz-mini.wpz-gold b { color: #b8860b; }
+.wpz-mini.wpz-red b { color: #d63638; }
+.wpz-mini.wpz-green b { color: #00a32a; }
+.wpz-mini.wpz-blue b { color: #2271b1; }
+
+/* ─── Two-column history grid ─── */
+.wpz-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+@media (max-width: 1000px) {
+    .wpz-two-col { grid-template-columns: 1fr; }
+}

@@ -8,70 +8,46 @@
     <?php endif; ?>
 
     <!-- ═══ Основные карточки ═══ -->
-    <div class="wpz-stats-grid">
-        <div class="wpz-stat-card wpz-blue">
-            <div class="wpz-stat-icon">👥</div>
-            <div class="wpz-stat-val"><?php echo esc_html($stats['users']); ?></div>
-            <div class="wpz-stat-label">Пользователей</div>
+    <div class="wpz-mini-cards">
+        <div class="wpz-mini">
+            <b><?php echo esc_html($stats['users']); ?></b><span>Пользователей</span>
         </div>
-        <div class="wpz-stat-card wpz-green wpz-pulse">
-            <div class="wpz-stat-icon">🟢</div>
-            <div class="wpz-stat-val" id="wpz-online"><?php echo esc_html($online); ?></div>
-            <div class="wpz-stat-label">Онлайн (15 мин)</div>
+        <div class="wpz-mini wpz-green">
+            <b id="wpz-online"><?php echo esc_html($online); ?></b><span>Онлайн (15 мин)</span>
         </div>
-        <div class="wpz-stat-card wpz-cyan">
-            <div class="wpz-stat-icon">📱</div>
-            <div class="wpz-stat-val"><?php echo esc_html($stats['codes_active']); ?></div>
-            <div class="wpz-stat-label">Активных QR</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html($stats['codes_active']); ?></b><span>Активных QR</span>
         </div>
-        <div class="wpz-stat-card wpz-yellow">
-            <div class="wpz-stat-icon">🎰</div>
-            <div class="wpz-stat-val"><?php echo esc_html($stats['raffles_total']); ?></div>
-            <div class="wpz-stat-label">Розыгрышей</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html($stats['raffles_total']); ?></b><span>Розыгрышей</span>
         </div>
-        <div class="wpz-stat-card wpz-green">
-            <div class="wpz-stat-icon">🍾</div>
-            <div class="wpz-stat-val"><?php echo esc_html($stats['bottles_total']); ?></div>
-            <div class="wpz-stat-label">Бутылок</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html($stats['bottles_total']); ?></b><span>Бутылок</span>
         </div>
-        <div class="wpz-stat-card wpz-purple">
-            <div class="wpz-stat-icon">📦</div>
-            <div class="wpz-stat-val"><?php echo esc_html($stats['orders_pending']); ?></div>
-            <div class="wpz-stat-label">Заказов</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html($stats['orders_pending']); ?></b><span>Заказов</span>
         </div>
     </div>
 
     <!-- ═══ Финансы ═══ -->
-    <div class="wpz-stats-grid">
-        <div class="wpz-stat-card wpz-gold">
-            <div class="wpz-stat-icon">💰</div>
-            <div class="wpz-stat-val"><?php echo esc_html($balance['total']); ?></div>
-            <div class="wpz-stat-label">Общий баланс</div>
+    <div class="wpz-mini-cards">
+        <div class="wpz-mini wpz-gold">
+            <b><?php echo esc_html($balance['total']); ?></b><span>Общий баланс</span>
         </div>
-        <div class="wpz-stat-card wpz-teal">
-            <div class="wpz-stat-icon">📊</div>
-            <div class="wpz-stat-val"><?php echo esc_html(round($balance['avg'], 1)); ?></div>
-            <div class="wpz-stat-label">Средний баланс</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html(round($balance['avg'], 1)); ?></b><span>Средний баланс</span>
         </div>
-        <div class="wpz-stat-card wpz-orange">
-            <div class="wpz-stat-icon">⭐</div>
-            <div class="wpz-stat-val"><?php echo esc_html($balance['active']); ?></div>
-            <div class="wpz-stat-label">С балансом > 0</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html($balance['active']); ?></b><span>С балансом &gt; 0</span>
         </div>
-        <div class="wpz-stat-card wpz-indigo">
-            <div class="wpz-stat-icon">🪙</div>
-            <div class="wpz-stat-val"><?php echo esc_html($points['total']); ?></div>
-            <div class="wpz-stat-label">Всего начислено</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html($points['total']); ?></b><span>Всего начислено</span>
         </div>
-        <div class="wpz-stat-card wpz-cyan">
-            <div class="wpz-stat-icon">🔔</div>
-            <div class="wpz-stat-val"><?php echo esc_html($notif_stats['total']); ?></div>
-            <div class="wpz-stat-label">Уведомлений</div>
+        <div class="wpz-mini">
+            <b><?php echo esc_html($notif_stats['total']); ?></b><span>Уведомлений</span>
         </div>
-        <div class="wpz-stat-card wpz-red">
-            <div class="wpz-stat-icon">📩</div>
-            <div class="wpz-stat-val"><?php echo esc_html($notif_stats['unread']); ?></div>
-            <div class="wpz-stat-label">Непрочитанных</div>
+        <div class="wpz-mini wpz-red">
+            <b><?php echo esc_html($notif_stats['unread']); ?></b><span>Непрочитанных</span>
         </div>
     </div>
 
@@ -111,7 +87,12 @@
                         <?php foreach ($top_users as $i => $u): ?>
                             <tr>
                                 <td><strong><?php echo $i + 1; ?></strong></td>
-                                <td><?php echo esc_html($u['name'] ?: '—'); ?></td>
+                                <td>
+                                    <a href="<?php echo esc_url(admin_url('admin.php?page=wpz-users&user=' . (int)$u['id'])); ?>"
+                                       style="text-decoration:none;color:inherit;" title="Открыть карточку пользователя">
+                                        <?php echo esc_html($u['name'] ?: '—'); ?>
+                                    </a>
+                                </td>
                                 <td><code><?php echo esc_html($u['telegram_id']); ?></code></td>
                                 <td><strong><?php echo esc_html($u['balance']); ?></strong></td>
                                 <td><?php echo esc_html($u['tree_xp'] ?? 0); ?></td>

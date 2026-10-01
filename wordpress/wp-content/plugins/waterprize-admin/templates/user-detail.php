@@ -49,7 +49,6 @@ $counts = [
 ?>
 <style>
     .wpz-ud-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
-    .wpz-ud-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
     .wpz-ud-avatar { width:52px; height:52px; border-radius:50%; background:linear-gradient(135deg,#43A047,#2E7D32);
         display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:700; color:#fff; flex:0 0 auto; }
     .wpz-ud-chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
@@ -58,13 +57,8 @@ $counts = [
     .wpz-ud-profile div { display:flex; justify-content:space-between; gap:10px; padding:6px 0; border-bottom:1px dashed #eee; font-size:13px; }
     .wpz-ud-profile div span:first-child { color:#777; flex:0 0 auto; }
     .wpz-ud-profile div span:last-child { text-align:right; word-break:break-all; font-weight:600; }
-    .wpz-ud-cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-    .wpz-ud-mini { background:#fff; border:1px solid #e2e2e2; border-radius:10px; padding:10px 16px; min-width:110px; text-align:center; }
-    .wpz-ud-mini b { display:block; font-size:20px; }
-    .wpz-ud-mini span { font-size:11px; color:#777; text-transform:uppercase; letter-spacing:.04em; }
     .wpz-ud-chat { border:1px solid #e5e5e5; border-radius:8px; padding:10px 12px; margin-bottom:10px; background:#fafbfc; }
     .wpz-ud-chat h3 { margin:0 0 8px; font-size:13px; }
-    @media (max-width: 1000px) { .wpz-ud-grid { grid-template-columns:1fr; } }
 </style>
 
 <div class="wrap">
@@ -95,17 +89,17 @@ $counts = [
     </div>
 
     <!-- ═══ Quick stats ═══ -->
-    <div class="wpz-ud-cards">
-        <div class="wpz-ud-mini"><b style="color:#b8860b;"><?php echo esc_html($u['balance']); ?></b><span>Баланс</span></div>
-        <div class="wpz-ud-mini"><b><?php echo esc_html($u['tree_xp']); ?></b><span>XP</span></div>
-        <div class="wpz-ud-mini"><b style="color:#43A047;">Lvl <?php echo esc_html($u['tree_level']); ?></b><span>Уровень</span></div>
-        <div class="wpz-ud-mini"><b>🔥 <?php echo esc_html($u['daily_streak']); ?></b><span>Стрик</span></div>
-        <div class="wpz-ud-mini"><b style="font-size:15px;padding-top:4px;"><?php echo wpz_ud_d($u['created_at']); ?></b><span>Регистрация</span></div>
-        <div class="wpz-ud-mini"><b style="font-size:15px;padding-top:4px;"><?php echo wpz_ud_dt($u['updated_at']); ?></b><span>Последний раз</span></div>
+    <div class="wpz-mini-cards">
+        <div class="wpz-mini wpz-gold"><b><?php echo esc_html($u['balance']); ?></b><span>Баланс</span></div>
+        <div class="wpz-mini"><b><?php echo esc_html($u['tree_xp']); ?></b><span>XP</span></div>
+        <div class="wpz-mini wpz-green"><b>Lvl <?php echo esc_html($u['tree_level']); ?></b><span>Уровень</span></div>
+        <div class="wpz-mini"><b>🔥 <?php echo esc_html($u['daily_streak']); ?></b><span>Стрик</span></div>
+        <div class="wpz-mini"><b style="font-size:15px;padding-top:4px;"><?php echo wpz_ud_d($u['created_at']); ?></b><span>Регистрация</span></div>
+        <div class="wpz-mini"><b style="font-size:15px;padding-top:4px;"><?php echo wpz_ud_dt($u['updated_at']); ?></b><span>Последний раз</span></div>
         <?php if (!empty($u['phone'])): ?>
-            <div class="wpz-ud-mini"><b style="font-size:15px;padding-top:4px;"><?php echo esc_html($u['phone']); ?></b><span>Телефон</span></div>
+            <div class="wpz-mini"><b style="font-size:15px;padding-top:4px;"><?php echo esc_html($u['phone']); ?></b><span>Телефон</span></div>
         <?php endif; ?>
-        <div class="wpz-ud-mini"><b style="font-size:15px;padding-top:4px;"><?php echo !empty($u['passport_fio']) ? '✅' : '—'; ?></b><span>Паспорт</span></div>
+        <div class="wpz-mini"><b style="font-size:15px;padding-top:4px;"><?php echo !empty($u['passport_fio']) ? '✅' : '—'; ?></b><span>Паспорт</span></div>
     </div>
 
     <!-- ═══ Full profile ═══ -->
@@ -147,7 +141,7 @@ $counts = [
             <?php endforeach; ?>
         </div>
 
-        <div class="wpz-ud-grid">
+        <div class="wpz-two-col">
             <!-- 🧭 Journey -->
             <div class="wpz-card" style="margin:0;">
                 <h2>🧭 Действия в системе <span class="wpz-count"><?php echo count($h['journey'] ?? []); ?></span></h2>

@@ -10,62 +10,18 @@ $banned_count = $banned_count ?? 0;
     <h1>👥 Пользователи <span class="wpz-count"><?php echo esc_html($total); ?></span></h1>
 
     <!-- ═══ Statistics Cards ═══ -->
-    <div class="wpz-stats-grid">
-        <div class="wpz-stat-card wpz-blue">
-            <div class="wpz-stat-icon">👥</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['total'] ?? 0); ?></div>
-            <div class="wpz-stat-label">Всего</div>
-        </div>
-        <div class="wpz-stat-card wpz-green">
-            <div class="wpz-stat-icon">💰</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['with_balance'] ?? 0); ?></div>
-            <div class="wpz-stat-label">С балансом</div>
-        </div>
-        <div class="wpz-stat-card wpz-gold">
-            <div class="wpz-stat-icon">⭐</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['total_balance'] ?? 0); ?></div>
-            <div class="wpz-stat-label">Всего баллов</div>
-        </div>
-        <div class="wpz-stat-card wpz-purple">
-            <div class="wpz-stat-icon">📊</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['avg_balance'] ?? 0); ?></div>
-            <div class="wpz-stat-label">Средний баланс</div>
-        </div>
-        <div class="wpz-stat-card wpz-teal">
-            <div class="wpz-stat-icon">📱</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['with_phone'] ?? 0); ?></div>
-            <div class="wpz-stat-label">С телефоном</div>
-        </div>
-        <div class="wpz-stat-card wpz-indigo">
-            <div class="wpz-stat-icon">🪪</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['with_passport'] ?? 0); ?></div>
-            <div class="wpz-stat-label">С паспортом</div>
-        </div>
-        <div class="wpz-stat-card wpz-orange">
-            <div class="wpz-stat-icon">🌳</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['above_level1'] ?? 0); ?></div>
-            <div class="wpz-stat-label">Уровень 2+</div>
-        </div>
-        <div class="wpz-stat-card wpz-cyan wpz-pulse">
-            <div class="wpz-stat-icon">🟢</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['online'] ?? 0); ?></div>
-            <div class="wpz-stat-label">Онлайн</div>
-        </div>
-        <div class="wpz-stat-card wpz-green">
-            <div class="wpz-stat-icon">📅</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['new_today'] ?? 0); ?></div>
-            <div class="wpz-stat-label">Сегодня</div>
-        </div>
-        <div class="wpz-stat-card wpz-blue">
-            <div class="wpz-stat-icon">📆</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($stats['new_month'] ?? 0); ?></div>
-            <div class="wpz-stat-label">За месяц</div>
-        </div>
-        <div class="wpz-stat-card wpz-red">
-            <div class="wpz-stat-icon">🚫</div>
-            <div class="wpz-stat-val"><?php echo number_format_i18n($banned_count); ?></div>
-            <div class="wpz-stat-label">Забанены</div>
-        </div>
+    <div class="wpz-mini-cards">
+        <div class="wpz-mini"><b><?php echo number_format_i18n($stats['total'] ?? 0); ?></b><span>Всего</span></div>
+        <div class="wpz-mini"><b><?php echo number_format_i18n($stats['with_balance'] ?? 0); ?></b><span>С балансом</span></div>
+        <div class="wpz-mini wpz-gold"><b><?php echo number_format_i18n($stats['total_balance'] ?? 0); ?></b><span>Всего баллов</span></div>
+        <div class="wpz-mini"><b><?php echo number_format_i18n($stats['avg_balance'] ?? 0); ?></b><span>Средний баланс</span></div>
+        <div class="wpz-mini"><b><?php echo number_format_i18n($stats['with_phone'] ?? 0); ?></b><span>С телефоном</span></div>
+        <div class="wpz-mini"><b><?php echo number_format_i18n($stats['with_passport'] ?? 0); ?></b><span>С паспортом</span></div>
+        <div class="wpz-mini wpz-green"><b><?php echo number_format_i18n($stats['above_level1'] ?? 0); ?></b><span>Уровень 2+</span></div>
+        <div class="wpz-mini wpz-green"><b><?php echo number_format_i18n($stats['online'] ?? 0); ?></b><span>Онлайн</span></div>
+        <div class="wpz-mini"><b><?php echo number_format_i18n($stats['new_today'] ?? 0); ?></b><span>Сегодня</span></div>
+        <div class="wpz-mini"><b><?php echo number_format_i18n($stats['new_month'] ?? 0); ?></b><span>За месяц</span></div>
+        <div class="wpz-mini wpz-red"><b><?php echo number_format_i18n($banned_count); ?></b><span>Забанены</span></div>
     </div>
 
     <!-- ═══ Charts Row ═══ -->
@@ -92,7 +48,10 @@ $banned_count = $banned_count ?? 0;
                             <?php echo ($i + 1); ?>.
                         </td>
                         <td style="border:0;padding:6px 8px;">
-                            <strong><?php echo esc_html($u['name'] ?: '—'); ?></strong>
+                            <a href="<?php echo esc_url(admin_url('admin.php?page=wpz-users&user=' . (int)$u['id'])); ?>"
+                               style="text-decoration:none;color:inherit;" title="Открыть карточку пользователя">
+                                <strong><?php echo esc_html($u['name'] ?: '—'); ?></strong>
+                            </a>
                             <br><small style="color:#999;">Lvl <?php echo esc_html($u['tree_level']); ?></small>
                         </td>
                         <td style="border:0;padding:6px 8px;text-align:right;">
@@ -110,16 +69,16 @@ $banned_count = $banned_count ?? 0;
     <?php if (!empty($by_level)): ?>
     <div class="wpz-card" style="margin-bottom:16px;">
         <h2>🌳 Уровни деревьев</h2>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <div class="wpz-mini-cards" style="margin-bottom:0;">
             <?php
             $level_names = [1 => 'Росток', 2 => 'Саженец', 3 => 'Молодое', 4 => 'Крепкое', 5 => 'Могучее', 6 => 'Древо'];
             $level_colors = [1 => '#81C784', 2 => '#66BB6A', 3 => '#4CAF50', 4 => '#43A047', 5 => '#388E3C', 6 => '#2E7D32'];
             foreach ($by_level as $l):
                 $lv = $l['tree_level'];
             ?>
-            <div style="flex:1;min-width:100px;text-align:center;padding:10px 8px;background:<?php echo $level_colors[$lv] ?? '#666'; ?>15;border:1px solid <?php echo $level_colors[$lv] ?? '#666'; ?>30;border-radius:8px;">
-                <div style="font-size:20px;font-weight:700;color:<?php echo $level_colors[$lv] ?? '#666'; ?>;"><?php echo esc_html($l['cnt']); ?></div>
-                <div style="font-size:11px;color:#666;">Lvl <?php echo esc_html($lv); ?> · <?php echo esc_html($level_names[$lv] ?? ''); ?></div>
+            <div class="wpz-mini" style="flex:1;min-width:110px;">
+                <b style="color:<?php echo $level_colors[$lv] ?? '#666'; ?>;"><?php echo esc_html($l['cnt']); ?></b>
+                <span>Lvl <?php echo esc_html($lv); ?> · <?php echo esc_html($level_names[$lv] ?? ''); ?></span>
             </div>
             <?php endforeach; ?>
         </div>

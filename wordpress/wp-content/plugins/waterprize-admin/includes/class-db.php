@@ -225,7 +225,7 @@ class WaterPrize_DB {
 
     public function get_top_balances($limit = 5) {
         return $this->query(
-            "SELECT name, telegram_id, balance, tree_level
+            "SELECT id, name, telegram_id, balance, tree_level
              FROM users WHERE balance > 0
              ORDER BY balance DESC LIMIT " . (int)$limit
         );
@@ -634,7 +634,7 @@ class WaterPrize_DB {
 
     public function get_top_users($limit = 10) {
         return $this->query(
-            "SELECT name, telegram_id, balance, tree_xp, tree_level
+            "SELECT id, name, telegram_id, balance, tree_xp, tree_level
              FROM users ORDER BY balance DESC LIMIT " . (int)$limit
         );
     }
