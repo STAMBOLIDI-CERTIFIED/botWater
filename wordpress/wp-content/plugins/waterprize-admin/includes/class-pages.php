@@ -268,6 +268,37 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-partners&tab=accounts&msg=' . urlencode('Партнёр удалён')));
                 exit;
 
+            // ─── Settlements (взаиморасчёты) ─────────
+            case 'add_settlement':
+                $account_id = (int)($_POST['account_id'] ?? 0);
+                $period = sanitize_text_field($_POST['period_month'] ?? '');
+                $amount = (int)($_POST['amount'] ?? 0);
+                $comment = sanitize_text_field($_POST['comment'] ?? '');
+                $back = sanitize_text_field($_POST['report_month'] ?? '');
+                if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $back)) {
+                    $back = date('Y-m');
+                }
+                if ($account_id && $amount > 0 && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $period)) {
+                    $login = wp_get_current_user()->user_login;
+                    $db->add_settlement($account_id, $period . '-01', $amount, $comment, $login);
+                    wp_redirect(admin_url('admin.php?page=wpz-monthly-report&month=' . urlencode($back) . '&msg=' . urlencode('Оплата записана')));
+                } else {
+                    wp_redirect(admin_url('admin.php?page=wpz-monthly-report&month=' . urlencode($back) . '&err=1&msg=' . urlencode('Заполните партнёра, месяц и сумму')));
+                }
+                exit;
+
+            case 'delete_settlement':
+                $sid = (int)($_POST['settlement_id'] ?? 0);
+                $back = sanitize_text_field($_POST['report_month'] ?? '');
+                if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $back)) {
+                    $back = date('Y-m');
+                }
+                if ($sid) {
+                    $db->delete_settlement($sid);
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-monthly-report&month=' . urlencode($back) . '&msg=' . urlencode('Запись журнала удалена')));
+                exit;
+
             // ─── Categories CRUD ───────────────────
             case 'add_category':
                 $db->add_category(
@@ -679,6 +710,143 @@ class WaterPrize_Pages {
         }
         $top_users = $db->get_top_partners_users(20);
         include __DIR__ . '/../templates/partners_stats.php';
+    }
+
+    // ─── Partner Cabinet (KPI) ─────────────────────────
+    public static function partner_cabinet() {
+        $db = self::db();
+        $stats = $db->get_partner_cabinet_stats();
+        $detail = null;
+        $detail_coupons = [];
+        $detail_payments = [];
+        $detail_referred = [];
+        if (!empty($_GET['account'])) {
+            $detail = $db->get_partner_account((int)$_GET['account']);
+            if ($detail) {
+                $detail_coupons = $db->get_partner_cabinet_used_coupons($detail['id']);
+                $detail_payments = $db->get_partner_cabinet_payments($detail['id']);
+                $detail_referred = $db->get_partner_cabinet_referred($detail['id']);
+            }
+        }
+        include __DIR__ . '/../templates/partner-cabinet.php';
+    }
+
+    // ─── Monthly Report (купоны + взаиморасчёты) ──────
+    public static function monthly_report() {
+        if (!current_user_can('manage_options')) wp_die('Forbidden');
+        $db = self::db();
+
+        $month = sanitize_text_field($_GET['month'] ?? date('Y-m'));
+        if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month)) {
+            $month = date('Y-m');
+        }
+        $month_start = $month . '-01';
+        // Границы периода — в UTC (used_at хранится как UTC)
+        $from_ts = $month . '-01 00:00:00+00';
+        $to_ts = date('Y-m', strtotime($month_start . ' +1 month')) . '-01 00:00:00+00';
+
+        if (!empty($_GET['export'])) {
+            self::handle_monthly_export(sanitize_text_field($_GET['export']), $month, $month_start, $from_ts, $to_ts, $db);
+            exit;
+        }
+
+        $usage = $db->get_monthly_coupon_usage($from_ts, $to_ts);
+        $settlements = $db->get_monthly_settlements($month_start, $from_ts, $to_ts);
+        $journal = $db->get_settlements($month_start);
+        $accounts = $db->get_partner_accounts();
+
+        $totals = [
+            'cnt' => count($usage),
+            'nominal' => 0,
+            'commission' => 0,
+            'used_month' => 0,
+            'accrued_month' => 0,
+            'paid_month' => 0,
+            'accrued_total' => 0,
+            'paid_total' => 0,
+            'debt' => 0,
+        ];
+        foreach ($usage as $u) {
+            $totals['nominal'] += (int)($u['nominal'] ?? 0);
+            $totals['commission'] += (int)($u['commission'] ?? 0);
+        }
+        foreach ($settlements as $s) {
+            $totals['used_month'] += (int)$s['used_month'];
+            $totals['accrued_month'] += (int)$s['accrued_month'];
+            $totals['paid_month'] += (int)$s['paid_month'];
+            $totals['accrued_total'] += (int)$s['accrued_total'];
+            $totals['paid_total'] += (int)$s['paid_total'];
+            $totals['debt'] += (int)$s['debt'];
+        }
+
+        // Последние 24 месяца для селектора
+        $months = [];
+        for ($i = 0; $i < 24; $i++) {
+            $months[] = date('Y-m', strtotime(date('Y-m-01') . " -{$i} months"));
+        }
+
+        if (!empty($_GET['print'])) {
+            include __DIR__ . '/../templates/monthly-report-print.php';
+            exit;
+        }
+
+        include __DIR__ . '/../templates/monthly-report.php';
+    }
+
+    private static function handle_monthly_export($type, $month, $month_start, $from_ts, $to_ts, $db) {
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="waterprize_' . $type . '_' . $month . '.csv"');
+        $out = fopen('php://output', 'w');
+        fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM
+
+        switch ($type) {
+            case 'coupons':
+                fputcsv($out, [
+                    'ID купона', 'Дата активации', 'QR-код', 'Пользователь', 'Telegram ID',
+                    'Приз', 'Номинал', 'Комиссия 10%', 'Категория',
+                    'Активировал (партнёр)', 'Telegram партнёра', 'Источник пользователя',
+                ], ';');
+                foreach ($db->get_monthly_coupon_usage($from_ts, $to_ts) as $r) {
+                    fputcsv($out, [
+                        $r['id'],
+                        $r['used_at'],
+                        $r['qr_code'],
+                        $r['user_name'],
+                        $r['telegram_id'],
+                        $r['prize_name'],
+                        $r['nominal'],
+                        $r['commission'],
+                        $r['category_title'],
+                        $r['activator_name'],
+                        $r['activator_tg'],
+                        $r['source_title'],
+                    ], ';');
+                }
+                break;
+
+            case 'settlements':
+                fputcsv($out, [
+                    'Партнёр', 'Telegram ID', 'Категория', 'Активен',
+                    'Использовано купонов за месяц', 'Начислено за месяц (10%)',
+                    'Оплачено за месяц', 'Начислено всего', 'Оплачено всего', 'Долг ISTOK',
+                ], ';');
+                foreach ($db->get_monthly_settlements($month_start, $from_ts, $to_ts) as $r) {
+                    fputcsv($out, [
+                        $r['name'],
+                        $r['telegram_id'],
+                        $r['category_title'],
+                        $r['is_active'] ? 'Да' : 'Нет',
+                        $r['used_month'],
+                        $r['accrued_month'],
+                        $r['paid_month'],
+                        $r['accrued_total'],
+                        $r['paid_total'],
+                        $r['debt'],
+                    ], ';');
+                }
+                break;
+        }
+        fclose($out);
     }
 
     // ─── Scans ────────────────────────────────────────

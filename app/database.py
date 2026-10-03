@@ -667,6 +667,44 @@ class Database:
             )
         return [dict(r) for r in rows]
 
+    async def pay_source_commission(self, user_id: int, prize_price: int, prize_name: str = "") -> dict:
+        """Комиссия 10% партнёру-источнику за использованный купон.
+
+        Источник — партнёр (категория), чей QR пользователь сканировал первым.
+        Начисление = 10% от балловой стоимости приза. Если источника нет —
+        начисления нет, комиссия остаётся ISTOK.
+        """
+        commission = int((prize_price or 0) * 10 / 100)
+        result = {"commission": commission, "paid": False,
+                  "source_category_id": None, "reason": None}
+        if commission <= 0:
+            result["reason"] = "zero"
+            return result
+
+        first_scan = await self.get_first_partner_for_user(user_id)
+        source = first_scan.get("partner_id") if first_scan else None
+        result["source_category_id"] = source
+        if not source:
+            result["reason"] = "no_source"  # вся комиссия остаётся ISTOK
+            return result
+
+        account = await self._fetch_one(
+            "partner_accounts",
+            f"category_id=eq.{source}&is_active=eq.true&order=id.asc")
+        if not account:
+            result["reason"] = "no_account"
+            return result
+
+        desc = f"Комиссия 10% за использованный купон «{prize_name}»" \
+            if prize_name else "Комиссия 10% за использованный купон"
+        await self.add_balance(account["telegram_id"], commission, "source_commission", desc)
+        await self.create_notification(
+            account["telegram_id"], "reward", "Комиссия источника",
+            f"+{commission} баллов — {desc}", "history")
+        result["paid"] = True
+        result["account_telegram_id"] = account["telegram_id"]
+        return result
+
     async def redeem_coupon(self, user_id: int, order_id: int, partner_id: int) -> dict:
         user = await self._fetch_one("users", f"telegram_id=eq.{user_id}&select=id,telegram_id,name")
         if not user:
@@ -682,33 +720,44 @@ class Database:
 
         await self._fetch("orders", f"id=eq.{order_id}", "PATCH", {"status": "completed"})
 
-        first_scan = await self.get_first_partner_for_user(user["id"])
-        reward = 0
-        if first_scan and first_scan.get("partner_id") != partner_id:
-            reward_type = await self.get_bot_setting("partner_referral_reward", "fixed")
-            reward_value = await self.get_bot_setting_int("partner_referral_value", 50)
-            prize = await self._fetch_one("prizes", f"id=eq.{order['prize_id']}&select=price_points")
-            if prize:
-                if reward_type == "percent":
-                    reward = int(prize["price_points"] * reward_value / 100)
-                else:
-                    reward = reward_value
+        # Проставляем активатора (партнёра категории) на купоне — для взаиморасчётов
+        account = await self._fetch_one(
+            "partner_accounts",
+            f"category_id=eq.{partner_id}&is_active=eq.true&order=id.asc")
+        if account:
+            await self._fetch(
+                "user_coupons",
+                f"order_id=eq.{order_id}&status=eq.active",
+                "PATCH",
+                {"used_by_partner_id": account["id"]},
+            )
 
+        prize = await self._fetch_one("prizes", f"id=eq.{order['prize_id']}&select=name,price_points")
+        commission = await self.pay_source_commission(
+            user["id"],
+            prize["price_points"] if prize else 0,
+            prize["name"] if prize else "",
+        )
+
+        first_scan = await self.get_first_partner_for_user(user["id"])
+        reward = commission["commission"] if commission["paid"] else 0
         await self.record_journey(
             user["id"], "coupon_redeem", partner_id=partner_id,
             related_id=order_id, partner_reward=reward,
-            metadata={"first_partner_id": first_scan["partner_id"] if first_scan else None}
+            metadata={
+                "first_partner_id": first_scan["partner_id"] if first_scan else None,
+                "commission": commission["commission"],
+                "commission_paid": commission["paid"],
+                "commission_reason": commission["reason"],
+                "via": "manual",
+            },
         )
 
-        if reward > 0 and first_scan:
-            await self.create_notification(
-                user["telegram_id"], "reward",
-                "Вознаграждение партнёра",
-                f"+{reward} баллов за привлечение пользователя",
-                "history"
-            )
-
-        return {"ok": True, "reward": reward, "order_id": order_id}
+        return {
+            "ok": True, "reward": reward, "order_id": order_id,
+            "commission": commission["commission"],
+            "commission_paid": commission["paid"],
+        }
 
     # ─── Partner Accounts ─────────────────────────────
 
@@ -772,6 +821,7 @@ class Database:
         await self._fetch("partner_accounts", f"id=eq.{account_id}", "DELETE")
 
     async def get_partner_used_coupons(self, category_id: int) -> list[dict]:
+        """Купоны, погашенные на точках партнёра (аккаунты его категории)."""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT uc.*, p.name AS prize_name, u.name AS user_name, u.telegram_id AS user_telegram_id "
@@ -779,7 +829,11 @@ class Database:
                 "LEFT JOIN prizes p ON uc.prize_id = p.id "
                 "LEFT JOIN users u ON uc.user_id = u.id "
                 "WHERE uc.status = 'used' "
-                "ORDER BY uc.used_at DESC"
+                "AND uc.used_by_partner_id IN ("
+                "    SELECT id FROM partner_accounts WHERE category_id = $1"
+                ") "
+                "ORDER BY uc.used_at DESC",
+                category_id,
             )
         return [dict(r) for r in rows]
 
@@ -836,11 +890,23 @@ class Database:
         })
 
         partner = await self.get_partner_account(partner_account_id)
+        commission = await self.pay_source_commission(
+            coupon["user_id"],
+            coupon.get("prize_price") or 0,
+            coupon.get("prize_name") or "",
+        )
         await self.record_journey(
             coupon["user_id"], "coupon_redeem",
             partner_id=partner.get("category_id") if partner else None,
             related_id=coupon.get("order_id"),
-            metadata={"via": "partner_qr", "account_id": partner_account_id},
+            partner_reward=commission["commission"] if commission["paid"] else 0,
+            metadata={
+                "via": "partner_qr",
+                "account_id": partner_account_id,
+                "commission": commission["commission"],
+                "commission_paid": commission["paid"],
+                "commission_reason": commission["reason"],
+            },
         )
 
         user_name = coupon.get("user_name", "")
@@ -854,14 +920,110 @@ class Database:
         }
 
     async def get_partner_coupon_stats(self, category_id: int) -> dict:
-        rows = await self._fetch("user_coupons",
-            f"status=eq.used&select=*&order=used_at.desc")
-        cat_prizes = await self._fetch("prizes", f"category_id=eq.{category_id}&select=id")
-        prize_ids = [p["id"] for p in (cat_prizes or [])]
-        used_at_partner = [r for r in rows if r.get("used_by_partner_id")]
-        total = len(rows)
-        relevant = sum(1 for r in rows if r.get("prize_id") in prize_ids)
-        return {"total_used": total, "relevant_used": relevant}
+        """Статистика купонов партнёра (его категория).
+
+        - total_used — погашено на его точках (аккаунты категории);
+        - relevant_used — погашено купонов на призы его категории (где бы ни погасили).
+        """
+        async with self.pool.acquire() as conn:
+            total = await conn.fetchval(
+                "SELECT COUNT(*) FROM user_coupons "
+                "WHERE status = 'used' AND used_by_partner_id IN ("
+                "    SELECT id FROM partner_accounts WHERE category_id = $1)",
+                category_id,
+            ) or 0
+            relevant = await conn.fetchval(
+                "SELECT COUNT(*) FROM user_coupons uc "
+                "JOIN prizes p ON p.id = uc.prize_id "
+                "WHERE uc.status = 'used' AND p.category_id = $1",
+                category_id,
+            ) or 0
+        return {"total_used": int(total), "relevant_used": int(relevant)}
+
+    async def get_partner_kpi(self, account: dict) -> dict:
+        """Кабинет партнёра.
+
+        - coupons_received — выпущено купонов на призы его категории;
+        - coupons_used — купоны, погашенные на его точке;
+        - accrued_istok / paid_istok / must_pay_istok — взаиморасчёты с ISTOK:
+          партнёр должен ISTOK 10% от номинала активированных им купонов,
+          за вычетом оплат из журнала partner_settlements (остаток долга);
+        - earned_as_source — комиссия источника, реально начисленная баллами;
+        - source_coupons_used / used_nominal — купоны, погашенные пользователями,
+          которых он привёл (для расчёта его дохода как источника);
+        - referred_users — пользователи, для которых он первый партнёр.
+
+        Источник определяется по partner_scans (та же таблица, что и в
+        pay_source_commission), чтобы начисления и статистика совпадали.
+        """
+        category_id = account.get("category_id")
+        account_id = account.get("id")
+        telegram_id = account.get("telegram_id")
+        first_scan = (
+            "SELECT DISTINCT ON (user_id) user_id, category_id "
+            "FROM partner_scans "
+            "ORDER BY user_id, scanned_at ASC"
+        )
+        async with self.pool.acquire() as conn:
+            received = await conn.fetchval(
+                "SELECT COUNT(*) FROM user_coupons uc "
+                "JOIN prizes p ON p.id = uc.prize_id "
+                "WHERE p.category_id = $1",
+                category_id,
+            ) or 0
+            at_point = await conn.fetchval(
+                "SELECT COUNT(*) FROM user_coupons "
+                "WHERE used_by_partner_id = $1 AND status = 'used'",
+                account_id,
+            ) or 0
+            accrued = await conn.fetchval(
+                "SELECT COALESCE(SUM(COALESCE(p.price_points, p2.price_points)), 0)::int * 10 / 100 "
+                "FROM user_coupons uc "
+                "LEFT JOIN prizes p ON p.id = uc.prize_id "
+                "LEFT JOIN orders o ON o.id = uc.order_id "
+                "LEFT JOIN prizes p2 ON p2.id = o.prize_id "
+                "WHERE uc.status = 'used' AND uc.used_by_partner_id = $1",
+                account_id,
+            ) or 0
+            paid = await conn.fetchval(
+                "SELECT COALESCE(SUM(amount), 0)::int "
+                "FROM partner_settlements WHERE partner_account_id = $1",
+                account_id,
+            ) or 0
+            referred = await conn.fetchval(
+                f"SELECT COUNT(*) FROM ({first_scan}) fs WHERE fs.category_id = $1",
+                category_id,
+            ) or 0
+            src = await conn.fetchrow(
+                f"SELECT COUNT(*)::int AS cnt, "
+                f"COALESCE(SUM(COALESCE(p.price_points, p2.price_points)), 0)::int AS nominal "
+                f"FROM ({first_scan}) fs "
+                f"JOIN user_coupons uc "
+                f"  ON uc.user_id = fs.user_id AND uc.status = 'used' "
+                f"LEFT JOIN prizes p ON p.id = uc.prize_id "
+                f"LEFT JOIN orders o ON o.id = uc.order_id "
+                f"LEFT JOIN prizes p2 ON p2.id = o.prize_id "
+                f"WHERE fs.category_id = $1",
+                category_id,
+            )
+            earned = await conn.fetchval(
+                "SELECT COALESCE(SUM(pl.amount), 0)::int "
+                "FROM points_log pl JOIN users u ON u.id = pl.user_id "
+                "WHERE pl.type = 'source_commission' AND u.telegram_id = $1",
+                telegram_id,
+            ) or 0
+        src_nominal = src["nominal"] if src else 0
+        return {
+            "coupons_received": int(received),
+            "coupons_used": int(at_point),
+            "source_coupons_used": int(src["cnt"]) if src else 0,
+            "used_nominal": int(src_nominal),
+            "accrued_istok": int(accrued),
+            "paid_istok": int(paid),
+            "must_pay_istok": int(accrued) - int(paid),
+            "earned_as_source": int(earned),
+            "referred_users": int(referred),
+        }
 
     # ─── Raffles ────────────────────────────────────────
 
@@ -1349,8 +1511,20 @@ class Database:
         except ValueError:
             return None
 
+    # Шкала серии входов: день 1-5 растёт, с 6-го — 200/день.
+    DAILY_BASE_POINTS = [100, 120, 140, 160, 180]
+    DAILY_MILESTONES = {3: 200, 7: 500, 14: 1000}
+
+    @classmethod
+    def daily_base_points(cls, day: int) -> int:
+        if day < 1:
+            day = 1
+        if day <= len(cls.DAILY_BASE_POINTS):
+            return cls.DAILY_BASE_POINTS[day - 1]
+        return 200
+
     async def daily_bonus_state(self, user: dict) -> dict:
-        """Состояние ежедневного бонуса: день серии, начислено ли сегодня."""
+        """Состояние серии входов: день серии, начислено ли сегодня."""
         points = await self.get_bot_setting_int("daily_bonus_points", 50)
         today = date.today()
         last = self._as_date(user.get("daily_last_bonus"))
@@ -1359,17 +1533,21 @@ class Database:
         if claimed_today:
             day = streak if streak > 0 else 1
         elif last is not None and last == today - timedelta(days=1):
+            # Вчера начисляли — серия продолжается
             day = streak + 1 if streak > 0 else 1
-            if day > 7:
-                day = 1
         else:
+            # Пропуск дня (или первый вход) — серия начинается заново
             day = 1
+        base = self.daily_base_points(day)
+        milestone = self.DAILY_MILESTONES.get(day, 0)
         return {
             "enabled": points > 0,
-            "points": points,
             "day": day,
             "claimed_today": claimed_today,
             "streak": streak,
+            "base": base,
+            "milestone": milestone,
+            "points": base + milestone,
         }
 
     async def claim_daily_bonus(self, telegram_id: int) -> dict:
@@ -1389,7 +1567,9 @@ class Database:
 
         today = date.today()
         day = state["day"]
-        points = state["points"]
+        base = state["base"]
+        milestone = state["milestone"]
+        points = base + milestone
         new_balance = (user.get("balance") or 0) + points
 
         # Атомарный условный апдейт: если кто-то уже успел начислить — 0 строк
@@ -1407,13 +1587,20 @@ class Database:
                 "balance": fresh.get("balance") or 0,
             }
 
+        desc = f"Ежедневный бонус — день {day}: {base}"
+        if milestone:
+            desc += f" + бонус за серию {milestone}"
         await self._fetch("points_log", method="POST", json_data={
             "user_id": user["id"],
             "amount": points,
             "type": "daily_bonus",
-            "description": f"Ежедневный бонус — день {day} из 7",
+            "description": desc,
         })
-        return {"ok": True, "day": day, "points": points, "balance": new_balance, "streak": day}
+        return {
+            "ok": True, "day": day, "points": points,
+            "base": base, "milestone": milestone,
+            "balance": new_balance, "streak": day,
+        }
 
     # ─── User Journey ───────────────────────────────────
 
@@ -1433,9 +1620,20 @@ class Database:
         return rows[0]["id"] if rows else 0
 
     async def get_first_partner_for_user(self, user_id: int) -> dict | None:
-        row = await self._fetch_one("user_journey",
-            f"user_id=eq.{user_id}&action_type=eq.partner_scan&order=created_at.asc")
-        return row
+        """Первый отсканированный QR пользователя — партнёр-источник.
+
+        Источник ищем в partner_scans (полная история сканов), а не в
+        journey: таблица journey заведена позже и не содержит ранних сканов.
+        """
+        row = await self._fetch_one("partner_scans",
+            f"user_id=eq.{user_id}&order=scanned_at.asc")
+        if not row:
+            return None
+        return {
+            "partner_id": row.get("category_id"),
+            "qr_code": row.get("qr_code"),
+            "scanned_at": row.get("scanned_at"),
+        }
 
     async def get_user_journey(self, user_id: int) -> list[dict]:
         return await self._fetch("user_journey",

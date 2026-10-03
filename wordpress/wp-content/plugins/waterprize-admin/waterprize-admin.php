@@ -33,6 +33,27 @@ add_action('admin_init', function () {
         $db->execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_at TIMESTAMPTZ");
         update_option('wpz_migration_ban_columns', true);
     }
+    if (!get_option('wpz_migration_partner_settlements')) {
+        $db = WaterPrize_DB::instance();
+        $ok = $db->execute(
+            "CREATE TABLE IF NOT EXISTS partner_settlements (
+                id BIGSERIAL PRIMARY KEY,
+                partner_account_id INTEGER NOT NULL REFERENCES partner_accounts(id) ON DELETE CASCADE,
+                period_month DATE NOT NULL,
+                amount INTEGER NOT NULL,
+                comment TEXT DEFAULT '',
+                created_by TEXT DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )"
+        );
+        if ($ok) {
+            $db->execute(
+                "CREATE INDEX IF NOT EXISTS idx_partner_settlements_account_month
+                 ON partner_settlements(partner_account_id, period_month)"
+            );
+            update_option('wpz_migration_partner_settlements', true);
+        }
+    }
 });
 
 add_action('wp_ajax_wpz_online', function () {

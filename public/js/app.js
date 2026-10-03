@@ -665,11 +665,25 @@ async function loadPartnerDashboard() {
         var data = await apiFetch('/partner-account/' + account.id + '/used-coupons');
         if (!data || !data.ok) return;
 
-        var stats = data.stats || {};
-        statsEl.innerHTML += '<div class="partner-stats-row">'
-            + '<div class="partner-stat-card"><div class="partner-stat-val">' + (stats.total_used || 0) + '</div><div class="partner-stat-label">Всего использовано</div></div>'
-            + '<div class="partner-stat-card"><div class="partner-stat-val">' + (stats.relevant_used || 0) + '</div><div class="partner-stat-label">Вашей категории</div></div>'
-            + '</div>';
+        // KPI кабинета: купоны, взаиморасчёты, источник, приведение
+        try {
+            var kpiData = await apiFetch('/partner-account/' + uid + '/stats');
+            if (kpiData && kpiData.ok && kpiData.kpi) {
+                var k = kpiData.kpi;
+                var debt = Math.max(0, k.must_pay_istok || 0);
+                var cards = '<div class="partner-stats-row kpi">'
+                    + '<div class="partner-stat-card"><div class="partner-stat-val">' + (k.coupons_received || 0) + '</div><div class="partner-stat-label">Купонов получено</div></div>'
+                    + '<div class="partner-stat-card"><div class="partner-stat-val">' + (k.coupons_used || 0) + '</div><div class="partner-stat-label">Использовано у вас</div></div>'
+                    + '<div class="partner-stat-card" title="Начислено: ' + (k.accrued_istok || 0) + ' · Оплачено: ' + (k.paid_istok || 0) + '">'
+                    + '<div class="partner-stat-val">' + debt + '</div><div class="partner-stat-label">Должен ISTOK, баллы</div></div>'
+                    + '<div class="partner-stat-card"><div class="partner-stat-val">' + (k.earned_as_source || 0) + '</div><div class="partner-stat-label">Заработал источником, баллы</div></div>'
+                    + '<div class="partner-stat-card"><div class="partner-stat-val">' + (k.referred_users || 0) + '</div><div class="partner-stat-label">Привёл пользователей</div></div>';
+                if (k.paid_istok > 0) {
+                    cards += '<div class="partner-stat-card"><div class="partner-stat-val">' + k.paid_istok + '</div><div class="partner-stat-label">Оплачено ISTOK, баллы</div></div>';
+                }
+                statsEl.innerHTML += cards + '</div>';
+            }
+        } catch(e) {}
 
         var coupons = data.coupons || [];
         if (!coupons.length) {
@@ -1454,24 +1468,31 @@ function esc(t) { const d = document.createElement('div'); d.textContent = t; re
     }
 
     // ═══════════════════════════════════════════
-// DAILY BONUS — ШКАЛА 7 ДНЕЙ
+// DAILY BONUS — СЕРИЯ ВХОДОВ (14 дней, шкала 100→200)
 // ═══════════════════════════════════════════
 
 var dailyModalOpen = false;
+var DAILY_MILESTONES = { 3: 200, 7: 500, 14: 1000 };
+
+    function dailyBasePoints(day) {
+        return day <= 5 ? 100 + (day - 1) * 20 : 200;
+    }
 
     function renderDailyScale(day, filledUpTo) {
         var scale = document.getElementById('dbm-scale');
         if (!scale) return;
         scale.innerHTML = '';
-        for (var i = 1; i <= 7; i++) {
+        for (var i = 1; i <= 14; i++) {
             var cell = document.createElement('div');
             var cls = 'dbm-day';
             if (i <= filledUpTo) cls += ' done';
             else if (i === day) cls += ' today';
             cell.className = cls;
             cell.style.setProperty('--i', i);
+            var ms = DAILY_MILESTONES[i];
             cell.innerHTML = '<span class="dbm-day-num">' + i + '</span>'
-                + '<span class="dbm-day-pts">' + icon('coin') + '</span>';
+                + '<span class="dbm-day-pts">' + dailyBasePoints(i) + '</span>'
+                + (ms ? '<span class="dbm-day-bonus">+' + ms + '</span>' : '');
             scale.appendChild(cell);
         }
     }

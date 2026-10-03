@@ -463,6 +463,15 @@ async def api_partner_account(telegram_id: int):
     return {"ok": True, "account": account}
 
 
+@router.get("/partner-account/{telegram_id}/stats")
+async def api_partner_stats(telegram_id: int):
+    account = await db.get_partner_account_by_telegram_id(telegram_id)
+    if not account:
+        return JSONResponse({"ok": False, "error": "partner not found"}, status_code=404)
+    kpi = await db.get_partner_kpi(account)
+    return {"ok": True, "kpi": kpi}
+
+
 @router.get("/partner-account/{partner_id}/used-coupons")
 async def api_partner_used_coupons(partner_id: int):
     account = await db.get_partner_account(partner_id)

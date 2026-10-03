@@ -60,19 +60,21 @@ if ($daily_bonus_points === null || $daily_bonus_points === false || $daily_bonu
     <!-- ═══ Daily Bonus ═══ -->
     <div class="wpz-card">
         <h2>🎯 Ежедневный бонус</h2>
-        <p style="color:#646970;font-size:13px;margin:0 0 16px;">Баллы начисляются при первом входе пользователя в мини-приложение за день.
-            На экране показывается шкала серии из 7 дней с анимацией заполнения.</p>
+        <p style="color:#646970;font-size:13px;margin:0 0 16px;">Серия входов: <b>100 → 120 → 140 → 160 → 180 → далее 200 баллов/день</b>.
+            Бонусы сверху базы: <b>3-й день +200</b>, <b>7-й день +500</b>, <b>14-й день +1000</b>.
+            Пропуск дня полностью обнуляет серию; покупка купона серию не сбрасывает.</p>
         <form method="post">
             <?php wp_nonce_field('wpz_action'); ?>
-            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">Количество баллов за каждый день</label>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">Состояние бонуса</label>
             <div style="display:flex;gap:8px;align-items:center;">
                 <input type="number" name="daily_bonus_points" min="0" step="1"
                        value="<?php echo esc_attr($daily_bonus_points); ?>"
                        style="width:110px;">
-                <span style="color:#646970;font-size:13px;">баллов / день</span>
+                <span style="color:#646970;font-size:13px;">баллов (значение не влияет на сумму)</span>
             </div>
-            <p class="description">Серия растёт на 1 каждый день подряд и сбрасывается при пропуске; после 7-го дня цикл начинается заново.
-                Значение <b>0</b> — отключить бонус. Изменение применяется в течение минуты (кэш настроек).</p>
+            <p class="description">Число больше 0 — бонус включён, <b>0</b> — отключить.
+                Суммы фиксированы серией (100…200 + бонусы) и из поля не берутся.
+                Изменение применяется в течение минуты (кэш настроек).</p>
             <div style="margin-top:12px;">
                 <button type="submit" name="action" value="save_daily_bonus" class="button button-primary">💾 Сохранить бонус</button>
             </div>

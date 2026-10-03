@@ -35,7 +35,9 @@ class WaterPrize_Admin {
         add_submenu_page('waterprize', 'Бутылки', 'Бутылки', 'manage_options', 'wpz-bottles', [$this, 'page_bottles']);
         add_submenu_page('waterprize', 'Розыгрыши', 'Розыгрыши', 'manage_options', 'wpz-raffles', [$this, 'page_raffles']);
         add_submenu_page('waterprize', 'Партнёры', 'Партнёры', 'manage_options', 'wpz-partners', [$this, 'page_partners']);
+        add_submenu_page('waterprize', 'Кабинеты партнёров', 'Кабинеты партнёров', 'manage_options', 'wpz-partner-cabinet', [$this, 'page_partner_cabinet']);
         add_submenu_page('waterprize', 'Аналитика', 'Аналитика', 'manage_options', 'wpz-analytics', [$this, 'page_analytics']);
+        add_submenu_page('waterprize', 'Отчёт за месяц', 'Отчёт за месяц', 'manage_options', 'wpz-monthly-report', [$this, 'page_monthly_report']);
         add_submenu_page('waterprize', 'Заказы', 'Заказы', 'manage_options', 'wpz-orders', [$this, 'page_orders']);
         add_submenu_page('waterprize', 'Админы', 'Админы', 'manage_options', 'wpz-admins', [$this, 'page_admins']);
         add_submenu_page('waterprize', 'Сканирования', 'Сканирования', 'manage_options', 'wpz-scans', [$this, 'page_scans']);
@@ -75,7 +77,9 @@ class WaterPrize_Admin {
     public function page_bottles()   { WaterPrize_Pages::bottles(); }
     public function page_raffles()   { WaterPrize_Pages::raffles(); }
     public function page_partners()  { WaterPrize_Pages::partners(); }
+    public function page_partner_cabinet() { WaterPrize_Pages::partner_cabinet(); }
     public function page_analytics()  { WaterPrize_Pages::analytics(); }
+    public function page_monthly_report() { WaterPrize_Pages::monthly_report(); }
     public function page_orders()    { WaterPrize_Pages::orders(); }
     public function page_admins()    { WaterPrize_Pages::admins(); }
     public function page_scans()     { WaterPrize_Pages::scans(); }

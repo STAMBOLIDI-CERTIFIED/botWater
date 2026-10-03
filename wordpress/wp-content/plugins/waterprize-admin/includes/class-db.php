@@ -1039,6 +1039,204 @@ class WaterPrize_DB {
         );
     }
 
+    // ─── Partner Cabinet (KPI) ─────────────────────────
+    public function get_partner_cabinet_stats() {
+        return $this->query(
+            "SELECT pa.id, pa.telegram_id, pa.name, pa.is_active, pa.created_at,
+                    pa.category_id, sc.title AS category_title, sc.icon AS category_icon, sc.color AS category_color,
+                    COALESCE(recv.cnt, 0) AS coupons_received,
+                    COALESCE(used.cnt, 0) AS coupons_used,
+                    COALESCE(used.nominal, 0) AS used_nominal,
+                    COALESCE(used.accrued, 0) AS accrued_istok,
+                    COALESCE(pay.amount, 0) AS paid_istok,
+                    COALESCE(used.accrued, 0) - COALESCE(pay.amount, 0) AS must_pay_istok,
+                    COALESCE(earned.amount, 0) AS earned_as_source,
+                    COALESCE(ref.cnt, 0) AS referred_users
+             FROM partner_accounts pa
+             LEFT JOIN shop_categories sc ON sc.id = pa.category_id
+             LEFT JOIN (
+                SELECT p.category_id, COUNT(*)::int AS cnt
+                FROM user_coupons uc JOIN prizes p ON p.id = uc.prize_id
+                GROUP BY p.category_id
+             ) recv ON recv.category_id = pa.category_id
+             LEFT JOIN (
+                SELECT uc.used_by_partner_id,
+                       COUNT(*)::int AS cnt,
+                       COALESCE(SUM(COALESCE(p.price_points, p2.price_points)), 0)::int AS nominal,
+                       (COALESCE(SUM(COALESCE(p.price_points, p2.price_points)), 0) * 10 / 100)::int AS accrued
+                FROM user_coupons uc
+                LEFT JOIN prizes p ON p.id = uc.prize_id
+                LEFT JOIN orders o ON o.id = uc.order_id
+                LEFT JOIN prizes p2 ON p2.id = o.prize_id
+                WHERE uc.status = 'used' AND uc.used_by_partner_id IS NOT NULL
+                GROUP BY uc.used_by_partner_id
+             ) used ON used.used_by_partner_id = pa.id
+             LEFT JOIN (
+                SELECT partner_account_id, SUM(amount)::int AS amount
+                FROM partner_settlements GROUP BY partner_account_id
+             ) pay ON pay.partner_account_id = pa.id
+             LEFT JOIN (
+                SELECT u.telegram_id, SUM(pl.amount)::int AS amount
+                FROM points_log pl JOIN users u ON u.id = pl.user_id
+                WHERE pl.type = 'source_commission'
+                GROUP BY u.telegram_id
+             ) earned ON earned.telegram_id = pa.telegram_id
+             LEFT JOIN (
+                SELECT category_id, COUNT(*)::int AS cnt FROM (
+                    SELECT DISTINCT ON (user_id) user_id, category_id
+                    FROM partner_scans ORDER BY user_id, scanned_at ASC
+                ) fs GROUP BY category_id
+             ) ref ON ref.category_id = pa.category_id
+             ORDER BY pa.id"
+        );
+    }
+
+    public function get_partner_cabinet_used_coupons($account_id, $limit = 100) {
+        return $this->query(
+            "SELECT uc.id, uc.qr_code, uc.used_at, uc.status,
+                    u.name AS user_name, u.telegram_id,
+                    COALESCE(p.name, p2.name) AS prize_name,
+                    COALESCE(p.price_points, p2.price_points) AS nominal
+             FROM user_coupons uc
+             LEFT JOIN users u ON u.id = uc.user_id
+             LEFT JOIN prizes p ON p.id = uc.prize_id
+             LEFT JOIN orders o ON o.id = uc.order_id
+             LEFT JOIN prizes p2 ON p2.id = o.prize_id
+             WHERE uc.status = 'used' AND uc.used_by_partner_id = ?
+             ORDER BY uc.used_at DESC
+             LIMIT " . (int)$limit,
+            [(int)$account_id]
+        );
+    }
+
+    public function get_partner_cabinet_payments($account_id, $limit = 100) {
+        return $this->query(
+            "SELECT * FROM partner_settlements
+             WHERE partner_account_id = ?
+             ORDER BY period_month DESC, created_at DESC
+             LIMIT " . (int)$limit,
+            [(int)$account_id]
+        );
+    }
+
+    public function get_partner_cabinet_referred($account_id, $limit = 100) {
+        return $this->query(
+            "SELECT u.id, u.telegram_id, u.name, u.username, u.balance, fs.scanned_at
+             FROM partner_accounts pa
+             JOIN LATERAL (
+                SELECT DISTINCT ON (ps.user_id) ps.user_id, ps.scanned_at
+                FROM partner_scans ps
+                WHERE ps.category_id = pa.category_id
+                ORDER BY ps.user_id, ps.scanned_at ASC
+             ) fs ON TRUE
+             JOIN users u ON u.id = fs.user_id
+             WHERE pa.id = ?
+             ORDER BY fs.scanned_at DESC
+             LIMIT " . (int)$limit,
+            [(int)$account_id]
+        );
+    }
+
+    // ─── Monthly Report (coupons + settlements) ───────
+    public function get_monthly_coupon_usage($from_ts, $to_ts) {
+        return $this->query(
+            "SELECT uc.id, uc.qr_code, uc.used_at, uc.created_at,
+                    u.name AS user_name, u.telegram_id,
+                    COALESCE(p.name, p2.name) AS prize_name,
+                    COALESCE(p.price_points, p2.price_points) AS nominal,
+                    COALESCE(p.price_points, p2.price_points, 0) * 10 / 100 AS commission,
+                    sc.title AS category_title,
+                    acc.id AS activator_id, acc.name AS activator_name, acc.telegram_id AS activator_tg,
+                    src.title AS source_title
+             FROM user_coupons uc
+             LEFT JOIN users u ON u.id = uc.user_id
+             LEFT JOIN prizes p ON p.id = uc.prize_id
+             LEFT JOIN orders o ON o.id = uc.order_id
+             LEFT JOIN prizes p2 ON p2.id = o.prize_id
+             LEFT JOIN shop_categories sc ON sc.id = COALESCE(p.category_id, p2.category_id)
+             LEFT JOIN partner_accounts acc ON acc.id = uc.used_by_partner_id
+             LEFT JOIN LATERAL (
+                SELECT category_id FROM partner_scans ps
+                WHERE ps.user_id = uc.user_id
+                ORDER BY ps.scanned_at ASC LIMIT 1
+             ) fs ON TRUE
+             LEFT JOIN shop_categories src ON src.id = fs.category_id
+             WHERE uc.status = 'used' AND uc.used_at >= ? AND uc.used_at < ?
+             ORDER BY uc.used_at DESC",
+            [$from_ts, $to_ts]
+        );
+    }
+
+    public function get_monthly_settlements($month_start, $from_ts, $to_ts) {
+        return $this->query(
+            "SELECT pa.id, pa.name, pa.telegram_id, pa.is_active,
+                    sc.title AS category_title,
+                    COALESCE(m.cnt, 0) AS used_month,
+                    COALESCE(m.accrued, 0) AS accrued_month,
+                    COALESCE(pay.amount, 0) AS paid_month,
+                    COALESCE(cum.accrued, 0) AS accrued_total,
+                    COALESCE(cumpay.amount, 0) AS paid_total,
+                    COALESCE(cum.accrued, 0) - COALESCE(cumpay.amount, 0) AS debt
+             FROM partner_accounts pa
+             LEFT JOIN shop_categories sc ON sc.id = pa.category_id
+             LEFT JOIN (
+                SELECT uc.used_by_partner_id,
+                       COUNT(*)::int AS cnt,
+                       (COALESCE(SUM(COALESCE(p.price_points, p2.price_points)), 0) * 10 / 100)::int AS accrued
+                FROM user_coupons uc
+                LEFT JOIN prizes p ON p.id = uc.prize_id
+                LEFT JOIN orders o ON o.id = uc.order_id
+                LEFT JOIN prizes p2 ON p2.id = o.prize_id
+                WHERE uc.status = 'used' AND uc.used_at >= ? AND uc.used_at < ?
+                GROUP BY uc.used_by_partner_id
+             ) m ON m.used_by_partner_id = pa.id
+             LEFT JOIN (
+                SELECT partner_account_id, SUM(amount)::int AS amount
+                FROM partner_settlements WHERE period_month = ?
+                GROUP BY partner_account_id
+             ) pay ON pay.partner_account_id = pa.id
+             LEFT JOIN (
+                SELECT uc.used_by_partner_id,
+                       (COALESCE(SUM(COALESCE(p.price_points, p2.price_points)), 0) * 10 / 100)::int AS accrued
+                FROM user_coupons uc
+                LEFT JOIN prizes p ON p.id = uc.prize_id
+                LEFT JOIN orders o ON o.id = uc.order_id
+                LEFT JOIN prizes p2 ON p2.id = o.prize_id
+                WHERE uc.status = 'used' AND uc.used_at >= '1970-01-01' AND uc.used_at < ?
+                GROUP BY uc.used_by_partner_id
+             ) cum ON cum.used_by_partner_id = pa.id
+             LEFT JOIN (
+                SELECT partner_account_id, SUM(amount)::int AS amount
+                FROM partner_settlements WHERE period_month <= ?
+                GROUP BY partner_account_id
+             ) cumpay ON cumpay.partner_account_id = pa.id
+             ORDER BY pa.id",
+            [$from_ts, $to_ts, $month_start, $to_ts, $month_start]
+        );
+    }
+
+    public function get_settlements($month_start) {
+        return $this->query(
+            "SELECT s.*, pa.name AS account_name, pa.telegram_id
+             FROM partner_settlements s
+             LEFT JOIN partner_accounts pa ON pa.id = s.partner_account_id
+             WHERE s.period_month = ?
+             ORDER BY s.created_at DESC",
+            [$month_start]
+        );
+    }
+
+    public function add_settlement($account_id, $month_start, $amount, $comment = '', $created_by = '') {
+        return $this->insert(
+            'INSERT INTO partner_settlements (partner_account_id, period_month, amount, comment, created_by) VALUES (?, ?, ?, ?, ?)',
+            [(int)$account_id, $month_start, (int)$amount, $comment, $created_by]
+        );
+    }
+
+    public function delete_settlement($id) {
+        return $this->delete('DELETE FROM partner_settlements WHERE id = ?', [(int)$id]);
+    }
+
     // ─── Support Chat ─────────────────────────────────
     public function get_support_chats($limit = 200, $offset = 0) {
         return $this->query(
