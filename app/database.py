@@ -718,6 +718,12 @@ class Database:
         if order["status"] != "approved":
             return {"ok": False, "error": "order_not_ready"}
 
+        prize = await self._fetch_one("prizes", f"id=eq.{order['prize_id']}&select=name,price_points,category_id")
+
+        # Приз можно принимать только у партнёра того же бренда (категории)
+        if prize and prize.get("category_id") and partner_id and int(prize["category_id"]) != int(partner_id):
+            return {"ok": False, "error": "coupon_not_for_this_brand"}
+
         await self._fetch("orders", f"id=eq.{order_id}", "PATCH", {"status": "completed"})
 
         # Проставляем активатора (партнёра категории) на купоне — для взаиморасчётов
@@ -732,7 +738,6 @@ class Database:
                 {"used_by_partner_id": account["id"]},
             )
 
-        prize = await self._fetch_one("prizes", f"id=eq.{order['prize_id']}&select=name,price_points")
         commission = await self.pay_source_commission(
             user["id"],
             prize["price_points"] if prize else 0,
@@ -866,9 +871,12 @@ class Database:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(
                 "SELECT uc.*, p.name AS prize_name, p.price_points AS prize_price, "
+                "COALESCE(p.category_id, op.category_id) AS prize_category_id, "
                 "u.name AS user_name, u.telegram_id AS user_telegram_id "
                 "FROM user_coupons uc "
                 "LEFT JOIN prizes p ON uc.prize_id = p.id "
+                "LEFT JOIN orders o ON uc.order_id = o.id "
+                "LEFT JOIN prizes op ON o.prize_id = op.id "
                 "LEFT JOIN users u ON uc.user_id = u.id "
                 "WHERE uc.qr_code = $1",
                 qr_code,
@@ -882,6 +890,16 @@ class Database:
         if coupon["status"] != "active":
             return {"ok": False, "error": "coupon_already_used"}
 
+        partner = await self.get_partner_account(partner_account_id)
+        if not partner or not partner.get("is_active", True):
+            return {"ok": False, "error": "partner_not_found"}
+
+        # Купон можно погасить только у партнёра того же бренда (категории приза)
+        partner_category = partner.get("category_id")
+        coupon_category = coupon.get("prize_category_id")
+        if not partner_category or not coupon_category or int(partner_category) != int(coupon_category):
+            return {"ok": False, "error": "coupon_not_for_this_brand"}
+
         from datetime import datetime
         await self._fetch("user_coupons", f"qr_code=eq.{qr_code}", "PATCH", {
             "status": "used",
@@ -889,7 +907,6 @@ class Database:
             "used_by_partner_id": partner_account_id
         })
 
-        partner = await self.get_partner_account(partner_account_id)
         commission = await self.pay_source_commission(
             coupon["user_id"],
             coupon.get("prize_price") or 0,

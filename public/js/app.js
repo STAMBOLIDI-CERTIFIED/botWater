@@ -758,7 +758,9 @@ async function startCouponScanner() {
                         document.getElementById('coupon-scanner-result').innerHTML = '✅ Купон использован!<br><b>' + esc(result.prize_name) + '</b><br>Пользователь: ' + esc(result.user_name);
                         showToast('Купон активирован!');
                     } else {
-                        document.getElementById('coupon-scanner-result').innerHTML = '❌ Ошибка: ' + esc(result.error || 'Неизвестная ошибка');
+                        var _errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'coupon_not_for_this_brand':'Этот купон принадлежит другому бренду — примите его у своего партнёра', 'partner_not_found':'Вы не партнёр' };
+                        var _msg = _errMap[result.error] || result.error || 'Неизвестная ошибка';
+                        document.getElementById('coupon-scanner-result').innerHTML = '❌ Ошибка: ' + esc(_msg);
                         zone.style.display = 'block';
                     }
                 },
@@ -1108,7 +1110,8 @@ function closePrizeModal() {
             showToast('Купон использован!' + (result.reward > 0 ? ' + ' + result.reward + ' баллов партнёру' : ''));
             openPartnerCategory(partnerId);
         } else {
-            showToast('Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+            var _rErrMap = { 'coupon_not_for_this_brand':'Этот купон принадлежит другому бренду' };
+            showToast('Ошибка: ' + (_rErrMap[result.error] || result.error || 'Неизвестная ошибка'));
         }
     }
 
@@ -1238,7 +1241,7 @@ function startScan() {
                             try{ tg.HapticFeedback.notificationOccurred('success'); }catch(e){}
                             cBtn.textContent = 'Готово'; cBtn.disabled = true;
                         } else {
-                            var errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'partner_not_found':'Вы не партнёр', 'unauthorized':'Ошибка авторизации (откройте через Telegram)' };
+                            var errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'coupon_not_for_this_brand':'Этот купон принадлежит другому бренду — примите его у своего партнёра', 'partner_not_found':'Вы не партнёр', 'unauthorized':'Ошибка авторизации (откройте через Telegram)' };
                             var msg = (res && (res.error || res.detail)) || ('HTTP ' + resp.status);
                             cStatus.innerHTML = icon('warning') + ' ' + esc(errMap[msg] || msg || 'Ошибка');
                             cBtn.disabled = false; cBtn.textContent = 'Попробовать снова';
