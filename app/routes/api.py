@@ -165,8 +165,34 @@ async def api_points_log(user_id: int = 0):
 @router.get("/tree")
 async def api_tree(user_id: int = 0):
     if not user_id:
-        return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0}
-    return await db.get_tree_state(user_id)
+        return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0,
+                "partners": [], "gift": {"available": False, "reason": "no_user"}}
+    state = await db.get_tree_state(user_id)
+    user = await db.get_user(user_id)
+    if user:
+        info = await db.get_partner_gift_info(user["id"])
+        state["partners"] = info.get("partners", [])
+        state["gift"] = info.get("gift", {})
+    else:
+        state["partners"] = []
+        state["gift"] = {"available": False, "reason": "user_not_found"}
+    return state
+
+
+@router.post("/tree/gift/claim")
+async def api_tree_gift_claim(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    if not user_id:
+        return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user_not_found"}, status_code=404)
+    result = await db.claim_partner_gift(user["id"])
+    if not result.get("ok"):
+        status = 400 if result.get("error") != "internal_error" else 500
+        return JSONResponse(result, status_code=status)
+    return result
 
 
 @router.get("/notifications")

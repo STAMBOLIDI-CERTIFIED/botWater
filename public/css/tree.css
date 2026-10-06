@@ -112,3 +112,122 @@
 .tli-name { font-size: 13px; font-weight: 600; flex: 1; }
 .tli-xp { font-size: 10px; color: var(--text-dim); white-space: nowrap; }
 .tli-status { font-size: 13px; }
+
+/* ─── Подарок от любимого партнёра ───────────────────── */
+.tree-gift-card {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-sm);
+    text-align: left;
+}
+.tree-gift-card.available {
+    border-color: rgba(236, 64, 122, 0.35);
+    background: rgba(236, 64, 122, 0.07);
+    animation: giftPulse 2.4s ease-in-out infinite;
+}
+@keyframes giftPulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(236, 64, 122, 0); }
+    50% { box-shadow: 0 0 20px rgba(236, 64, 122, 0.25); }
+}
+.tgc-emoji { font-size: 26px; line-height: 1; }
+.tgc-body { flex: 1; min-width: 0; }
+.tgc-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.tgc-sub { font-size: 12px; color: var(--text-dim); line-height: 1.45; }
+.tgc-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    margin-top: 12px;
+    padding: 11px 14px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: linear-gradient(90deg, #EC407A, #F48FB1);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.tgc-btn:disabled { opacity: .6; cursor: default; }
+.tgc-bar {
+    height: 6px;
+    margin-top: 10px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+.tgc-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, #EC407A, #F48FB1);
+}
+.tgc-count { margin-top: 6px; font-size: 11px; color: var(--text-dim); }
+
+/* ─── Опыт отдельно по каждому партнёру ──────────────── */
+.tree-partners {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 18px;
+    margin-top: 14px;
+    box-shadow: var(--shadow-sm);
+}
+.tree-partners-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+.tree-partner-item {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    padding: 11px 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+}
+.tree-partners-title + .tree-partner-item { border-top: none; }
+.tree-partner-item.fav {
+    background: rgba(201, 168, 76, 0.07);
+    border: 1px solid rgba(201, 168, 76, 0.2);
+}
+.tpi-icon { width: 28px; font-size: 18px; text-align: center; }
+.tpi-body { flex: 1; min-width: 0; }
+.tpi-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.tpi-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tpi-xp { font-size: 11px; font-weight: 700; color: var(--gold); white-space: nowrap; }
+.tpi-progress { margin-top: 5px; font-size: 10px; color: var(--text-dim); }
+.tpi-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.tpi-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+}
+.tpi-badge.fav {
+    background: rgba(201, 168, 76, 0.14);
+    border: 1px solid rgba(201, 168, 76, 0.3);
+    color: var(--gold);
+}
+.tpi-badge.got {
+    background: rgba(61, 158, 106, 0.14);
+    border: 1px solid rgba(61, 158, 106, 0.3);
+    color: var(--green);
+}

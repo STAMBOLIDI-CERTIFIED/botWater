@@ -36,6 +36,7 @@ class WaterPrize_Admin {
         add_submenu_page('waterprize', 'Розыгрыши', 'Розыгрыши', 'manage_options', 'wpz-raffles', [$this, 'page_raffles']);
         add_submenu_page('waterprize', 'Партнёры', 'Партнёры', 'manage_options', 'wpz-partners', [$this, 'page_partners']);
         add_submenu_page('waterprize', 'Кабинеты партнёров', 'Кабинеты партнёров', 'manage_options', 'wpz-partner-cabinet', [$this, 'page_partner_cabinet']);
+        add_submenu_page('waterprize', 'Подарки', 'Подарки', 'manage_options', 'wpz-gifts', [$this, 'page_gifts']);
         add_submenu_page('waterprize', 'Аналитика', 'Аналитика', 'manage_options', 'wpz-analytics', [$this, 'page_analytics']);
         add_submenu_page('waterprize', 'Отчёт за месяц', 'Отчёт за месяц', 'manage_options', 'wpz-monthly-report', [$this, 'page_monthly_report']);
         add_submenu_page('waterprize', 'Заказы', 'Заказы', 'manage_options', 'wpz-orders', [$this, 'page_orders']);
@@ -50,7 +51,7 @@ class WaterPrize_Admin {
 
     public function enqueue_assets($hook) {
         if (strpos($hook, 'waterprize') === false) return;
-        wp_enqueue_style('wpz-admin', plugins_url('/assets/admin.css', dirname(__FILE__)), [], '1.0.0');
+        wp_enqueue_style('wpz-admin', plugins_url('/assets/admin.css', dirname(__FILE__)), [], '1.0.1');
         wp_enqueue_script('wpz-admin', plugins_url('/assets/admin.js', dirname(__FILE__)), ['jquery'], '1.0.0', true);
 
         // Chart.js on dashboard and analytics
@@ -78,6 +79,7 @@ class WaterPrize_Admin {
     public function page_raffles()   { WaterPrize_Pages::raffles(); }
     public function page_partners()  { WaterPrize_Pages::partners(); }
     public function page_partner_cabinet() { WaterPrize_Pages::partner_cabinet(); }
+    public function page_gifts()     { WaterPrize_Pages::gifts(); }
     public function page_analytics()  { WaterPrize_Pages::analytics(); }
     public function page_monthly_report() { WaterPrize_Pages::monthly_report(); }
     public function page_orders()    { WaterPrize_Pages::orders(); }

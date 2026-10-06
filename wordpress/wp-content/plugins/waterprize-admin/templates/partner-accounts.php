@@ -101,12 +101,12 @@
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
-                    <th style="width:50px">ID</th>
-                    <th style="width:150px">Telegram ID</th>
-                    <th style="width:150px">Имя</th>
-                    <th style="width:150px">Категория</th>
-                    <th style="width:80px">Статус</th>
-                    <th style="width:150px">Дата</th>
+                    <th style="width:50px"><?php echo WaterPrize_Pages::sort_link('ID', 'id', 'DESC'); ?></th>
+                    <th style="width:150px"><?php echo WaterPrize_Pages::sort_link('Telegram ID', 'telegram_id', 'DESC'); ?></th>
+                    <th style="width:150px"><?php echo WaterPrize_Pages::sort_link('Имя', 'name'); ?></th>
+                    <th style="width:150px"><?php echo WaterPrize_Pages::sort_link('Категория', 'category'); ?></th>
+                    <th style="width:80px"><?php echo WaterPrize_Pages::sort_link('Статус', 'is_active', 'DESC'); ?></th>
+                    <th style="width:150px"><?php echo WaterPrize_Pages::sort_link('Дата', 'created_at', 'DESC'); ?></th>
                     <th style="width:120px">Действия</th>
                 </tr>
             </thead>

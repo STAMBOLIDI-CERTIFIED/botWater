@@ -38,6 +38,15 @@ $tab = $tab ?? 'list';
                         <code><?php echo esc_html($edit_category['color']); ?></code>
                     </td></tr>
                     <tr><th>Баллы за скан</th><td><strong><?php echo esc_html($edit_category['scan_points'] ?? 10); ?></strong> баллов</td></tr>
+                    <tr><th>Порог подарка</th><td>
+                        <?php $gthr = (int)($edit_category['gift_threshold_xp'] ?? 0); ?>
+                        <?php if ($gthr > 0): ?>
+                            <strong><?php echo esc_html($gthr); ?> XP</strong>, лимит:
+                            <?php echo (int)($edit_category['gift_limit'] ?? 0) > 0 ? esc_html($edit_category['gift_limit']) : 'без ограничения'; ?>
+                        <?php else: ?>
+                            <span class="description">выключен</span>
+                        <?php endif; ?>
+                    </td></tr>
                     <?php if (!empty($edit_category['logo_url'])): ?>
                         <tr><th>Логотип</th><td><img src="<?php echo esc_url($edit_category['logo_url']); ?>" style="max-width:80px;max-height:80px;border-radius:8px;object-fit:cover;"></td></tr>
                     <?php endif; ?>
@@ -212,6 +221,25 @@ $tab = $tab ?? 'list';
                     </td>
                 </tr>
                 <tr>
+                    <th><label for="gift_threshold_xp">Порог опыта для подарка</label></th>
+                    <td>
+                        <input type="number" id="gift_threshold_xp" name="gift_threshold_xp" min="0" style="width:120px;"
+                               value="<?php echo esc_attr($edit_category['gift_threshold_xp'] ?? 0); ?>">
+                        <span class="description">
+                            XP у этого партнёра, после которых пользователь может забрать подарок.
+                            <strong>0 — подарки отключены.</strong> Свой порог есть у каждого партнёра отдельно.
+                        </span>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="gift_limit">Лимит подарков</label></th>
+                    <td>
+                        <input type="number" id="gift_limit" name="gift_limit" min="0" style="width:120px;"
+                               value="<?php echo esc_attr($edit_category['gift_limit'] ?? 0); ?>">
+                        <span class="description">максимум подарков этого партнёра всего. <strong>0 — без ограничения.</strong></span>
+                    </td>
+                </tr>
+                <tr>
                     <th><label for="logo_url">Логотип</label></th>
                     <td>
                         <div style="display:flex;align-items:center;gap:12px;">
@@ -280,21 +308,22 @@ $tab = $tab ?? 'list';
             <table class="wp-list-table widefat fixed striped">
                 <thead>
                 <tr>
-                    <th style="width:40px">ID</th>
+                    <th style="width:40px"><?php echo WaterPrize_Pages::sort_link('ID', 'id', 'DESC'); ?></th>
                     <th style="width:50px">Иконка</th>
-                    <th>Название</th>
-                    <th>Подзаголовок</th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Название', 'title'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Подзаголовок', 'subtitle'); ?></th>
                     <th style="width:70px">Цвет</th>
-                    <th style="width:80px">Баллы</th>
-                    <th style="width:60px">Порядок</th>
-                    <th style="width:70px">Статус</th>
+                    <th style="width:80px"><?php echo WaterPrize_Pages::sort_link('Баллы', 'scan_points', 'DESC'); ?></th>
+                    <th style="width:90px">Подарок</th>
+                    <th style="width:60px"><?php echo WaterPrize_Pages::sort_link('Порядок', 'sort_order'); ?></th>
+                    <th style="width:70px"><?php echo WaterPrize_Pages::sort_link('Статус', 'is_active', 'DESC'); ?></th>
                     <th style="width:140px">QR-код</th>
                     <th style="width:120px">Действия</th>
                 </tr>
                 </thead>
                 <tbody>
                 <?php if (empty($categories)): ?>
-                    <tr><td colspan="10">Нет партнёров. Добавьте первого!</td></tr>
+                    <tr><td colspan="11">Нет партнёров. Добавьте первого!</td></tr>
                 <?php else: foreach ($categories as $c): ?>
                     <tr>
                         <td><?php echo esc_html($c['id']); ?></td>
@@ -311,6 +340,14 @@ $tab = $tab ?? 'list';
                             <span style="display:inline-block;width:24px;height:24px;border-radius:4px;background:<?php echo esc_attr($c['color']); ?>;vertical-align:middle;"></span>
                         </td>
                         <td><strong><?php echo esc_html($c['scan_points'] ?? 10); ?></strong></td>
+                        <td>
+                            <?php $thr = (int)($c['gift_threshold_xp'] ?? 0); ?>
+                            <?php if ($thr > 0): ?>
+                                <span class="wpz-badge wpz-blue"><?php echo esc_html($thr); ?> XP</span>
+                            <?php else: ?>
+                                <span class="wpz-badge wpz-gray">выкл</span>
+                            <?php endif; ?>
+                        </td>
                         <td><?php echo esc_html($c['sort_order']); ?></td>
                         <td>
                             <?php if ($c['is_active']): ?>
@@ -494,6 +531,22 @@ $tab = $tab ?? 'list';
     <div class="wpz-card">
         <div class="wpz-table-header">
             <h2>Все призы <span class="wpz-count"><?php echo count($prizes); ?></span></h2>
+            <form method="get" class="wpz-search-row">
+                <input type="hidden" name="page" value="wpz-partners">
+                <input type="hidden" name="tab" value="prizes">
+                <select name="p_partner">
+                    <option value="">Все партнёры</option>
+                    <?php foreach ($categories as $c): ?>
+                        <option value="<?php echo esc_attr($c['id']); ?>" <?php selected($prize_partner, $c['id']); ?>>
+                            <?php echo esc_html($c['icon'] . ' ' . $c['title']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <button type="submit" class="button">🔍 Показать</button>
+                <?php if ($prize_partner): ?>
+                    <a href="<?php echo admin_url('admin.php?page=wpz-partners&tab=prizes'); ?>" class="button">Сбросить</a>
+                <?php endif; ?>
+            </form>
         </div>
         <div class="wpz-table-wrap">
             <table class="wp-list-table widefat fixed striped">
@@ -574,6 +627,14 @@ $tab = $tab ?? 'list';
             <input type="hidden" name="page" value="wpz-partners">
             <input type="hidden" name="tab" value="orders">
             <input type="search" name="order_search" placeholder="Поиск по имени, призу или ID..." value="<?php echo esc_attr($order_search ?? ''); ?>" class="regular-text">
+            <select name="o_partner">
+                <option value="">Все партнёры</option>
+                <?php foreach ($categories as $c): ?>
+                    <option value="<?php echo esc_attr($c['id']); ?>" <?php selected($order_partner ?? 0, $c['id']); ?>>
+                        <?php echo esc_html($c['icon'] . ' ' . $c['title']); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
             <select name="order_status">
                 <option value="">Все статусы</option>
                 <option value="pending" <?php echo ($order_status ?? '') === 'pending' ? 'selected' : ''; ?>>Ожидает</option>
@@ -583,6 +644,9 @@ $tab = $tab ?? 'list';
                 <option value="cancelled" <?php echo ($order_status ?? '') === 'cancelled' ? 'selected' : ''; ?>>Отменён</option>
             </select>
             <button type="submit" class="button">🔍 Найти</button>
+            <?php if (!empty($order_partner)): ?>
+                <a href="<?php echo admin_url('admin.php?page=wpz-partners&tab=orders'); ?>" class="button">Сбросить</a>
+            <?php endif; ?>
         </form>
         <table class="wp-list-table widefat fixed striped">
             <thead>
@@ -870,15 +934,15 @@ $tab = $tab ?? 'list';
         <table class="widefat striped" style="margin-top:8px;">
             <thead>
                 <tr>
-                    <th>Партнёр</th>
-                    <th>QR-код</th>
-                    <th>Баллы за скан</th>
-                    <th>Всего сканов</th>
-                    <th>Уник. пользователей</th>
-                    <th>Покупателей</th>
-                    <th>Конверсия</th>
-                    <th>Баллов начислено</th>
-                    <th>Последний скан</th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Партнёр', 'partner_name'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('QR-код', 'qr_code'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Баллы за скан', 'scan_points', 'DESC'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Всего сканов', 'total_scans', 'DESC'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Уник. пользователей', 'unique_users', 'DESC'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Покупателей', 'buyers_count', 'DESC'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Конверсия', 'conversion', 'DESC'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Баллов начислено', 'total_points', 'DESC'); ?></th>
+                    <th><?php echo WaterPrize_Pages::sort_link('Последний скан', 'last_scan_at', 'DESC'); ?></th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -898,7 +962,7 @@ $tab = $tab ?? 'list';
                             <td><?php echo number_format_i18n($row['total_points']); ?></td>
                             <td><?php echo $row['last_scan_at'] ? date_i18n('d.m.Y H:i', strtotime($row['last_scan_at'])) : '—'; ?></td>
                             <td>
-                                <a href="?page=wpz-partners&tab=stats&partner_id=<?php echo $row['category_id']; ?>" class="button button-small">Детали</a>
+                                <a href="?page=wpz-partners&amp;tab=stats&amp;partner_id=<?php echo (int)$row['category_id']; ?><?php echo isset($_GET['sort']) && $_GET['sort'] !== '' ? '&amp;sort=' . rawurlencode(sanitize_text_field($_GET['sort'])) : ''; ?><?php echo isset($_GET['dir']) && $_GET['dir'] !== '' ? '&amp;dir=' . rawurlencode(sanitize_text_field($_GET['dir'])) : ''; ?>" class="button button-small">Детали</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -1120,6 +1184,9 @@ document.addEventListener('DOMContentLoaded', function() {
         var p = new URLSearchParams();
         p.set('page', 'wpz-partners');
         p.set('tab', 'stats');
+        var cur = new URLSearchParams(window.location.search);
+        if (cur.get('sort')) p.set('sort', cur.get('sort'));
+        if (cur.get('dir')) p.set('dir', cur.get('dir'));
         for (var k in params) {
             if (params[k] !== undefined && params[k] !== '' && params[k] !== '0') {
                 p.set(k, params[k]);

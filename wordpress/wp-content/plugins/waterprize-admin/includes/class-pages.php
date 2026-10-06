@@ -42,6 +42,55 @@ class WaterPrize_Pages {
         }
     }
 
+    /**
+     * Ссылка сортировки для заголовка колонки.
+     * Сохраняет текущие GET-параметры, переключает dir при повторном клике.
+     */
+    public static function sort_link($label, $key, $default_dir = 'ASC') {
+        $current = sanitize_text_field($_GET['sort'] ?? '');
+        $dir_req = strtoupper(sanitize_text_field($_GET['dir'] ?? ''));
+        $dir = $dir_req === 'DESC' ? 'DESC' : ($dir_req === 'ASC' ? 'ASC' : $default_dir);
+        $active = ($current === $key);
+        $next = $active ? ($dir === 'ASC' ? 'DESC' : 'ASC') : $default_dir;
+
+        $params = [];
+        foreach ($_GET as $k => $v) {
+            if (in_array($k, ['edit', 'edit_prize', 'edit_account'], true)) continue;
+            if (is_array($v)) continue;
+            if ($v === '' || $v === null) continue;
+            $params[$k] = (string)$v;
+        }
+        $params['sort'] = $key;
+        $params['dir'] = $next;
+
+        // Берём путь без query, т.к. add_query_arg() переиспользует REQUEST_URI
+        // вместе с edit/edit_prize/edit_account, которые нам нужно убрать.
+        $base = strtok($_SERVER['REQUEST_URI'] ?? admin_url('admin.php'), '?');
+        $url = $base . '?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        $arrow = $active ? ($dir === 'ASC' ? '▲' : '▼') : '<span class="wpz-sort-idle">↕</span>';
+        $cls = 'wpz-sort' . ($active ? ' wpz-sort-active' : '');
+
+        return '<a class="' . $cls . '" href="' . esc_url($url) . '">' . esc_html($label) . '<span class="wpz-sort-arrow">' . $arrow . '</span></a>';
+    }
+
+    /**
+     * Кнопка «Отменить заказ». Возврат отзывает начисленный по заказу опыт
+     * (см. WaterPrize_DB::sync_order_xp).
+     */
+    public static function cancel_order_button($order) {
+        ob_start();
+        ?>
+        <form method="post" style="display:inline">
+            <?php wp_nonce_field('wpz_action'); ?>
+            <input type="hidden" name="action" value="update_order_status">
+            <input type="hidden" name="order_id" value="<?php echo esc_attr($order['id']); ?>">
+            <button type="submit" name="new_status" value="cancelled" class="button button-small"
+                    onclick="return confirm('Отменить заказ? Начисленный по нему опыт будет списан.')">❌ Отменить</button>
+        </form>
+        <?php
+        return ob_get_clean();
+    }
+
     public static function handle_actions() {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') return;
         if (!current_user_can('manage_options')) return;
@@ -207,6 +256,8 @@ class WaterPrize_Pages {
                 $allowed = ['pending', 'approved', 'shipped', 'completed', 'cancelled'];
                 if ($order_id && in_array($new_status, $allowed)) {
                     $db->update_order_status($order_id, $new_status);
+                    // Возврат (cancel) отзывает опыт по заказу, подтверждение — возвращает
+                    $db->sync_order_xp($order_id);
                 }
                 wp_redirect(admin_url('admin.php?page=wpz-orders&msg=' . urlencode("Заказ #{$order_id} обновлён")));
                 exit;
@@ -314,7 +365,9 @@ class WaterPrize_Pages {
                     self::normalize_media_url($_POST['logo_url'] ?? ''),
                     esc_url_raw($_POST['website'] ?? ''),
                     esc_url_raw($_POST['telegram'] ?? ''),
-                    sanitize_textarea_field($_POST['info'] ?? '')
+                    sanitize_textarea_field($_POST['info'] ?? ''),
+                    (int)($_POST['gift_threshold_xp'] ?? 0),
+                    (int)($_POST['gift_limit'] ?? 0)
                 );
                 wp_redirect(admin_url('admin.php?page=wpz-partners&msg=' . urlencode('Партнёр добавлен')));
                 exit;
@@ -334,7 +387,9 @@ class WaterPrize_Pages {
                     self::normalize_media_url($_POST['logo_url'] ?? ''),
                     esc_url_raw($_POST['website'] ?? ''),
                     esc_url_raw($_POST['telegram'] ?? ''),
-                    sanitize_textarea_field($_POST['info'] ?? '')
+                    sanitize_textarea_field($_POST['info'] ?? ''),
+                    (int)($_POST['gift_threshold_xp'] ?? 0),
+                    (int)($_POST['gift_limit'] ?? 0)
                 );
                 wp_redirect(admin_url('admin.php?page=wpz-partners&msg=' . urlencode('Партнёр обновлён')));
                 exit;
@@ -418,6 +473,12 @@ class WaterPrize_Pages {
                     }
                 }
                 wp_redirect(admin_url('admin.php?page=wpz-bot-settings&msg=' . urlencode('Настройки бота сохранены')));
+                exit;
+
+            case 'save_gift_settings':
+                $db->set_setting('gift_prize_id', (int)($_POST['gift_prize_id'] ?? 0));
+                $db->set_setting('gift_ttl_days', max(0, (int)($_POST['gift_ttl_days'] ?? 30)));
+                wp_redirect(admin_url('admin.php?page=wpz-gifts&msg=' . urlencode('Настройки подарка сохранены')));
                 exit;
         }
     }
@@ -630,27 +691,54 @@ class WaterPrize_Pages {
         include __DIR__ . '/../templates/bot-settings.php';
     }
 
+    // ─── Подарки от любимого партнёра ─────────────────
+    public static function gifts() {
+        $db = self::db();
+        $partner_id = (int)($_GET['g_partner'] ?? 0);
+        $gifts = $db->get_gifts($partner_id);
+        $stats = $db->get_gift_stats();
+        $favorites = $db->get_favorite_partners();
+        $summary = $db->get_partner_xp_summary();
+        $categories = $db->get_categories('title', 'ASC');
+        $prizes = $db->get_prizes();
+        $values = [
+            'gift_prize_id' => (int)($db->get_setting('gift_prize_id') ?: 0),
+            'gift_ttl_days' => (int)($db->get_setting('gift_ttl_days') ?: 30),
+        ];
+        include __DIR__ . '/../templates/gifts.php';
+    }
+
     // ─── Unified Partners Page ────────────────────────
     public static function partners() {
         $db = self::db();
         $tab = sanitize_text_field($_GET['tab'] ?? 'list');
 
+        $sort = sanitize_text_field($_GET['sort'] ?? '');
+        $dir_req = strtoupper(sanitize_text_field($_GET['dir'] ?? ''));
+        $dir = $dir_req === 'DESC' ? 'DESC' : ($dir_req === 'ASC' ? 'ASC' : '');
+
+        // Дефолтные направления сортировки, когда параметры не заданы
+        $list_dir = $dir ?: 'ASC';
+        $acc_dir = $dir ?: 'DESC';
+        $stats_dir = $dir ?: 'DESC';
+
         // Partner list data
-        $categories = $db->get_categories();
+        $categories = $db->get_categories($tab === 'list' && $sort ? $sort : 'sort_order', $list_dir);
         $edit_category = null;
         if (!empty($_GET['edit'])) {
             $edit_category = $db->get_category((int)$_GET['edit']);
         }
 
         // Partner accounts data
-        $accounts = $db->get_partner_accounts();
+        $accounts = $db->get_partner_accounts($tab === 'accounts' && $sort ? $sort : 'created_at', $acc_dir);
         $edit_account = null;
         if (!empty($_GET['edit_account'])) {
             $edit_account = $db->get_partner_account((int)$_GET['edit_account']);
         }
 
-        // Prizes data
-        $prizes = $db->get_prizes();
+        // Prizes data (optional filter by partner/brand)
+        $prize_partner = $tab === 'prizes' ? (int)($_GET['p_partner'] ?? 0) : 0;
+        $prizes = $db->get_prizes($prize_partner);
         $edit_prize = null;
         if (!empty($_GET['edit_prize'])) {
             $edit_prize = $db->get_prize((int)$_GET['edit_prize']);
@@ -661,7 +749,7 @@ class WaterPrize_Pages {
         $from = sanitize_text_field($_GET['from'] ?? '');
         $to = sanitize_text_field($_GET['to'] ?? '');
         $category_id = (int)($_GET['partner_id'] ?? 0);
-        $summary = $db->get_partner_stats_summary();
+        $summary = $db->get_partner_stats_summary($tab === 'stats' && $sort ? $sort : 'total_scans', $stats_dir);
         $chart_data = $db->get_partner_scans_chart($period, $from, $to, $category_id);
         $detail = [];
         if ($category_id > 0) {
@@ -676,8 +764,9 @@ class WaterPrize_Pages {
         $movement = $tab === 'movement' ? $db->get_user_movement($m_search, $m_partner, $m_status, 500) : [];
         $movement_summary = $tab === 'movement' ? $db->get_movement_summary($m_partner) : [];
 
-        // Orders data
-        $all_orders = $db->get_all_orders(500);
+        // Orders data (optional filter by partner/brand)
+        $order_partner = $tab === 'orders' ? (int)($_GET['o_partner'] ?? 0) : 0;
+        $all_orders = $db->get_all_orders(500, 0, $order_partner);
         $order_search = sanitize_text_field($_GET['order_search'] ?? '');
         $order_status = sanitize_text_field($_GET['order_status'] ?? '');
         if ($order_search) {

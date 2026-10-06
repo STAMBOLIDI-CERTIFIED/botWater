@@ -186,13 +186,82 @@ class WaterPrize_DB {
         $user = $this->get_user($telegram_id);
         if (!$user) return false;
         $new_xp = max(0, ($user['tree_xp'] ?? 0) + $xp);
-        $new_level = 1;
-        if ($new_xp >= 5000) $new_level = 6;
-        elseif ($new_xp >= 2000) $new_level = 5;
-        elseif ($new_xp >= 1000) $new_level = 4;
-        elseif ($new_xp >= 500) $new_level = 3;
-        elseif ($new_xp >= 100) $new_level = 2;
+        $new_level = $this->calc_tree_level($new_xp);
         return $this->execute('UPDATE users SET tree_xp = ?, tree_level = ? WHERE telegram_id = ?', [$new_xp, $new_level, (int)$telegram_id]);
+    }
+
+    /**
+     * Уровень дерева по общему опыту. Пороги берутся из настроек бота,
+     * дефолты совпадают с backend (app/database.py::_calc_level).
+     */
+    public function calc_tree_level($xp) {
+        $defaults = [2 => 100, 3 => 500, 4 => 1000, 5 => 2000, 6 => 5000];
+        $level = 1;
+        foreach ($defaults as $lvl => $default) {
+            $saved = $this->get_setting('tree_threshold_' . $lvl);
+            $threshold = ($saved === null || $saved === '') ? $default : (int)$saved;
+            if ($xp >= $threshold) $level = $lvl;
+        }
+        return min($level, 6);
+    }
+
+    /**
+     * Синхронизация опыта по заказу.
+     * Отмена заказа (возврат) отзывает начисленный опыт, повторное подтверждение возвращает его.
+     * Опыт идёт и в общий счётчик (users.tree_xp), и партнёру (user_partner_xp).
+     */
+    public function sync_order_xp($order_id) {
+        $order = $this->query_one(
+            'SELECT o.id, o.status, u.telegram_id FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ?',
+            [(int)$order_id]
+        );
+        if (!$order) return false;
+
+        $coupons = $this->query(
+            'SELECT id, xp_granted, xp_category_id, xp_revoked FROM user_coupons WHERE order_id = ?',
+            [(int)$order_id]
+        );
+
+        $cancelled = ($order['status'] === 'cancelled');
+        $delta = 0;
+        $to_revoke = [];
+        $to_restore = [];
+        foreach ($coupons as $c) {
+            $xp = (int)($c['xp_granted'] ?? 0);
+            if ($xp <= 0) continue;
+            $revoked = !empty($c['xp_revoked']);
+            if ($cancelled && !$revoked) {
+                $delta -= $xp;
+                $to_revoke[] = $c;
+            } elseif (!$cancelled && $revoked) {
+                $delta += $xp;
+                $to_restore[] = $c;
+            }
+        }
+        if ($delta === 0) return true;
+
+        foreach ($to_revoke as $c) {
+            $this->execute('UPDATE user_coupons SET xp_revoked = TRUE WHERE id = ?', [(int)$c['id']]);
+            $cat = (int)($c['xp_category_id'] ?? 0);
+            if ($cat > 0) {
+                $this->execute(
+                    'UPDATE user_partner_xp SET xp = GREATEST(xp - ?, 0) WHERE user_id = (SELECT user_id FROM user_coupons WHERE id = ?) AND category_id = ?',
+                    [(int)$c['xp_granted'], (int)$c['id'], $cat]
+                );
+            }
+        }
+        foreach ($to_restore as $c) {
+            $this->execute('UPDATE user_coupons SET xp_revoked = FALSE WHERE id = ?', [(int)$c['id']]);
+            $cat = (int)($c['xp_category_id'] ?? 0);
+            if ($cat > 0) {
+                $this->execute(
+                    'UPDATE user_partner_xp SET xp = xp + ? WHERE user_id = (SELECT user_id FROM user_coupons WHERE id = ?) AND category_id = ?',
+                    [(int)$c['xp_granted'], (int)$c['id'], $cat]
+                );
+            }
+        }
+
+        return $this->update_tree_xp($order['telegram_id'], $delta);
     }
 
     public function get_users_stats() {
@@ -376,14 +445,18 @@ class WaterPrize_DB {
         );
     }
 
-    public function get_all_orders($limit = 200, $offset = 0) {
-        return $this->query(
-            "SELECT o.*, u.telegram_id, u.name, u.phone, p.name as prize_name
-             FROM orders o
-             LEFT JOIN users u ON o.user_id = u.id
-             LEFT JOIN prizes p ON o.prize_id = p.id
-             ORDER BY o.id DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset
-        );
+    public function get_all_orders($limit = 200, $offset = 0, $category_id = 0) {
+        $sql = "SELECT o.*, u.telegram_id, u.name, u.phone, p.name as prize_name, p.category_id as prize_category_id
+                FROM orders o
+                LEFT JOIN users u ON o.user_id = u.id
+                LEFT JOIN prizes p ON o.prize_id = p.id";
+        $params = [];
+        if ((int)$category_id > 0) {
+            $sql .= " WHERE p.category_id = ?";
+            $params[] = (int)$category_id;
+        }
+        $sql .= " ORDER BY o.id DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
+        return $this->query($sql, $params);
     }
 
     public function update_order_status($order_id, $status) {
@@ -391,7 +464,10 @@ class WaterPrize_DB {
     }
 
     // ─── Prizes ───────────────────────────────────────
-    public function get_prizes() {
+    public function get_prizes($category_id = 0) {
+        if ((int)$category_id > 0) {
+            return $this->query('SELECT * FROM prizes WHERE category_id = ? ORDER BY price_points ASC', [(int)$category_id]);
+        }
         return $this->query('SELECT * FROM prizes ORDER BY price_points ASC');
     }
 
@@ -419,8 +495,17 @@ class WaterPrize_DB {
     }
 
     // ─── Partner Accounts ──────────────────────────────
-    public function get_partner_accounts() {
-        return $this->query('SELECT * FROM partner_accounts ORDER BY created_at DESC');
+    public function get_partner_accounts($sort = 'created_at', $dir = 'DESC') {
+        $allowed = ['id', 'telegram_id', 'name', 'category', 'is_active', 'created_at'];
+        $sort = in_array($sort, $allowed, true) ? $sort : 'created_at';
+        $dir = strtoupper($dir) === 'DESC' ? 'DESC' : 'ASC';
+        $col = $sort === 'category' ? 'sc.title' : 'pa.' . $sort;
+        return $this->query(
+            "SELECT pa.*, sc.title AS category_title, sc.icon AS category_icon
+             FROM partner_accounts pa
+             LEFT JOIN shop_categories sc ON sc.id = pa.category_id
+             ORDER BY {$col} {$dir} NULLS LAST, pa.id DESC"
+        );
     }
 
     public function get_partner_account($id) {
@@ -447,8 +532,11 @@ class WaterPrize_DB {
     }
 
     // ─── Shop Categories ──────────────────────────────
-    public function get_categories() {
-        return $this->query('SELECT * FROM shop_categories ORDER BY sort_order ASC');
+    public function get_categories($sort = 'sort_order', $dir = 'ASC') {
+        $allowed = ['id', 'title', 'subtitle', 'scan_points', 'sort_order', 'is_active'];
+        $sort = in_array($sort, $allowed, true) ? $sort : 'sort_order';
+        $dir = strtoupper($dir) === 'DESC' ? 'DESC' : 'ASC';
+        return $this->query("SELECT * FROM shop_categories ORDER BY {$sort} {$dir}, id ASC");
     }
 
     public function get_category($id) {
@@ -461,18 +549,18 @@ class WaterPrize_DB {
         return $rows[0] ?? null;
     }
 
-    public function add_category($title, $subtitle, $description, $icon, $color, $sort_order, $is_active = true, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '') {
+    public function add_category($title, $subtitle, $description, $icon, $color, $sort_order, $is_active = true, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '', $gift_threshold_xp = 0, $gift_limit = 0) {
         $qr_code = 'partner_' . time() . '_' . bin2hex(random_bytes(4));
         return $this->insert(
-            'INSERT INTO shop_categories (title, subtitle, description, icon, image_url, logo_url, color, sort_order, is_active, qr_code, scan_points, website, telegram, info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, $qr_code, (int)$scan_points, $website, $telegram, $info]
+            'INSERT INTO shop_categories (title, subtitle, description, icon, image_url, logo_url, color, sort_order, is_active, qr_code, scan_points, website, telegram, info, gift_threshold_xp, gift_limit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, $qr_code, (int)$scan_points, $website, $telegram, $info, (int)$gift_threshold_xp, (int)$gift_limit]
         );
     }
 
-    public function update_category($id, $title, $subtitle, $description, $icon, $color, $sort_order, $is_active, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '') {
+    public function update_category($id, $title, $subtitle, $description, $icon, $color, $sort_order, $is_active, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '', $gift_threshold_xp = 0, $gift_limit = 0) {
         return $this->execute(
-            'UPDATE shop_categories SET title=?, subtitle=?, description=?, icon=?, image_url=?, logo_url=?, color=?, sort_order=?, is_active=?, scan_points=?, website=?, telegram=?, info=? WHERE id=?',
-            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, (int)$scan_points, $website, $telegram, $info, (int)$id]
+            'UPDATE shop_categories SET title=?, subtitle=?, description=?, icon=?, image_url=?, logo_url=?, color=?, sort_order=?, is_active=?, scan_points=?, website=?, telegram=?, info=?, gift_threshold_xp=?, gift_limit=? WHERE id=?',
+            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, (int)$scan_points, $website, $telegram, $info, (int)$gift_threshold_xp, (int)$gift_limit, (int)$id]
         );
     }
 
@@ -489,6 +577,93 @@ class WaterPrize_DB {
     public function count_prizes_in_category($category_id) {
         $row = $this->query('SELECT COUNT(*) as cnt FROM prizes WHERE category_id = ?', [(int)$category_id]);
         return $row[0]['cnt'] ?? 0;
+    }
+
+    // ─── Partner Gifts (подарок от любимого партнёра) ──
+    public function get_gifts($partner_id = 0, $limit = 200) {
+        $sql = "SELECT g.*, u.name AS user_name, u.telegram_id,
+                       sc.title AS partner_title, sc.icon AS partner_icon, sc.color AS partner_color,
+                       p.name AS prize_name, p.image_url AS prize_image, p.price_points AS prize_price,
+                       uc.qr_code, uc.status AS coupon_status, uc.expires_at AS coupon_expires_at
+                FROM user_gifts g
+                LEFT JOIN users u ON u.id = g.user_id
+                LEFT JOIN shop_categories sc ON sc.id = g.category_id
+                LEFT JOIN prizes p ON p.id = g.prize_id
+                LEFT JOIN user_coupons uc ON uc.id = g.coupon_id";
+        $params = [];
+        if ((int)$partner_id > 0) {
+            $sql .= ' WHERE g.category_id = ?';
+            $params[] = (int)$partner_id;
+        }
+        $sql .= ' ORDER BY g.created_at DESC LIMIT ' . (int)$limit;
+        return $this->query($sql, $params);
+    }
+
+    public function get_gift_stats() {
+        $row = $this->query_one(
+            "SELECT COUNT(*)::int AS total,
+                    COUNT(*) FILTER (WHERE status = 'claimed')::int AS claimed,
+                    COUNT(*) FILTER (WHERE status = 'expired')::int AS expired,
+                    COUNT(*) FILTER (WHERE status = 'revoked')::int AS revoked,
+                    COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days')::int AS last_30d
+             FROM user_gifts"
+        );
+        return $row ?: [];
+    }
+
+    /**
+     * Любимый партнёр по каждому пользователю: больше всего подтверждённых
+     * оплаченных заказов, при равенстве — последняя покупка.
+     */
+    public function get_favorite_partners($limit = 500) {
+        $rows = $this->query(
+            "WITH ranked AS (
+                SELECT o.user_id, p.category_id,
+                       COUNT(*)::int AS purchases,
+                       MAX(o.created_at) AS last_purchase
+                FROM orders o
+                JOIN prizes p ON p.id = o.prize_id
+                WHERE o.status IN ('approved', 'completed')
+                  AND p.category_id IS NOT NULL
+                GROUP BY o.user_id, p.category_id
+            ), fav AS (
+                SELECT DISTINCT ON (user_id) user_id, category_id, purchases, last_purchase
+                FROM ranked
+                ORDER BY user_id, purchases DESC, last_purchase DESC
+            )
+            SELECT f.user_id, f.category_id, f.purchases, f.last_purchase,
+                   u.name AS user_name, u.telegram_id,
+                   sc.title AS partner_title, sc.icon AS partner_icon, sc.color AS partner_color,
+                   COALESCE(upx.xp, 0) AS partner_xp,
+                   COALESCE(sc.gift_threshold_xp, 0) AS gift_threshold,
+                   COALESCE(sc.gift_limit, 0) AS gift_limit,
+                   (SELECT COUNT(*) FROM user_gifts g
+                    WHERE g.user_id = f.user_id AND g.category_id = f.category_id
+                      AND g.status <> 'revoked') AS gifts_claimed
+            FROM fav f
+            JOIN users u ON u.id = f.user_id
+            LEFT JOIN shop_categories sc ON sc.id = f.category_id
+            LEFT JOIN user_partner_xp upx ON upx.user_id = f.user_id AND upx.category_id = f.category_id
+            ORDER BY f.purchases DESC, f.last_purchase DESC
+            LIMIT " . (int)$limit
+        );
+        return $rows ?: [];
+    }
+
+    /** Сводка опыта по партнёрам (все пользователи). */
+    public function get_partner_xp_summary() {
+        return $this->query(
+            "SELECT sc.id, sc.title, sc.icon, sc.color,
+                    COALESCE(sc.gift_threshold_xp, 0) AS gift_threshold,
+                    COALESCE(sc.gift_limit, 0) AS gift_limit,
+                    COALESCE(SUM(upx.xp), 0)::int AS total_xp,
+                    COUNT(upx.id)::int AS users_with_xp,
+                    (SELECT COUNT(*) FROM user_gifts g WHERE g.category_id = sc.id AND g.status <> 'revoked') AS gifts_issued
+             FROM shop_categories sc
+             LEFT JOIN user_partner_xp upx ON upx.category_id = sc.id
+             GROUP BY sc.id, sc.title, sc.icon, sc.color, sc.gift_threshold_xp, sc.gift_limit
+             ORDER BY total_xp DESC, sc.title ASC"
+        ) ?: [];
     }
 
     // ─── Admins ───────────────────────────────────────
@@ -882,7 +1057,21 @@ class WaterPrize_DB {
     }
 
     // ─── Partner Statistics ──────────────────────────────
-    public function get_partner_stats_summary() {
+    public function get_partner_stats_summary($sort = 'total_scans', $dir = 'DESC') {
+        $allowed = [
+            'partner_name'   => 'sc.title',
+            'qr_code'        => 'sc.qr_code',
+            'scan_points'    => 'sc.scan_points',
+            'total_scans'    => 'COALESCE(ps.total_scans, 0)',
+            'unique_users'   => 'COALESCE(ps.unique_users, 0)',
+            'buyers_count'   => 'COALESCE(pb.buyers_count, 0)',
+            'conversion'     => 'CASE WHEN COALESCE(ps.unique_users, 0) > 0 THEN COALESCE(pb.buyers_count, 0)::numeric / ps.unique_users ELSE 0 END',
+            'total_points'   => 'COALESCE(ps.total_points, 0)',
+            'last_scan_at'   => 'ps.last_scan_at',
+        ];
+        $order = $allowed[$sort] ?? $allowed['total_scans'];
+        $dir = strtoupper($dir) === 'ASC' ? 'ASC' : 'DESC';
+
         return $this->query(
             "SELECT
                 sc.id as category_id,
@@ -914,7 +1103,7 @@ class WaterPrize_DB {
                 JOIN orders o ON o.prize_id = pr.id
                 GROUP BY sc2.id
              ) pb ON pb.category_id = sc.id
-             ORDER BY ps.total_scans DESC NULLS LAST"
+             ORDER BY {$order} {$dir} NULLS LAST"
         );
     }
 

@@ -59,6 +59,7 @@ $status_colors = ['pending' => 'yellow', 'approved' => 'blue', 'shipped' => 'blu
                                     <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
                                     <button type="submit" name="new_status" value="shipped" class="button button-small">📦 Отправлен</button>
                                 </form>
+                                <?php echo self::cancel_order_button($o); ?>
                             <?php elseif ($o['status'] === 'shipped'): ?>
                                 <form method="post" style="display:inline">
                                     <?php wp_nonce_field('wpz_action'); ?>
@@ -66,6 +67,9 @@ $status_colors = ['pending' => 'yellow', 'approved' => 'blue', 'shipped' => 'blu
                                     <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
                                     <button type="submit" name="new_status" value="completed" class="button button-small">✅ Выполнен</button>
                                 </form>
+                                <?php echo self::cancel_order_button($o); ?>
+                            <?php elseif ($o['status'] === 'completed'): ?>
+                                <?php echo self::cancel_order_button($o); ?>
                             <?php else: ?>
                                 <span class="wpz-badge wpz-gray">—</span>
                             <?php endif; ?>

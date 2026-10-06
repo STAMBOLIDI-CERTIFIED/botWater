@@ -454,8 +454,8 @@ var notifOpen = false;
         var d = await apiFetch('/notifications?user_id=' + uid);
         if (!d || !d.length) { l.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>'; var b = document.getElementById('bell-badge'); if (b) b.classList.remove('show'); return; }
         l.innerHTML = d.map(function(n) {
-            var ico = n.type === 'scan' ? '' + icon('drop') + '' : n.type === 'points' ? '' + icon('coin') + '' : n.type === 'donation' ? '' + icon('heart') + '' : '' + icon('raffle') + '';
-            var cls = n.type === 'scan' ? 'scan' : n.type === 'points' ? 'points' : n.type === 'donation' ? 'donation' : 'raffle';
+            var ico = n.type === 'scan' ? '' + icon('drop') + '' : n.type === 'points' ? '' + icon('coin') + '' : n.type === 'donation' ? '' + icon('heart') + '' : n.type === 'gift' ? '' + icon('gift') + '' : '' + icon('raffle') + '';
+            var cls = n.type === 'scan' ? 'scan' : n.type === 'points' ? 'points' : n.type === 'donation' ? 'donation' : n.type === 'gift' ? 'donation' : 'raffle';
             return '<div class="notif-item" onclick="event.stopPropagation();openPage(\'' + (n.link || 'menu') + '\')">'
                 + '<div class="notif-icon ' + cls + '">' + ico + '</div>'
                 + '<div class="notif-content"><div class="notif-title">' + esc(n.title || '') + '</div>'
@@ -545,14 +545,17 @@ async function loadMyCoupons() {
             list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('gift') + '</div><div class="empty-t">Купонов пока нет</div><div class="empty-d">Обменивайте баллы на призы в магазине</div></div>';
             return;
         }
-        var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк' };
-        var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444' };
+        var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк', revoked: 'Отозван' };
+        var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444', revoked: '#EF4444' };
         list.innerHTML = data.coupons.map(function(c, i) {
             var st = c.status || 'active';
             var stColor = statusColors[st] || '#999';
             var shortCode = (c.qr_code || '').replace('coupon_','');
             var uidLabel = 'Купон #' + c.id + (c.order_id ? ' • Заказ #' + c.order_id : '') + (shortCode ? ' • ' + shortCode : '');
             var idBadge = '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:2px 8px;font-size:11px;color:var(--text-dim);font-family:monospace">' + esc(uidLabel) + '</span>';
+            if (c.is_gift) {
+                idBadge += '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(236,64,122,0.14);border:1px solid rgba(236,64,122,0.3);border-radius:8px;padding:2px 8px;font-size:11px;color:#F48FB1">' + icon('gift') + ' Подарок</span>';
+            }
             var imgHtml = c.prize_image
                 ? '<img class="coupon-card-img" src="' + esc(c.prize_image) + '" onerror="this.style.display=\'none\'">'
                 : '<div class="coupon-card-img-fallback">' + esc(c.partner_icon || '🎁') + '</div>';
@@ -560,12 +563,19 @@ async function loadMyCoupons() {
                 ? '<button class="coupon-card-btn" onclick="event.stopPropagation();openCouponModal(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')">Показать QR</button>'
                 : '';
             var copyBtn = '<button class="coupon-card-btn" style="margin-left:8px;background:var(--surface);border:1px solid var(--border)" onclick="event.stopPropagation();navigator.clipboard&&navigator.clipboard.writeText(\'' + esc(c.qr_code) + '\');showToast(\'Код скопирован\')">' + icon('clipboard') + ' Копировать код</button>';
+            var meta = c.is_gift
+                ? '🎁 Подарок от ' + esc(c.partner_name || 'партнёра') + ' • 0 XP'
+                : esc(c.partner_name || '') + ' • ' + (c.prize_price || 0) + ' баллов';
+            var expLine = c.is_gift && c.expires_at
+                ? '<div style="font-size:11px;color:#F48FB1;margin-top:2px">Действует до ' + new Date(c.expires_at).toLocaleDateString('ru-RU') + '</div>'
+                : '';
             return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + stColor + '">'
                 + '<div class="coupon-card-header">'
                 + '<div class="coupon-card-title">' + esc(c.prize_name || 'Приз') + '</div>'
-                + '<div class="coupon-card-status" style="color:' + stColor + '">' + statusLabels[st] + '</div>'
+                + '<div class="coupon-card-status" style="color:' + stColor + '">' + (statusLabels[st] || st) + '</div>'
                 + '</div>'
-                + '<div class="coupon-card-meta">' + esc(c.partner_name || '') + ' • ' + (c.prize_price || 0) + ' баллов</div>'
+                + '<div class="coupon-card-meta">' + meta + '</div>'
+                + expLine
                 + '<div style="margin:6px 0">' + idBadge + '</div>'
                 + '<div class="coupon-card-date">' + icon('clock') + ' ' + new Date(c.created_at).toLocaleString('ru-RU') + (c.used_at ? ' → ' + new Date(c.used_at).toLocaleString('ru-RU') : '') + '</div>'
                 + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' + btnHtml + copyBtn + '</div>'
@@ -592,10 +602,16 @@ async function loadMyCoupons() {
         nameEl.textContent = coupon.prize_name || 'Приз';
         descEl.textContent = coupon.prize_description || '';
 
-        var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк' };
-        var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444' };
+        var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк', revoked: 'Отозван' };
+        var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444', revoked: '#EF4444' };
         var st = coupon.status || 'active';
-        statusEl.innerHTML = '<span style="color:' + (statusColors[st] || '#999') + '">' + statusLabels[st] + '</span>';
+        var badgeHtml = coupon.is_gift
+            ? '<div style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;background:rgba(236,64,122,0.14);border:1px solid rgba(236,64,122,0.3);border-radius:8px;padding:2px 8px;font-size:11px;color:#F48FB1">' + icon('gift') + ' Подарок от партнёра • 0 XP</div>'
+            : '';
+        if (coupon.is_gift && coupon.expires_at) {
+            badgeHtml += '<div style="margin-top:6px;font-size:11px;color:#F48FB1">Действует до ' + new Date(coupon.expires_at).toLocaleDateString('ru-RU') + '</div>';
+        }
+        statusEl.innerHTML = '<span style="color:' + (statusColors[st] || '#999') + '">' + (statusLabels[st] || st) + '</span>' + badgeHtml;
 
         qrEl.innerHTML = '';
         actionEl.innerHTML = '';
@@ -758,7 +774,7 @@ async function startCouponScanner() {
                         document.getElementById('coupon-scanner-result').innerHTML = '✅ Купон использован!<br><b>' + esc(result.prize_name) + '</b><br>Пользователь: ' + esc(result.user_name);
                         showToast('Купон активирован!');
                     } else {
-                        var _errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'coupon_not_for_this_brand':'Этот купон принадлежит другому бренду — примите его у своего партнёра', 'partner_not_found':'Вы не партнёр' };
+                        var _errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'coupon_not_for_this_brand':'Этот купон принадлежит другому бренду — примите его у своего партнёра', 'coupon_expired':'Срок действия купона истёк', 'order_cancelled':'Заказ отменён — купон недействителен', 'partner_not_found':'Вы не партнёр' };
                         var _msg = _errMap[result.error] || result.error || 'Неизвестная ошибка';
                         document.getElementById('coupon-scanner-result').innerHTML = '❌ Ошибка: ' + esc(_msg);
                         zone.style.display = 'block';
@@ -1241,7 +1257,7 @@ function startScan() {
                             try{ tg.HapticFeedback.notificationOccurred('success'); }catch(e){}
                             cBtn.textContent = 'Готово'; cBtn.disabled = true;
                         } else {
-                            var errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'coupon_not_for_this_brand':'Этот купон принадлежит другому бренду — примите его у своего партнёра', 'partner_not_found':'Вы не партнёр', 'unauthorized':'Ошибка авторизации (откройте через Telegram)' };
+                            var errMap = { 'coupon_not_found':'Купон не найден', 'coupon_already_used':'Купон уже использован', 'coupon_not_for_this_brand':'Этот купон принадлежит другому бренду — примите его у своего партнёра', 'coupon_expired':'Срок действия купона истёк', 'order_cancelled':'Заказ отменён — купон недействителен', 'partner_not_found':'Вы не партнёр', 'unauthorized':'Ошибка авторизации (откройте через Telegram)' };
                             var msg = (res && (res.error || res.detail)) || ('HTTP ' + resp.status);
                             cStatus.innerHTML = icon('warning') + ' ' + esc(errMap[msg] || msg || 'Ошибка');
                             cBtn.disabled = false; cBtn.textContent = 'Попробовать снова';
@@ -1757,6 +1773,8 @@ async function loadTree() {
             const d = await apiFetch('/tree?user_id=' + uid);
             if (!d) { c.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('tree') + '</div><div class="empty-t">Ошибка загрузки</div><div class="empty-d">Попробуйте позже</div></div>'; return; }
             const xp = d.xp||0, lv = d.level||1, nx = d.next_level_xp||100, pr = d.progress||0;
+            const partners = Array.isArray(d.partners) ? d.partners : [];
+            const gift = d.gift || {};
             const sn = TL[lv-1]?.name||'Древо жизни', si = TL[lv-1]?.icon||'' + icon('star') + '', mx = lv>=6;
             let ex = '';
             for (let i=3;i<=12;i++) ex+='<div class="tree-leaf"></div>';
@@ -1767,10 +1785,12 @@ async function loadTree() {
             <div class="tree-art tree-l${Math.min(lv,6)}"><div class="tree-ground"></div><div class="tree-trunk"></div><div class="tree-top"></div>${ex}</div>
             <div class="xp-bar-wrap"><div class="xp-label"><span>${icon('bolt')} Опыт</span><span>${xp} ${mx?'★ MAX':'/ '+nx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${mx?100:pr}%"></div></div></div>
         </div>
+        ${treeGiftHtml(gift)}
         <div class="tree-stats">
             <div class="tree-stat"><div class="tree-stat-icon">${icon('chart')}</div><div class="tree-stat-val">${xp}</div><div class="tree-stat-lbl">опыта</div></div>
             <div class="tree-stat"><div class="tree-stat-icon">${si}</div><div class="tree-stat-val">${lv}</div><div class="tree-stat-lbl">уровень</div></div>
         </div>
+        ${treePartnersHtml(partners)}
         <div class="tree-levels"><div class="tree-levels-title">${icon('clipboard')} Уровни</div>
             ${TL.map(t => {
                 const a=t.level===lv, dn=t.level<lv, lk=t.level>lv;
@@ -1781,6 +1801,105 @@ async function loadTree() {
             document.getElementById('tree-container').innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('tree') + '</div><div class="empty-t">Ошибка</div><div class="empty-d">' + e.message + '</div></div>';
         }
     }
+
+    // Подарок любимого партнёра на странице дерева
+    function treeGiftHtml(gift) {
+        if (!gift || !gift.category_id) return '';
+        var reason = gift.reason || '';
+        if (reason === 'no_favorite') return '';
+        if (reason === 'ok' && gift.available) {
+            return '<div class="tree-gift-card available">'
+                + '<div class="tgc-emoji">' + (gift.icon || '🎁') + '</div>'
+                + '<div class="tgc-body">'
+                + '<div class="tgc-title">Подарок от партнёра готов!</div>'
+                + '<div class="tgc-sub">' + esc(gift.title || 'Любимый партнёр') + ' подготовил вам подарок — заберите его.</div>'
+                + '<button class="tgc-btn" onclick="claimPartnerGift()">' + icon('gift') + ' Забрать подарок</button>'
+                + '</div></div>';
+        }
+        if (reason === 'already_claimed') {
+            return '<div class="tree-gift-card">'
+                + '<div class="tgc-emoji">🎁</div>'
+                + '<div class="tgc-body">'
+                + '<div class="tgc-title">Подарок уже получен</div>'
+                + '<div class="tgc-sub">Партнёр «' + esc(gift.title || '') + '» выдал вам подарок. Найдите его в разделе «Купоны».</div>'
+                + '</div></div>';
+        }
+        if (reason === 'disabled') return '';
+        if (gift.threshold > 0) {
+            var pct = Math.min(100, Math.round((gift.xp || 0) / gift.threshold * 100));
+            return '<div class="tree-gift-card progress">'
+                + '<div class="tgc-emoji">' + esc(gift.icon || '🎁') + '</div>'
+                + '<div class="tgc-body">'
+                + '<div class="tgc-title">Подарок от партнёра «' + esc(gift.title || '') + '»</div>'
+                + '<div class="tgc-sub">' + (reason === 'limit_reached' ? 'Лимит подарков этого партнёра исчерпан.' : 'Накопите ' + gift.threshold + ' XP у любимого партнёра — и заберите подарок.') + '</div>'
+                + '<div class="tgc-bar"><div class="tgc-fill" style="width:' + pct + '%"></div></div>'
+                + '<div class="tgc-count">' + (gift.xp || 0) + ' / ' + gift.threshold + ' XP</div>'
+                + '</div></div>';
+        }
+        return '';
+    }
+
+    // Прогресс опыта отдельно по каждому партнёру
+    function treePartnersHtml(partners) {
+        if (!partners || !partners.length) return '';
+        var items = partners.map(function(p) {
+            var pct = p.threshold > 0 ? Math.min(100, Math.round(p.xp / p.threshold * 100)) : 0;
+            var bar = p.threshold > 0
+                ? '<div class="xp-track"><div class="xp-fill" style="width:' + pct + '%"></div></div>'
+                : '';
+            var badges = '';
+            if (p.is_favorite) badges += '<span class="tpi-badge fav">' + icon('star') + ' Любимый партнёр</span>';
+            if (p.gift_claimed) badges += '<span class="tpi-badge got">Подарок получен</span>';
+            return '<div class="tree-partner-item' + (p.is_favorite ? ' fav' : '') + '">'
+                + '<div class="tpi-icon">' + esc(p.icon || '🎁') + '</div>'
+                + '<div class="tpi-body">'
+                + '<div class="tpi-head"><span class="tpi-name">' + esc(p.title || 'Партнёр') + '</span>'
+                + '<span class="tpi-xp">' + p.xp + ' XP</span></div>'
+                + bar
+                + (p.threshold > 0 ? '<div class="tpi-progress">' + p.xp + ' / ' + p.threshold + ' XP до подарка</div>' : '')
+                + (badges ? '<div class="tpi-badges">' + badges + '</div>' : '')
+                + '</div></div>';
+        }).join('');
+        return '<div class="tree-partners"><div class="tree-partners-title">' + icon('heart') + ' Опыт по партнёрам</div>' + items + '</div>';
+    }
+
+    // Забрать подарок любимого партнёра
+    async function claimPartnerGift() {
+        var uid = getUID();
+        if (!uid) return;
+        var btn = document.querySelector('.tgc-btn');
+        if (btn) { btn.disabled = true; btn.textContent = 'Получаем подарок...'; }
+        try {
+            var resp = await fetch(API_BASE + '/tree/gift/claim', {
+                method: 'POST',
+                headers: _h({ 'Content-Type': 'application/json' }),
+                body: JSON.stringify({ user_id: uid })
+            });
+            var result = await resp.json().catch(function () { return {}; });
+            if (!resp.ok || !result.ok) {
+                var code = result.error || 'internal_error';
+                showToast(TREE_GIFT_ERRORS[code] || 'Не удалось получить подарок');
+                if (btn) { btn.disabled = false; btn.innerHTML = icon('gift') + ' Забрать подарок'; }
+                return;
+            }
+            showToast('Подарок получен! Покажите QR партнёру');
+            await loadTree();
+            if (result.coupon) setTimeout(function () { openCouponModal(result.coupon); }, 400);
+        } catch (e) {
+            showToast('Не удалось получить подарок');
+            if (btn) { btn.disabled = false; btn.innerHTML = icon('gift') + ' Забрать подарок'; }
+        }
+    }
+
+    var TREE_GIFT_ERRORS = {
+        no_favorite: 'Пока нет любимого партнёра',
+        disabled: 'Подарки этого партнёра отключены',
+        not_reached: 'Порог опыта ещё не достигнут',
+        already_claimed: 'Подарок уже получен',
+        limit_reached: 'Лимит подарков исчерпан',
+        gift_not_configured: 'Приз-подарок не настроен',
+        internal_error: 'Временная ошибка, попробуйте позже'
+    };
 
     // ═══════════════════════════════════════════
 // PAGE: SUPPORT CHAT

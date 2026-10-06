@@ -1,6 +1,6 @@
 import logging
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import asyncpg
 
@@ -368,6 +368,247 @@ class Database:
             prev = thresholds.get(level - 1, 0) if level > 1 else 0
             progress = min(100, int((current_xp - prev) / (next_xp - prev) * 100)) if next_xp > prev else 100
         return {"xp": current_xp, "level": level, "next_level_xp": next_xp, "progress": progress}
+
+    # ─── Подарок от любимого партнёра ──────────────────
+    #
+    # Опыт хранится общим (users.tree_xp) и отдельно по каждому партнёру (user_partner_xp).
+    # Любимый партнёр = больше всего подтверждённых оплаченных заказов,
+    # при равенстве — партнёр с более последней покупкой.
+    # Подарок выдаётся один раз за порог конкретного партнёра.
+
+    async def add_partner_xp(self, user_pk: int, category_id: int, xp: int):
+        if not user_pk or not category_id or not xp:
+            return
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "INSERT INTO user_partner_xp (user_id, category_id, xp, updated_at) "
+                "VALUES ($1, $2, $3, NOW()) "
+                "ON CONFLICT (user_id, category_id) "
+                "DO UPDATE SET xp = user_partner_xp.xp + EXCLUDED.xp, updated_at = NOW()",
+                user_pk, category_id, xp,
+            )
+
+    async def get_partner_xp(self, user_pk: int) -> list[dict]:
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT upx.category_id, upx.xp, sc.title, sc.icon, sc.color, "
+                "sc.gift_threshold_xp, sc.gift_limit "
+                "FROM user_partner_xp upx "
+                "LEFT JOIN shop_categories sc ON sc.id = upx.category_id "
+                "WHERE upx.user_id = $1 ORDER BY upx.xp DESC, upx.category_id ASC",
+                user_pk,
+            )
+        return [dict(r) for r in rows]
+
+    async def get_favorite_partner(self, user_pk: int) -> dict | None:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT p.category_id, COUNT(*)::int AS purchases, MAX(o.created_at) AS last_purchase "
+                "FROM orders o "
+                "JOIN prizes p ON p.id = o.prize_id "
+                "WHERE o.user_id = $1 "
+                "AND o.status IN ('approved', 'completed') "
+                "AND p.category_id IS NOT NULL "
+                "GROUP BY p.category_id "
+                "ORDER BY purchases DESC, last_purchase DESC "
+                "LIMIT 1",
+                user_pk,
+            )
+        return dict(row) if row else None
+
+    async def grant_coupon_xp(
+        self,
+        coupon_id: int,
+        user_pk: int,
+        xp: int,
+        category_id: int | None = None,
+        is_gift: bool = False,
+    ) -> dict:
+        """Начисляет опыт за использованный купон. Идемпотентно.
+
+        Цена использованного купона в баллах = опыт. Подарочные купоны дают 0 XP.
+        """
+        grant = 0 if is_gift else max(0, int(xp or 0))
+        # xp_granted IS NULL — купон ещё не обрабатывался; PATCH вернёт строку только
+        # если он реально сменил состояние, повторное начисление исключено.
+        rows = await self._fetch(
+            "user_coupons", f"id=eq.{coupon_id}&xp_granted=is.null",
+            "PATCH", {"xp_granted": grant, "xp_category_id": category_id},
+        )
+        if not rows:
+            return {"granted": 0, "processed": False}
+        if grant <= 0:
+            return {"granted": 0, "processed": True}
+
+        user = await self._fetch_one("users", f"id=eq.{user_pk}&select=telegram_id")
+        if user and user.get("telegram_id"):
+            await self.add_tree_xp(user["telegram_id"], grant)
+        if category_id:
+            await self.add_partner_xp(user_pk, category_id, grant)
+        return {"granted": grant, "processed": True}
+
+    async def grant_order_xp(self, order_id: int, user_pk: int, xp: int, category_id: int | None) -> dict:
+        """Начисляет опыт по всем купонам заказа (в заказе может быть несколько)."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, is_gift FROM user_coupons "
+                "WHERE order_id = $1 AND xp_granted IS NULL",
+                order_id,
+            )
+        total = 0
+        for row in rows:
+            res = await self.grant_coupon_xp(
+                row["id"], user_pk, xp, category_id, is_gift=bool(row["is_gift"]))
+            total += res.get("granted", 0)
+        return {"granted": total, "coupons": len(rows)}
+
+    async def get_partner_gift_info(self, user_pk: int) -> dict:
+        """Прогресс по партнёрам, любимый партнёр и доступность подарка."""
+        rows = await self.get_partner_xp(user_pk)
+        favorite = await self.get_favorite_partner(user_pk)
+        favorite_id = favorite.get("category_id") if favorite else None
+
+        partners = {r["category_id"]: r for r in rows}
+        # Любимый партнёр показывается, даже если опыта у него ещё нет
+        if favorite_id and favorite_id not in partners:
+            cat = await self._fetch_one(
+                "shop_categories", f"id=eq.{favorite_id}&select=id,title,icon,color,gift_threshold_xp,gift_limit")
+            if cat:
+                partners[favorite_id] = {
+                    "category_id": favorite_id, "xp": 0,
+                    "title": cat.get("title"), "icon": cat.get("icon"), "color": cat.get("color"),
+                    "gift_threshold_xp": cat.get("gift_threshold_xp"),
+                    "gift_limit": cat.get("gift_limit"),
+                }
+
+        claimed = await self._fetch(
+            "user_gifts", f"user_id=eq.{user_pk}&status=neq.revoked&select=category_id",
+            "GET", None)
+        claimed_ids = {c["category_id"] for c in claimed}
+
+        out = []
+        for cat_id, row in partners.items():
+            if not cat_id:
+                continue
+            threshold = int(row.get("gift_threshold_xp") or 0)
+            xp = int(row.get("xp") or 0)
+            is_fav = cat_id == favorite_id
+            out.append({
+                "category_id": cat_id,
+                "title": row.get("title") or "",
+                "icon": row.get("icon") or "🎁",
+                "color": row.get("color") or "",
+                "xp": xp,
+                "threshold": threshold,
+                "limit": int(row.get("gift_limit") or 0),
+                "purchases": int(favorite["purchases"]) if is_fav and favorite else 0,
+                "is_favorite": is_fav,
+                "gift_claimed": cat_id in claimed_ids,
+                "progress": min(100, int(xp / threshold * 100)) if threshold > 0 else 0,
+            })
+        out.sort(key=lambda r: (not r["is_favorite"], -r["xp"]))
+
+        return {"partners": out,
+                "gift": await self._gift_availability(user_pk, favorite_id, {r["category_id"]: r for r in out})}
+
+    async def _gift_availability(self, user_pk: int, favorite_id: int | None, partners: dict) -> dict:
+        """Подарок доступен любимому партнёру: порог XP достигнут и подарок ещё не выдан."""
+        empty = {"available": False, "reason": "no_favorite", "category_id": None,
+                 "threshold": 0, "xp": 0, "purchases": 0}
+        if not favorite_id:
+            return empty
+
+        row = partners.get(favorite_id) or {}
+        threshold = int(row.get("threshold") or 0)
+        xp = int(row.get("xp") or 0)
+        base = {
+            "available": False, "category_id": favorite_id,
+            "title": row.get("title") or "", "icon": row.get("icon") or "🎁",
+            "color": row.get("color") or "",
+            "threshold": threshold, "xp": xp,
+            "purchases": int(row.get("purchases") or 0),
+        }
+        if threshold <= 0:
+            base["reason"] = "disabled"
+            return base
+        if xp < threshold:
+            base["reason"] = "not_reached"
+            return base
+
+        async with self.pool.acquire() as conn:
+            existing = await conn.fetchval(
+                "SELECT COUNT(*) FROM user_gifts "
+                "WHERE user_id = $1 AND category_id = $2 AND status <> 'revoked'",
+                user_pk, favorite_id,
+            )
+            if existing:
+                base["reason"] = "already_claimed"
+                return base
+
+            limit = int(row.get("limit") or 0)
+            if limit > 0:
+                issued = await conn.fetchval(
+                    "SELECT COUNT(*) FROM user_gifts "
+                    "WHERE category_id = $1 AND status <> 'revoked'",
+                    favorite_id,
+                )
+                if issued >= limit:
+                    base["reason"] = "limit_reached"
+                    return base
+
+        base["available"] = True
+        base["reason"] = "ok"
+        return base
+
+    async def claim_partner_gift(self, user_pk: int) -> dict:
+        """Пользователь трясёт дерево и забирает подарочный купон любимого партнёра."""
+        info = await self.get_partner_gift_info(user_pk)
+        gift = info.get("gift") or {}
+        if not gift.get("available"):
+            return {"ok": False, "error": gift.get("reason", "not_available")}
+
+        prize_id = await self.get_bot_setting_int("gift_prize_id", 0)
+        if not prize_id:
+            return {"ok": False, "error": "gift_not_configured"}
+        prize = await self.get_prize(prize_id)
+        if not prize:
+            return {"ok": False, "error": "gift_not_configured"}
+
+        ttl_days = await self.get_bot_setting_int("gift_ttl_days", 30)
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=ttl_days)).isoformat() if ttl_days > 0 else None
+
+        import secrets
+        qr_code = f"gift_{secrets.token_hex(6)}"
+        rows = await self._fetch("user_coupons", method="POST", json_data={
+            "user_id": user_pk, "prize_id": prize_id, "qr_code": qr_code,
+            "is_gift": True, "xp_granted": 0, "expires_at": expires_at,
+        })
+        coupon = rows[0] if rows else {}
+        if not coupon.get("id"):
+            return {"ok": False, "error": "internal_error"}
+
+        gift_rows = await self._fetch("user_gifts", method="POST", json_data={
+            "user_id": user_pk, "category_id": gift.get("category_id"),
+            "prize_id": prize_id, "coupon_id": coupon["id"],
+            "threshold_xp": gift.get("threshold"), "partner_xp": gift.get("xp"),
+            "status": "claimed", "expires_at": expires_at,
+        })
+        created = gift_rows[0] if gift_rows else {}
+
+        partner_name = gift.get("title") or "партнёр"
+        user = await self._fetch_one("users", f"id=eq.{user_pk}&select=telegram_id")
+        if user and user.get("telegram_id"):
+            await self.create_notification(
+                user["telegram_id"], "gift", "Подарок от партнёра",
+                f"Партнёр «{partner_name}» подготовил вам подарок: {prize['name']}", "tree")
+
+        coupon["gift_id"] = created.get("id")
+        coupon["status"] = "active"
+        coupon["prize_name"] = prize.get("name")
+        coupon["prize_image"] = prize.get("image_url")
+        coupon["prize_description"] = prize.get("description")
+        coupon["partner_name"] = partner_name
+        return {"ok": True, "coupon": coupon, "partner_name": partner_name}
 
     async def get_all_users(self) -> list[dict]:
         return await self._fetch("users", "select=*&order=id.desc")
@@ -744,6 +985,9 @@ class Database:
             prize["name"] if prize else "",
         )
 
+        # Опыт = цена использованного купона (идемпотентно, повторно не начислится)
+        await self.grant_order_xp(order_id, user["id"], prize["price_points"] if prize else 0, partner_id)
+
         first_scan = await self.get_first_partner_for_user(user["id"])
         reward = commission["commission"] if commission["paid"] else 0
         await self.record_journey(
@@ -890,22 +1134,50 @@ class Database:
         if coupon["status"] != "active":
             return {"ok": False, "error": "coupon_already_used"}
 
+        # Возврат (отмена) заказа отменяет и опыт: погасить такой купон нельзя
+        if coupon.get("order_id"):
+            order = await self._fetch_one("orders", f"id=eq.{coupon['order_id']}&select=status")
+            if order and order.get("status") == "cancelled":
+                return {"ok": False, "error": "order_cancelled"}
+
         partner = await self.get_partner_account(partner_account_id)
         if not partner or not partner.get("is_active", True):
             return {"ok": False, "error": "partner_not_found"}
 
-        # Купон можно погасить только у партнёра того же бренда (категории приза)
+        # Купон можно погасить только у партнёра того же бренда (категории приза).
+        # Подарочный купон привязан к партнёру, который его выдал (user_gifts.category_id).
         partner_category = partner.get("category_id")
-        coupon_category = coupon.get("prize_category_id")
+        if coupon.get("is_gift"):
+            gift_row = await self._fetch_one(
+                "user_gifts", f"coupon_id=eq.{coupon['id']}&select=category_id,status")
+            if not gift_row or gift_row.get("status") == "revoked":
+                return {"ok": False, "error": "coupon_not_found"}
+            coupon_category = gift_row.get("category_id")
+        else:
+            coupon_category = coupon.get("prize_category_id")
         if not partner_category or not coupon_category or int(partner_category) != int(coupon_category):
             return {"ok": False, "error": "coupon_not_for_this_brand"}
 
-        from datetime import datetime
+        expires_at = coupon.get("expires_at")
+        if isinstance(expires_at, datetime):
+            exp_utc = (expires_at.astimezone(tz=timezone.utc).replace(tzinfo=None)
+                       if expires_at.tzinfo else expires_at)
+            if datetime.utcnow() > exp_utc:
+                return {"ok": False, "error": "coupon_expired"}
+
         await self._fetch("user_coupons", f"qr_code=eq.{qr_code}", "PATCH", {
             "status": "used",
             "used_at": datetime.utcnow().isoformat(),
             "used_by_partner_id": partner_account_id
         })
+
+        # Опыт = цена использованного купона; подарочный купон даёт 0 XP
+        await self.grant_coupon_xp(
+            coupon["id"], coupon["user_id"],
+            coupon.get("prize_price") or 0,
+            partner_category,
+            is_gift=bool(coupon.get("is_gift")),
+        )
 
         commission = await self.pay_source_commission(
             coupon["user_id"],
