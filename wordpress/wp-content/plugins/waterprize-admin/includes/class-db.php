@@ -465,10 +465,16 @@ class WaterPrize_DB {
 
     // ─── Prizes ───────────────────────────────────────
     public function get_prizes($category_id = 0) {
+        $sql = 'SELECT p.*, COALESCE(NULLIF(sc.logo_url, \'\'), NULLIF(sc.image_url, \'\')) AS partner_image
+                FROM prizes p
+                LEFT JOIN shop_categories sc ON sc.id = p.category_id';
+        $params = [];
         if ((int)$category_id > 0) {
-            return $this->query('SELECT * FROM prizes WHERE category_id = ? ORDER BY price_points ASC', [(int)$category_id]);
+            $sql .= ' WHERE p.category_id = ?';
+            $params[] = (int)$category_id;
         }
-        return $this->query('SELECT * FROM prizes ORDER BY price_points ASC');
+        $sql .= ' ORDER BY p.price_points ASC';
+        return $this->query($sql, $params);
     }
 
     public function get_prize($id) {

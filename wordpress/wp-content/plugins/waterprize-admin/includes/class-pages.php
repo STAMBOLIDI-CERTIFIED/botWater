@@ -35,6 +35,20 @@ class WaterPrize_Pages {
         return '/uploads/' . $dst_rel;
     }
 
+    /**
+     * Изображение купона по умолчанию — фото партнёра:
+     * сначала логотип, затем обложка.
+     */
+    private static function default_prize_image($category_id) {
+        if ((int)$category_id <= 0) return '';
+        $cat = self::db()->get_category((int)$category_id);
+        if (!$cat) return '';
+        $logo = trim((string)($cat['logo_url'] ?? ''));
+        if ($logo !== '') return $logo;
+        $cover = trim((string)($cat['image_url'] ?? ''));
+        return $cover;
+    }
+
     public static function flash_message() {
         if (!empty($_GET['msg'])) {
             $type = isset($_GET['err']) ? 'error' : 'success';
@@ -264,33 +278,41 @@ class WaterPrize_Pages {
 
             // ─── Prizes CRUD ───────────────────────
             case 'add_prize':
+                $prize_image = self::normalize_media_url(esc_url_raw(trim((string)($_POST['image_url'] ?? ''))));
+                if ($prize_image === '') {
+                    $prize_image = self::default_prize_image((int)($_POST['category_id'] ?? 0));
+                }
                 $db->add_prize(
                     sanitize_text_field($_POST['name'] ?? ''),
                     sanitize_textarea_field($_POST['description'] ?? ''),
-                    self::normalize_media_url($_POST['image_url'] ?? ''),
+                    $prize_image,
                     (int)($_POST['price_points'] ?? 0),
                     (int)($_POST['category_id'] ?? 0),
                     isset($_POST['active']) ? 1 : 0
                 );
-                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Приз добавлен')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Купон добавлен')));
                 exit;
 
             case 'update_prize':
+                $prize_image = self::normalize_media_url(esc_url_raw(trim((string)($_POST['image_url'] ?? ''))));
+                if ($prize_image === '') {
+                    $prize_image = self::default_prize_image((int)($_POST['category_id'] ?? 0));
+                }
                 $db->update_prize(
                     (int)($_POST['prize_id'] ?? 0),
                     sanitize_text_field($_POST['name'] ?? ''),
                     sanitize_textarea_field($_POST['description'] ?? ''),
-                    self::normalize_media_url($_POST['image_url'] ?? ''),
+                    $prize_image,
                     (int)($_POST['price_points'] ?? 0),
                     (int)($_POST['category_id'] ?? 0),
                     isset($_POST['active']) ? 1 : 0
                 );
-                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Приз обновлён')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Купон обновлён')));
                 exit;
 
             case 'delete_prize':
                 $db->delete_prize((int)($_POST['prize_id'] ?? 0));
-                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Приз удалён')));
+                wp_redirect(admin_url('admin.php?page=wpz-partners&tab=prizes&msg=' . urlencode('Купон удалён')));
                 exit;
 
             // ─── Partner Accounts CRUD ──────────────
@@ -892,7 +914,7 @@ class WaterPrize_Pages {
             case 'coupons':
                 fputcsv($out, [
                     'ID купона', 'Дата активации', 'QR-код', 'Пользователь', 'Telegram ID',
-                    'Приз', 'Номинал', 'Комиссия 10%', 'Категория',
+                    'Купон', 'Номинал', 'Комиссия 10%', 'Категория',
                     'Активировал (партнёр)', 'Telegram партнёра', 'Источник пользователя',
                 ], ';');
                 foreach ($db->get_monthly_coupon_usage($from_ts, $to_ts) as $r) {

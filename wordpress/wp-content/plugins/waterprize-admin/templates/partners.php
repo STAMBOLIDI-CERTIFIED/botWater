@@ -9,7 +9,7 @@ $tab = $tab ?? 'list';
     <nav class="nav-tab-wrapper" style="margin-bottom:20px;">
         <a href="?page=wpz-partners&tab=list" class="nav-tab <?php echo $tab === 'list' ? 'nav-tab-active' : ''; ?>">Партнёры</a>
         <a href="?page=wpz-partners&tab=accounts" class="nav-tab <?php echo $tab === 'accounts' ? 'nav-tab-active' : ''; ?>">🏢 Бизнес-партнёры</a>
-        <a href="?page=wpz-partners&tab=prizes" class="nav-tab <?php echo $tab === 'prizes' ? 'nav-tab-active' : ''; ?>">Призы</a>
+        <a href="?page=wpz-partners&tab=prizes" class="nav-tab <?php echo $tab === 'prizes' ? 'nav-tab-active' : ''; ?>">Купоны</a>
         <a href="?page=wpz-partners&tab=orders" class="nav-tab <?php echo $tab === 'orders' ? 'nav-tab-active' : ''; ?>">Заказы</a>
         <a href="?page=wpz-partners&tab=stats" class="nav-tab <?php echo $tab === 'stats' ? 'nav-tab-active' : ''; ?>">Статистика</a>
         <a href="?page=wpz-partners&tab=movement" class="nav-tab <?php echo $tab === 'movement' ? 'nav-tab-active' : ''; ?>">🚶 Перемещения</a>
@@ -95,14 +95,14 @@ $tab = $tab ?? 'list';
         </div>
     </div>
 
-    <!-- Призы этого партнёра -->
+    <!-- Купоны этого партнёра -->
     <?php
     $partner_prizes = array_filter($prizes, fn($p) => $p['category_id'] == $edit_category['id']);
     ?>
     <div class="wpz-card">
-        <h2>🎁 Призы партнёра «<?php echo esc_html($edit_category['title']); ?>» (<?php echo count($partner_prizes); ?>)</h2>
+        <h2>🎟 Купоны партнёра «<?php echo esc_html($edit_category['title']); ?>» (<?php echo count($partner_prizes); ?>)</h2>
         <?php if (empty($partner_prizes)): ?>
-            <p style="color:#666;">У этого партнёра пока нет призов.</p>
+            <p style="color:#666;">У этого партнёра пока нет купонов.</p>
         <?php else: ?>
         <table class="wp-list-table widefat fixed striped">
             <thead>
@@ -121,8 +121,9 @@ $tab = $tab ?? 'list';
                 <tr>
                     <td><?php echo esc_html($p['id']); ?></td>
                     <td>
-                        <?php if ($p['image_url']): ?>
-                            <img src="<?php echo esc_url($p['image_url']); ?>" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">
+                        <?php $thumb = $p['image_url'] ?: ($p['partner_image'] ?? ''); ?>
+                        <?php if ($thumb): ?>
+                            <img src="<?php echo esc_url($thumb); ?>" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">
                         <?php else: ?>
                             <span style="display:inline-block;width:40px;height:40px;background:#f0f0f0;border-radius:6px;line-height:40px;text-align:center;">—</span>
                         <?php endif; ?>
@@ -145,7 +146,7 @@ $tab = $tab ?? 'list';
                             <input type="hidden" name="action" value="delete_prize">
                             <input type="hidden" name="prize_id" value="<?php echo esc_attr($p['id']); ?>">
                             <button type="submit" class="button button-small wpz-btn-danger"
-                                onclick="return confirm('Удалить приз «<?php echo esc_js($p['name']); ?>»?');">🗑️</button>
+                                onclick="return confirm('Удалить купон «<?php echo esc_js($p['name']); ?>»?');">🗑️</button>
                         </form>
                     </td>
                 </tr>
@@ -177,7 +178,7 @@ $tab = $tab ?? 'list';
                     <th><label for="subtitle">Подзаголовок</label></th>
                     <td><input type="text" id="subtitle" name="subtitle" class="regular-text"
                                value="<?php echo esc_attr($edit_category['subtitle'] ?? ''); ?>"
-                               placeholder="Партнёрские призы"></td>
+                               placeholder="Партнёрские купоны"></td>
                 </tr>
                 <tr>
                     <th><label for="description">Описание</label></th>
@@ -393,11 +394,11 @@ $tab = $tab ?? 'list';
     </div>
 
     <?php elseif ($tab === 'prizes'): ?>
-    <!-- ═══ TAB: Призы ═══ -->
+    <!-- ═══ TAB: Купоны ═══ -->
 
     <?php if ($edit_prize): ?>
     <div class="wpz-card" style="max-width:700px;">
-        <h2>✏️ Редактировать приз</h2>
+        <h2>✏️ Редактировать купон</h2>
         <form method="post" action="<?php echo admin_url('admin.php?page=wpz-partners&tab=prizes'); ?>">
             <?php wp_nonce_field('wpz_action'); ?>
             <input type="hidden" name="action" value="update_prize">
@@ -414,16 +415,19 @@ $tab = $tab ?? 'list';
                     <td><textarea id="description" name="description" class="large-text" rows="3"><?php echo esc_textarea($edit_prize['description'] ?? ''); ?></textarea></td>
                 </tr>
                 <tr>
-                    <th><label for="image_url">URL изображения</label></th>
+                    <th><label for="image_url">Изображение</label></th>
                     <td>
                         <div style="display:flex;align-items:center;gap:12px;">
-                            <input type="url" id="image_url" name="image_url" class="regular-text"
-                                value="<?php echo esc_attr($edit_prize['image_url'] ?? ''); ?>">
+                            <input type="text" id="image_url" name="image_url" class="regular-text"
+                                value="<?php echo esc_attr($edit_prize['image_url'] ?? ''); ?>"
+                                placeholder="URL изображения">
                             <button type="button" class="button wpz-upload-btn" data-target="image_url">📁 Загрузить</button>
                         </div>
                         <?php if (!empty($edit_prize['image_url'])): ?>
-                            <div style="margin-top:8px;"><img src="<?php echo esc_url($edit_prize['image_url']); ?>" style="max-width:120px;border-radius:8px;"></div>
+                            <div id="wpz-img-preview" style="margin-top:8px;"><img src="<?php echo esc_url($edit_prize['image_url']); ?>" style="max-width:120px;border-radius:8px;"></div>
                         <?php endif; ?>
+                        <div id="wpz-default-img"></div>
+                        <span class="description">Если пусто — по умолчанию будет использовано фото партнёра.</span>
                     </td>
                 </tr>
                 <tr>
@@ -468,7 +472,7 @@ $tab = $tab ?? 'list';
     <!-- Add Prize Form -->
     <?php if (!$edit_prize): ?>
     <div class="wpz-card" style="max-width:700px;">
-        <h2>➕ Новый приз</h2>
+        <h2>➕ Новый купон</h2>
         <form method="post" action="<?php echo admin_url('admin.php?page=wpz-partners&tab=prizes'); ?>">
             <?php wp_nonce_field('wpz_action'); ?>
             <input type="hidden" name="action" value="add_prize">
@@ -477,19 +481,21 @@ $tab = $tab ?? 'list';
                 <tr>
                     <th><label for="name">Название</label></th>
                     <td><input type="text" id="name" name="name" class="regular-text" required
-                        value="" placeholder="Название приза"></td>
+                        value="" placeholder="Название купона"></td>
                 </tr>
                 <tr>
                     <th><label for="description">Описание</label></th>
-                    <td><textarea id="description" name="description" class="large-text" rows="3" placeholder="Описание приза"></textarea></td>
+                    <td><textarea id="description" name="description" class="large-text" rows="3" placeholder="Описание купона"></textarea></td>
                 </tr>
                 <tr>
-                    <th><label for="image_url">URL изображения</label></th>
+                    <th><label for="image_url">Изображение</label></th>
                     <td>
                         <div style="display:flex;align-items:center;gap:12px;">
-                            <input type="url" id="image_url" name="image_url" class="regular-text" placeholder="https://...">
+                            <input type="text" id="image_url" name="image_url" class="regular-text" placeholder="URL изображения">
                             <button type="button" class="button wpz-upload-btn" data-target="image_url">📁 Загрузить</button>
                         </div>
+                        <div id="wpz-default-img"></div>
+                        <span class="description">Если пусто — по умолчанию будет использовано фото партнёра.</span>
                     </td>
                 </tr>
                 <tr>
@@ -530,7 +536,7 @@ $tab = $tab ?? 'list';
     <!-- All Prizes List -->
     <div class="wpz-card">
         <div class="wpz-table-header">
-            <h2>Все призы <span class="wpz-count"><?php echo count($prizes); ?></span></h2>
+            <h2>Все купоны <span class="wpz-count"><?php echo count($prizes); ?></span></h2>
             <form method="get" class="wpz-search-row">
                 <input type="hidden" name="page" value="wpz-partners">
                 <input type="hidden" name="tab" value="prizes">
@@ -564,13 +570,14 @@ $tab = $tab ?? 'list';
                 </thead>
                 <tbody>
                     <?php if (empty($prizes)): ?>
-                        <tr><td colspan="8">Нет призов. Добавьте первый!</td></tr>
+                        <tr><td colspan="8">Нет купонов. Добавьте первый!</td></tr>
                     <?php else: foreach ($prizes as $p): ?>
                         <tr>
                             <td><?php echo esc_html($p['id']); ?></td>
                             <td>
-                                <?php if ($p['image_url']): ?>
-                                    <img src="<?php echo esc_url($p['image_url']); ?>" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">
+                                <?php $thumb = $p['image_url'] ?: ($p['partner_image'] ?? ''); ?>
+                                <?php if ($thumb): ?>
+                                    <img src="<?php echo esc_url($thumb); ?>" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">
                                 <?php else: ?>
                                     <span style="display:inline-block;width:40px;height:40px;background:#f0f0f0;border-radius:6px;line-height:40px;text-align:center;">—</span>
                                 <?php endif; ?>
@@ -605,7 +612,7 @@ $tab = $tab ?? 'list';
                                     <input type="hidden" name="action" value="delete_prize">
                                     <input type="hidden" name="prize_id" value="<?php echo esc_attr($p['id']); ?>">
                                     <button type="submit" class="button button-small wpz-btn-danger"
-                                        onclick="return confirm('Удалить приз «<?php echo esc_js($p['name']); ?>»?');">🗑️</button>
+                                        onclick="return confirm('Удалить купон «<?php echo esc_js($p['name']); ?>»?');">🗑️</button>
                                 </form>
                             </td>
                         </tr>
@@ -626,7 +633,7 @@ $tab = $tab ?? 'list';
         <form method="get" style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <input type="hidden" name="page" value="wpz-partners">
             <input type="hidden" name="tab" value="orders">
-            <input type="search" name="order_search" placeholder="Поиск по имени, призу или ID..." value="<?php echo esc_attr($order_search ?? ''); ?>" class="regular-text">
+            <input type="search" name="order_search" placeholder="Поиск по имени, купону или ID..." value="<?php echo esc_attr($order_search ?? ''); ?>" class="regular-text">
             <select name="o_partner">
                 <option value="">Все партнёры</option>
                 <?php foreach ($categories as $c): ?>
@@ -653,7 +660,7 @@ $tab = $tab ?? 'list';
                 <tr>
                     <th style="width:60px">ID</th>
                     <th>Пользователь</th>
-                    <th>Приз</th>
+                    <th>Купон</th>
                     <th>Баллы</th>
                     <th style="width:100px">Статус</th>
                     <th style="width:160px">Дата</th>
@@ -1270,6 +1277,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 frame.on('select', function(){
                     var attachment = frame.state().get('selection').first().toJSON();
                     input.value = attachment.url;
+                    input.dispatchEvent(new Event('input'));
                     var existing = input.parentElement.parentElement.querySelector('img');
                     if (existing) {
                         existing.src = attachment.url;
@@ -1283,5 +1291,39 @@ document.addEventListener('DOMContentLoaded', function() {
                 frame.open();
             });
         });
+    })();
+</script>
+
+<script>
+    (function(){
+        var sel = document.getElementById('category_id');
+        var input = document.getElementById('image_url');
+        var box = document.getElementById('wpz-default-img');
+        if (!sel || !input || !box) return;
+        var partners = <?php echo json_encode(array_map(fn($c) => [
+            'id' => (int)$c['id'],
+            'title' => $c['title'],
+            'img' => $c['logo_url'] ?: ($c['image_url'] ?? ''),
+        ], $categories ?? []), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP); ?>;
+        function esc(s) {
+            return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+        function refresh() {
+            var prev = document.getElementById('wpz-img-preview');
+            if (prev) prev.style.display = input.value.trim() ? 'block' : 'none';
+            var p = null;
+            for (var i = 0; i < partners.length; i++) {
+                if (String(partners[i].id) === String(sel.value)) { p = partners[i]; break; }
+            }
+            if (p && p.img && !input.value.trim()) {
+                box.innerHTML = '<div style="margin-top:8px;"><img src="' + esc(p.img) + '" style="max-width:120px;max-height:120px;border-radius:8px;object-fit:cover;" onerror="this.parentElement.innerHTML=\'\'">'
+                    + '<div class="description" style="margin-top:4px;">По умолчанию будет фото партнёра «' + esc(p.title) + '»</div></div>';
+            } else {
+                box.innerHTML = '';
+            }
+        }
+        sel.addEventListener('change', refresh);
+        input.addEventListener('input', refresh);
+        refresh();
     })();
 </script>

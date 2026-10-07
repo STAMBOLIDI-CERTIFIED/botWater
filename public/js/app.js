@@ -557,7 +557,7 @@ async function loadMyCoupons() {
                 idBadge += '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(236,64,122,0.14);border:1px solid rgba(236,64,122,0.3);border-radius:8px;padding:2px 8px;font-size:11px;color:#F48FB1">' + icon('gift') + ' Подарок</span>';
             }
             var imgHtml = c.prize_image
-                ? '<img class="coupon-card-img" src="' + esc(c.prize_image) + '" onerror="this.style.display=\'none\'">'
+                ? '<img class="coupon-card-img" src="' + esc(c.prize_image) + '" onerror="this.remove()">'
                 : '<div class="coupon-card-img-fallback">' + esc(c.partner_icon || '🎁') + '</div>';
             var btnHtml = st === 'active'
                 ? '<button class="coupon-card-btn" onclick="event.stopPropagation();openCouponModal(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')">Показать QR</button>'
@@ -570,6 +570,9 @@ async function loadMyCoupons() {
                 ? '<div style="font-size:11px;color:#F48FB1;margin-top:2px">Действует до ' + new Date(c.expires_at).toLocaleDateString('ru-RU') + '</div>'
                 : '';
             return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + stColor + '">'
+                + '<div style="display:flex;gap:12px;align-items:flex-start;position:relative;z-index:1">'
+                + imgHtml
+                + '<div style="flex:1;min-width:0">'
                 + '<div class="coupon-card-header">'
                 + '<div class="coupon-card-title">' + esc(c.prize_name || 'Приз') + '</div>'
                 + '<div class="coupon-card-status" style="color:' + stColor + '">' + (statusLabels[st] || st) + '</div>'
@@ -577,6 +580,7 @@ async function loadMyCoupons() {
                 + '<div class="coupon-card-meta">' + meta + '</div>'
                 + expLine
                 + '<div style="margin:6px 0">' + idBadge + '</div>'
+                + '</div></div>'
                 + '<div class="coupon-card-date">' + icon('clock') + ' ' + new Date(c.created_at).toLocaleString('ru-RU') + (c.used_at ? ' → ' + new Date(c.used_at).toLocaleString('ru-RU') : '') + '</div>'
                 + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' + btnHtml + copyBtn + '</div>'
                 + '</div>';
@@ -596,7 +600,8 @@ async function loadMyCoupons() {
             imgEl.innerHTML = '<img src="' + esc(coupon.prize_image) + '" onerror="this.parentElement.innerHTML=\'<div class=prize-modal-img-fallback>' + icon('gift') + '</div>\'">';
             imgEl.style.display = 'block';
         } else {
-            imgEl.style.display = 'none';
+            imgEl.innerHTML = '<div class="prize-modal-img-fallback">' + icon('gift') + '</div>';
+            imgEl.style.display = 'block';
         }
 
         nameEl.textContent = coupon.prize_name || 'Приз';
@@ -709,12 +714,16 @@ async function loadPartnerDashboard() {
 
         list.innerHTML = coupons.map(function(c, i) {
             return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + (cat.color || '#0EA5E9') + '">'
+                + '<div style="display:flex;gap:12px;align-items:flex-start;position:relative;z-index:1">'
+                + (c.prize_image ? '<img class="coupon-card-img" src="' + esc(c.prize_image) + '" onerror="this.remove()">' : '')
+                + '<div style="flex:1;min-width:0">'
                 + '<div class="coupon-card-header">'
                 + '<div class="coupon-card-title">' + esc(c.user_name || 'Пользователь') + '</div>'
                 + '<div class="coupon-card-status" style="color:#EAB308">Использован</div>'
                 + '</div>'
                 + '<div class="coupon-card-meta">' + esc(c.prize_name || 'Приз') + '</div>'
                 + '<div class="coupon-card-date">' + icon('clock') + ' ' + (c.used_at ? new Date(c.used_at).toLocaleDateString('ru-RU') : '—') + '</div>'
+                + '</div></div>'
                 + '</div>';
         }).join('');
 
@@ -817,8 +826,9 @@ function openPrizeModal(p, bal) {
         var priceEl = document.getElementById('prize-modal-price');
         var actionEl = document.getElementById('prize-modal-action');
 
-        if (p.image_url) {
-            imgWrap.innerHTML = '<img src="' + esc(p.image_url) + '" alt="' + esc(p.name) + '">';
+        var modalImg = p.image_url || p._partner_img || '';
+        if (modalImg) {
+            imgWrap.innerHTML = '<img src="' + esc(modalImg) + '" alt="' + esc(p.name) + '">';
         } else {
             imgWrap.innerHTML = '<div class="prize-modal-img-fallback">' + icon('store') + '</div>';
         }
@@ -901,6 +911,7 @@ function closePrizeModal() {
                 data.items.forEach(function(item) {
                     item._partner_name = partners[i].title;
                     item._partner_color = partners[i].color || '#0EA5E9';
+                    item._partner_img = partners[i].logo_url || partners[i].image_url || '';
                     allItems.push(item);
                 });
             }
@@ -912,8 +923,9 @@ function closePrizeModal() {
                 var ok = bal >= p.price_points;
                 var missing = Math.max(0, p.price_points - bal);
                 var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
-                var imgHtml = p.image_url
-                    ? '<img class="shop-rec-img" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-rec-img-fallback" style="display:none">' + icon('store') + '</div>'
+                var itemImg = p.image_url || p._partner_img || '';
+                var imgHtml = itemImg
+                    ? '<img class="shop-rec-img" loading="lazy" decoding="async" src="' + esc(itemImg) + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-rec-img-fallback" style="display:none">' + icon('store') + '</div>'
                     : '<div class="shop-rec-img-fallback">' + icon('store') + '</div>';
                 return '<div class="shop-rec-card" style="animation-delay:' + (i * 0.04) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
                     + imgHtml
@@ -942,6 +954,7 @@ function closePrizeModal() {
         if (!data || !data.category) { h.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('question') + '</div><div class="empty-t">Категория не найдена</div></div>'; return; }
         const cat = data.category;
         const items = data.items || [];
+        items.forEach(function(it) { it._partner_img = cat.logo_url || cat.image_url || ''; });
         const d = await apiFetch('/user?user_id=' + getUID());
         const bal = d ? d.balance : 0;
         const isCharity = cat.title === 'Благотворительность';
@@ -962,8 +975,9 @@ function closePrizeModal() {
         g.innerHTML = items.map(function(p, i) {
             const ok = bal >= p.price_points;
             const missing = Math.max(0, p.price_points - bal);
-            var imgHtml = p.image_url
-                ? '<div class="shop-prize-img-wrap"><img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(p.image_url) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-prize-img-fallback" style="display:none">' + icon('store') + '</div></div>'
+            var itemImg = p.image_url || cat.logo_url || cat.image_url || '';
+            var imgHtml = itemImg
+                ? '<div class="shop-prize-img-wrap"><img class="shop-prize-img lazy" loading="lazy" decoding="async" src="' + esc(itemImg) + '" onload="this.classList.remove(\'lazy\');this.classList.add(\'loaded\')" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><div class="shop-prize-img-fallback" style="display:none">' + icon('store') + '</div></div>'
                 : '<div class="shop-prize-img-wrap"><div class="shop-prize-img-fallback">' + icon('store') + '</div></div>';
             var pJson = JSON.stringify(p).replace(/'/g, '&#39;');
             return '<div class="shop-prize-card" style="animation-delay:' + (i * 0.05) + 's" onclick="openPrizeModal(JSON.parse(this.dataset.prize),' + bal + ')" data-prize=\'' + pJson + '\'>'
@@ -1003,6 +1017,7 @@ function closePrizeModal() {
 
         var cat = data.category;
         var items = data.items || [];
+        items.forEach(function(it) { it._partner_img = cat.logo_url || cat.image_url || ''; });
         var d = await apiFetch('/user?user_id=' + getUID());
         var bal = d ? d.balance : 0;
 
@@ -1048,8 +1063,9 @@ function closePrizeModal() {
                 + '<div class="shop-rec-header"><div class="shop-rec-title">Ваши купоны</div><div class="shop-rec-count">' + coupons.length + '</div></div>'
                 + '<div style="display:grid;grid-template-columns:1fr;gap:10px">'
                 + coupons.map(function(c, i) {
-                    return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + (cat.color || '#0EA5E9') + '">'
-                        + '<div class="partner-item-body"><div class="partner-item-name">' + esc(c.prize_name || 'Приз') + '</div>'
+                    return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + (cat.color || '#0EA5E9') + ';display:flex;gap:10px;align-items:center;padding:10px 12px">'
+                        + (c.prize_image ? '<img src="' + esc(c.prize_image) + '" alt="" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.remove()">' : '')
+                        + '<div class="partner-item-body" style="flex:1;min-width:0;padding:0"><div class="partner-item-name">' + esc(c.prize_name || 'Приз') + '</div>'
                         + '<div class="partner-item-desc">Заказ #' + c.id + '</div>'
                         + '<button class="partner-item-btn primary" onclick="handleRedeemCoupon(' + c.id + ',' + cat.id + ')">' + icon('check') + ' Использовать купон</button>'
                         + '</div></div>';
@@ -1061,8 +1077,9 @@ function closePrizeModal() {
             + items.map(function(p, i) {
                 var ok = bal >= p.price_points;
                 var missing = Math.max(0, p.price_points - bal);
+                var itemImg = p.image_url || cat.logo_url || cat.image_url || '';
                 return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's">'
-                    + (p.image_url ? '<div class="partner-item-img-wrap"><img class="partner-item-img" src="' + esc(p.image_url) + '" onerror="this.parentElement.style.display=\'none\'">' + (ok ? '<div class="partner-item-badge">Доступно</div>' : '') + '</div>' : (ok ? '<div class="partner-item-badge" style="position:static;margin:10px 10px 0">Доступно</div>' : ''))
+                    + (itemImg ? '<div class="partner-item-img-wrap"><img class="partner-item-img" src="' + esc(itemImg) + '" onerror="this.parentElement.style.display=\'none\'">' + (ok ? '<div class="partner-item-badge">Доступно</div>' : '') + '</div>' : (ok ? '<div class="partner-item-badge" style="position:static;margin:10px 10px 0">Доступно</div>' : ''))
                     + '<div class="partner-item-body"><div class="partner-item-name">' + esc(p.name) + '</div>'
                     + '<div class="partner-item-desc">' + esc(p.description) + '</div>'
                     + '<div class="partner-item-price">' + icon('target') + ' ' + p.price_points + ' баллов</div>'

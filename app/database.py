@@ -605,7 +605,12 @@ class Database:
         coupon["gift_id"] = created.get("id")
         coupon["status"] = "active"
         coupon["prize_name"] = prize.get("name")
-        coupon["prize_image"] = prize.get("image_url")
+        prize_image = prize.get("image_url") or ""
+        if not prize_image:
+            partner = await self.get_shop_category(gift.get("category_id") or 0)
+            if partner:
+                prize_image = partner.get("logo_url") or partner.get("image_url") or ""
+        coupon["prize_image"] = prize_image
         coupon["prize_description"] = prize.get("description")
         coupon["partner_name"] = partner_name
         return {"ok": True, "coupon": coupon, "partner_name": partner_name}
@@ -899,9 +904,11 @@ class Database:
     async def get_user_completed_orders(self, user_id: int) -> list[dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT o.*, p.name AS prize_name, p.price_points AS prize_price "
+                "SELECT o.*, p.name AS prize_name, p.price_points AS prize_price, "
+                "COALESCE(NULLIF(p.image_url, ''), NULLIF(sc.logo_url, ''), NULLIF(sc.image_url, ''), '') AS prize_image "
                 "FROM orders o "
                 "LEFT JOIN prizes p ON o.prize_id = p.id "
+                "LEFT JOIN shop_categories sc ON p.category_id = sc.id "
                 "WHERE o.user_id = $1 AND o.status = 'approved' "
                 "ORDER BY o.created_at DESC",
                 user_id,
@@ -1073,9 +1080,12 @@ class Database:
         """Купоны, погашенные на точках партнёра (аккаунты его категории)."""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT uc.*, p.name AS prize_name, u.name AS user_name, u.telegram_id AS user_telegram_id "
+                "SELECT uc.*, p.name AS prize_name, "
+                "COALESCE(NULLIF(p.image_url, ''), NULLIF(sc.logo_url, ''), NULLIF(sc.image_url, ''), '') AS prize_image, "
+                "u.name AS user_name, u.telegram_id AS user_telegram_id "
                 "FROM user_coupons uc "
                 "LEFT JOIN prizes p ON uc.prize_id = p.id "
+                "LEFT JOIN shop_categories sc ON p.category_id = sc.id "
                 "LEFT JOIN users u ON uc.user_id = u.id "
                 "WHERE uc.status = 'used' "
                 "AND uc.used_by_partner_id IN ("
@@ -1100,7 +1110,8 @@ class Database:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(
                 "SELECT uc.*, p.name AS prize_name, p.price_points AS prize_price, "
-                "p.image_url AS prize_image, p.description AS prize_description, "
+                "COALESCE(NULLIF(p.image_url, ''), NULLIF(sc.logo_url, ''), NULLIF(sc.image_url, ''), '') AS prize_image, "
+                "p.description AS prize_description, "
                 "sc.title AS partner_name, sc.color AS partner_color, sc.icon AS partner_icon "
                 "FROM user_coupons uc "
                 "LEFT JOIN prizes p ON uc.prize_id = p.id "
