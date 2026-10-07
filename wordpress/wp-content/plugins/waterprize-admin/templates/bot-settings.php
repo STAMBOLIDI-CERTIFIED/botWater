@@ -36,6 +36,10 @@ foreach (array_merge(array_keys($reward_keys), array_keys($message_keys)) as $ke
 $values['bot_username'] = $db->get_setting('bot_username') ?: 'WaterPrizeBot';
 $values['partner_referral_reward'] = $db->get_setting('partner_referral_reward') ?: 'fixed';
 $values['partner_referral_value'] = $db->get_setting('partner_referral_value') ?: '50';
+$values['cleanup_minutes'] = $db->get_setting('cleanup_minutes');
+if ($values['cleanup_minutes'] === null || $values['cleanup_minutes'] === '') {
+    $values['cleanup_minutes'] = '10';
+}
 ?>
 <div class="wrap">
     <?php WaterPrize_Pages::flash_message(); ?>
@@ -56,6 +60,17 @@ $values['partner_referral_value'] = $db->get_setting('partner_referral_value') ?
                                value="<?php echo esc_attr($values['bot_username']); ?>"
                                class="regular-text" placeholder="WaterPrizeBot">
                         <p class="description">Без @. Используется для генерации deep link в QR-кодах партнёров.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="cleanup_minutes">Автоочистка чата</label></th>
+                    <td>
+                        <input type="number" id="cleanup_minutes" name="cleanup_minutes"
+                               value="<?php echo esc_attr($values['cleanup_minutes']); ?>"
+                               min="0" class="small-text">
+                        <span style="color:#999;font-size:12px;margin-left:6px;">минут (по умолчанию: 10)</span>
+                        <p class="description">Сообщения бота удаляются из чата через указанное время после отправки.
+                            0 — автоочистка выключена. Рассылки из раздела «Рассылки» не удаляются.</p>
                     </td>
                 </tr>
             </table>

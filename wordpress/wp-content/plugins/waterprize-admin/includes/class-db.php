@@ -733,6 +733,82 @@ class WaterPrize_DB {
         return $row[0]['cnt'] ?? 0;
     }
 
+    // ─── Broadcasts (рассылки) ────────────────────────
+    public function get_broadcasts($limit = 200) {
+        return $this->query('SELECT * FROM broadcasts ORDER BY id DESC LIMIT ' . (int)$limit);
+    }
+
+    public function get_broadcast($id) {
+        return $this->query_one('SELECT * FROM broadcasts WHERE id = ?', [(int)$id]);
+    }
+
+    public function add_broadcast($title, $body, $author, $media = '[]', $status = 'sending') {
+        return $this->insert(
+            'INSERT INTO broadcasts (title, body, status, media, created_by, created_at)
+             VALUES (?, ?, ?, ?, ?, NOW())',
+            [$title, $body, $status, $media, $author]
+        );
+    }
+
+    public function update_broadcast_result($id, $status, $sent_count, $recipients, $error = '') {
+        return $this->execute(
+            'UPDATE broadcasts SET status = ?, sent_count = ?, recipients = ?, error = ?, sent_at = NOW() WHERE id = ?',
+            [$status, (int)$sent_count, (int)$recipients, $error, (int)$id]
+        );
+    }
+
+    public function delete_broadcast($id) {
+        // bot_messages по этой рассылке удаляются каскадом через FK
+        return $this->delete('DELETE FROM broadcasts WHERE id = ?', [(int)$id]);
+    }
+
+    public function get_broadcast_recipients() {
+        return $this->query(
+            'SELECT telegram_id FROM users
+             WHERE telegram_id > 0 AND COALESCE(is_banned, FALSE) = FALSE
+             ORDER BY id'
+        );
+    }
+
+    public function count_broadcast_recipients() {
+        $row = $this->query(
+            'SELECT COUNT(*) as cnt FROM users
+             WHERE telegram_id > 0 AND COALESCE(is_banned, FALSE) = FALSE'
+        );
+        return (int)($row[0]['cnt'] ?? 0);
+    }
+
+    public function add_bot_message($chat_id, $message_id, $broadcast_id = 0, $delete_after = null) {
+        return $this->insert(
+            'INSERT INTO bot_messages (chat_id, message_id, broadcast_id, delete_after)
+             VALUES (?, ?, ?, ?)',
+            [(int)$chat_id, (int)$message_id, $broadcast_id ? (int)$broadcast_id : null, $delete_after]
+        );
+    }
+
+    public function get_broadcast_messages($broadcast_id) {
+        return $this->query(
+            'SELECT chat_id, message_id FROM bot_messages WHERE broadcast_id = ?',
+            [(int)$broadcast_id]
+        );
+    }
+
+    // ─── Media files (картинки в БД) ──────────────────
+    /**
+     * UPSERT картинки в media_files (относительный путь как ключ —
+     * совпадает с URL /uploads/<path>). Возвращает id или 0 при ошибке.
+     * Храним бинарно через decode(hex) — PDO не умеет байты напрямую.
+     */
+    public function save_media_file($path, $mime, $bytes) {
+        $rows = $this->query(
+            "INSERT INTO media_files (path, mime, bytes) VALUES (?, ?, decode(?, 'hex'))
+             ON CONFLICT (path) DO UPDATE SET mime = EXCLUDED.mime, bytes = EXCLUDED.bytes
+             RETURNING id",
+            [$path, $mime, bin2hex($bytes)]
+        );
+        return $rows ? (int)$rows[0]['id'] : 0;
+    }
+
     // ─── User QR Activations ──────────────────────────
     public function get_user_qr_activations($limit = 200, $offset = 0) {
         return $this->query(

@@ -43,6 +43,7 @@ class WaterPrize_Admin {
         add_submenu_page('waterprize', 'Админы', 'Админы', 'manage_options', 'wpz-admins', [$this, 'page_admins']);
         add_submenu_page('waterprize', 'Сканирования', 'Сканирования', 'manage_options', 'wpz-scans', [$this, 'page_scans']);
         add_submenu_page('waterprize', 'Уведомления', 'Уведомления', 'manage_options', 'wpz-notifications', [$this, 'page_notifications']);
+        add_submenu_page('waterprize', 'Рассылки', 'Рассылки', 'manage_options', 'wpz-broadcasts', [$this, 'page_broadcasts']);
         add_submenu_page('waterprize', 'Чат поддержки', 'Чат поддержки', 'manage_options', 'wpz-support', [$this, 'page_support']);
         add_submenu_page('waterprize', 'Активации QR', 'Активации QR', 'manage_options', 'wpz-qr-activations', [$this, 'page_user_qr_activations']);
         add_submenu_page('waterprize', 'Настройки БД', 'Настройки БД', 'manage_options', 'wpz-settings', [$this, 'page_settings']);
@@ -69,6 +70,9 @@ class WaterPrize_Admin {
         if (strpos($hook, 'wpz-settings') !== false) {
             wp_enqueue_media();
         }
+        if (strpos($hook, 'wpz-broadcasts') !== false) {
+            wp_enqueue_media();
+        }
     }
 
     // Pages — delegates to WaterPrize_Pages
@@ -86,6 +90,7 @@ class WaterPrize_Admin {
     public function page_admins()    { WaterPrize_Pages::admins(); }
     public function page_scans()     { WaterPrize_Pages::scans(); }
     public function page_notifications() { WaterPrize_Pages::notifications(); }
+    public function page_broadcasts() { WaterPrize_Pages::broadcasts(); }
     public function page_user_qr_activations() { WaterPrize_Pages::user_qr_activations(); }
     public function page_support() { WaterPrize_Pages::support(); }
     public function page_settings()  { WaterPrize_Pages::settings(); }

@@ -8,7 +8,10 @@ class WaterPrize_Pages {
 
     /**
      * Локальные медиа WP (127.0.0.1/localhost) недоступны с телефона и по HTTPS.
-     * Копируем файл в public/uploads репозитория и возвращаем относительный URL /uploads/...
+     * Копируем файл в public/uploads репозитория, кладём копию в таблицу
+     * media_files (Postgres) и возвращаем относительный URL /uploads/...
+     * Картинка в БД — основной канал: мини-апп отдаёт её даже если файл
+     * не доехал до сервера вместе с git-деплоем.
      * Остальные URL (абсолютные на другие домены, пустые) возвращаем без изменений.
      */
     private static function normalize_media_url($url) {
@@ -30,9 +33,31 @@ class WaterPrize_Pages {
         $dst = $base . $dst_rel;
         if (!is_file($dst)) {
             if (!is_dir(dirname($dst))) @mkdir(dirname($dst), 0755, true);
-            if (!@copy($src, $dst)) return $url;
+            @copy($src, $dst);
         }
-        return '/uploads/' . $dst_rel;
+        if (self::save_media_blob($dst_rel, $src)) {
+            return '/uploads/' . $dst_rel;
+        }
+        return is_file($dst) ? '/uploads/' . $dst_rel : $url;
+    }
+
+    /**
+     * Картинка в media_files (Postgres). true — сохранена, мини-апп её отдаст.
+     */
+    private static function save_media_blob($path, $src) {
+        $data = @file_get_contents($src);
+        if ($data === false || $data === '') return false;
+        return self::db()->save_media_file($path, self::media_mime($path), $data) > 0;
+    }
+
+    private static function media_mime($path) {
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $map = [
+            'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
+            'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
+            'avif' => 'image/avif', 'pdf' => 'application/pdf',
+        ];
+        return $map[$ext] ?? 'application/octet-stream';
     }
 
     /**
@@ -103,6 +128,187 @@ class WaterPrize_Pages {
         </form>
         <?php
         return ob_get_clean();
+    }
+
+    /**
+     * Токен бота из prod.env / .env в корне проекта (тот же путь,
+     * что и в reply_support_chat).
+     */
+    private static function bot_token() {
+        static $token = null;
+        if ($token !== null) {
+            return $token;
+        }
+        $token = '';
+        foreach ([ABSPATH . '../prod.env', ABSPATH . '../.env'] as $file) {
+            if (!is_readable($file)) continue;
+            $content = file_get_contents($file);
+            if ($content && preg_match('/^BOT_TOKEN=(.+)$/m', $content, $m)) {
+                $token = trim($m[1]);
+                break;
+            }
+        }
+        return $token;
+    }
+
+    /**
+     * Вызов метода Telegram Bot API. С файлами — multipart, без них — JSON.
+     * Возвращает декодированный ответ или [].
+     */
+    private static function tg_call($token, $method, array $fields, array $files = []) {
+        if (!$token) return [];
+        $url = "https://api.telegram.org/bot{$token}/{$method}";
+        if (!$files) {
+            $resp = wp_remote_post($url, [
+                'body' => json_encode($fields, JSON_UNESCAPED_UNICODE),
+                'headers' => ['Content-Type' => 'application/json'],
+                'timeout' => 60,
+            ]);
+        } else {
+            $boundary = wp_generate_password(24, false);
+            $body = '';
+            foreach ($fields as $name => $value) {
+                $body .= "--{$boundary}\r\n";
+                $body .= 'Content-Disposition: form-data; name="' . $name . '"' . "\r\n\r\n";
+                $body .= $value . "\r\n";
+            }
+            foreach ($files as $name => $file) {
+                $filename = str_replace('"', '', basename($file['path']));
+                $body .= "--{$boundary}\r\n";
+                $body .= 'Content-Disposition: form-data; name="' . $name . '"; filename="' . $filename . '"' . "\r\n";
+                $body .= 'Content-Type: ' . $file['type'] . "\r\n\r\n";
+                $body .= file_get_contents($file['path']) . "\r\n";
+            }
+            $body .= "--{$boundary}--\r\n";
+            $resp = wp_remote_post($url, [
+                'headers' => ['Content-Type' => "multipart/form-data; boundary={$boundary}"],
+                'body' => $body,
+                'timeout' => 60,
+            ]);
+        }
+        if (is_wp_error($resp)) return [];
+        return json_decode(wp_remote_retrieve_body($resp), true) ?: [];
+    }
+
+    /**
+     * Отправка сообщения в личный чат. Возвращает message_id или 0.
+     */
+    private static function tg_send_message($token, $chat_id, $text) {
+        $data = self::tg_call($token, 'sendMessage', [
+            'chat_id' => (int)$chat_id,
+            'text' => $text,
+        ]);
+        return (int)($data['result']['message_id'] ?? 0);
+    }
+
+    /**
+     * Одно фото с подписью. Возвращает message_id или 0.
+     */
+    private static function tg_send_photo($token, $chat_id, $caption, array $file) {
+        $fields = ['chat_id' => (int)$chat_id];
+        if ($caption !== '') {
+            $fields['caption'] = $caption;
+        }
+        $data = self::tg_call($token, 'sendPhoto', $fields, ['photo' => $file]);
+        return (int)($data['result']['message_id'] ?? 0);
+    }
+
+    /**
+     * Группа фото (сетка 2–10). Подпись — к первому фото.
+     * Возвращает список message_id (отправляется одним сообщением).
+     */
+    private static function tg_send_media_group($token, $chat_id, $caption, array $files) {
+        $media = [];
+        $attach = [];
+        $i = 0;
+        foreach ($files as $file) {
+            $item = ['type' => 'photo', 'media' => 'attach://' . $i];
+            if ($i === 0 && $caption !== '') {
+                $item['caption'] = $caption;
+            }
+            $media[] = $item;
+            $attach[$i] = $file;
+            $i++;
+        }
+        $data = self::tg_call($token, 'sendMediaGroup', [
+            'chat_id' => (int)$chat_id,
+            'media' => json_encode($media, JSON_UNESCAPED_UNICODE),
+        ], $attach);
+        if (empty($data['ok']) || !is_array($data['result'])) {
+            return [];
+        }
+        $ids = [];
+        foreach ($data['result'] as $m) {
+            $mid = (int)($m['message_id'] ?? 0);
+            if ($mid) $ids[] = $mid;
+        }
+        return $ids;
+    }
+
+    /**
+     * Разбивка текста на куски не длиннее $limit с обрезкой по переводу
+     * строки или пробелу. Первый кусок идёт подписью к фото.
+     */
+    private static function split_text($text, $limit) {
+        $text = trim((string)$text);
+        if ($text === '') return [''];
+        if (mb_strlen($text) <= $limit) return [$text];
+        $min = (int)($limit * 0.6);
+        $chunks = [];
+        while (mb_strlen($text) > $limit) {
+            $head = mb_substr($text, 0, $limit);
+            $pos = mb_strrpos($head, "\n");
+            if ($pos === false || $pos < $min) $pos = mb_strrpos($head, ' ');
+            if ($pos === false || $pos < $min) $pos = $limit;
+            $chunks[] = trim(mb_substr($head, 0, $pos));
+            $text = ltrim(mb_substr($text, $pos));
+        }
+        if ($text !== '') $chunks[] = $text;
+        return $chunks;
+    }
+
+    /**
+     * Локальные файлы вложений рассылки (id из медиатеки → путь на диске).
+     * Пропускает удалённые и файлы тяжелее 10 МБ (лимит Telegram).
+     */
+    private static function broadcast_media_paths($media_json) {
+        $ids = json_decode((string)$media_json, true);
+        if (!is_array($ids)) return [];
+        // Что принимает Telegram как photo
+        $allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        $files = [];
+        foreach (array_slice($ids, 0, 10) as $id) {
+            $id = (int)$id;
+            if (!$id) continue;
+            $path = get_attached_file($id);
+            if (!$path || !is_readable($path)) continue;
+            if (@filesize($path) > 10 * 1024 * 1024) continue;
+            $type = wp_check_filetype($path)['type'];
+            if (!$type || !in_array($type, $allowed, true)) continue;
+            $files[] = [
+                'id' => $id,
+                'path' => $path,
+                'type' => $type,
+            ];
+        }
+        return $files;
+    }
+
+    /**
+     * Удаление сообщения. false — не удалено (ошибка, чат недоступен
+     * или сообщению больше 48 часов — Telegram такое не удаляет).
+     */
+    private static function tg_delete_message($token, $chat_id, $message_id) {
+        if (!$token) return false;
+        $resp = wp_remote_post("https://api.telegram.org/bot{$token}/deleteMessage", [
+            'body' => json_encode(['chat_id' => (int)$chat_id, 'message_id' => (int)$message_id]),
+            'headers' => ['Content-Type' => 'application/json'],
+            'timeout' => 15,
+        ]);
+        if (is_wp_error($resp)) return false;
+        if (wp_remote_retrieve_response_code($resp) >= 500) return false;
+        $data = json_decode(wp_remote_retrieve_body($resp), true);
+        return !empty($data['ok']);
     }
 
     public static function handle_actions() {
@@ -471,6 +677,134 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-support&chat=' . $chat_id . '&msg=' . urlencode('Ответ отправлен')));
                 exit;
 
+            case 'send_broadcast':
+                $title = sanitize_text_field($_POST['broadcast_title'] ?? '');
+                $body = sanitize_textarea_field($_POST['broadcast_body'] ?? '');
+                if ($body === '') {
+                    wp_redirect(admin_url('admin.php?page=wpz-broadcasts&err=1&msg=' . urlencode('Введите текст рассылки')));
+                    exit;
+                }
+                $media_ids = json_decode(sanitize_text_field($_POST['broadcast_media'] ?? '[]'), true);
+                if (!is_array($media_ids)) $media_ids = [];
+                $media_ids = array_values(array_unique(array_filter(array_map('intval', $media_ids))));
+                $media_ids = array_slice($media_ids, 0, 10);
+                if (function_exists('set_time_limit')) {
+                    @set_time_limit(0);
+                }
+                $broadcast_id = $db->add_broadcast(
+                    $title, $body, wp_get_current_user()->user_login, json_encode($media_ids)
+                );
+                if (!$broadcast_id) {
+                    wp_redirect(admin_url('admin.php?page=wpz-broadcasts&err=1&msg=' . urlencode('Не удалось создать рассылку')));
+                    exit;
+                }
+                $recipients = $db->get_broadcast_recipients();
+                $total = count($recipients);
+                $text = ($title !== '' ? $title . "\n\n" : '') . $body;
+                $files = self::broadcast_media_paths(json_encode($media_ids));
+                if ($files) {
+                    // Подпись к фото — до 1024 символов, остаток — отдельными сообщениями
+                    $parts = self::split_text($text, 1024);
+                    $caption = (string)array_shift($parts);
+                    $tail = $parts;
+                } else {
+                    $caption = '';
+                    $tail = [];
+                    $parts = self::split_text($text, 4096);
+                }
+                $token = self::bot_token();
+                $sent = 0;
+                $failed = 0;
+                foreach ($recipients as $r) {
+                    $chat_id = (int)$r['telegram_id'];
+                    $sent_ids = [];
+                    $delivered = false;
+                    if (count($files) === 1) {
+                        $mid = self::tg_send_photo($token, $chat_id, $caption, $files[0]);
+                        if ($mid) {
+                            $sent_ids[] = $mid;
+                            $delivered = true;
+                        }
+                    } elseif (count($files) > 1) {
+                        $sent_ids = self::tg_send_media_group($token, $chat_id, $caption, $files);
+                        $delivered = (bool)$sent_ids;
+                    } else {
+                        foreach ($parts as $part) {
+                            $mid = self::tg_send_message($token, $chat_id, $part);
+                            if ($mid) {
+                                $sent_ids[] = $mid;
+                                $delivered = true;
+                            }
+                        }
+                    }
+                    if ($delivered) {
+                        foreach ($tail as $part) {
+                            $mid = self::tg_send_message($token, $chat_id, $part);
+                            if ($mid) $sent_ids[] = $mid;
+                        }
+                    }
+                    foreach ($sent_ids as $mid) {
+                        $db->add_bot_message($chat_id, $mid, $broadcast_id);
+                    }
+                    if ($delivered) {
+                        $sent++;
+                    } else {
+                        $failed++;
+                    }
+                    usleep(60000);
+                }
+                $error = '';
+                if ($total === 0) {
+                    $status = 'failed';
+                    $error = 'Нет получателей';
+                    $msg = 'Рассылка не отправлена: нет получателей';
+                } elseif ($failed === 0) {
+                    $status = 'sent';
+                    $msg = "Рассылка отправлена: {$sent} из {$total}";
+                } elseif ($sent > 0) {
+                    $status = 'partial';
+                    $error = $failed . ' из ' . $total . ' не доставлено (бот заблокирован или недоступен)';
+                    $msg = "Рассылка отправлена частично: {$sent} из {$total}";
+                } else {
+                    $status = 'failed';
+                    $error = 'Ни одно сообщение не доставлено (' . $total . ' ошибок)';
+                    $msg = 'Рассылка не доставлена ни одному получателю';
+                }
+                $db->update_broadcast_result($broadcast_id, $status, $sent, $total, $error);
+                if ($status === 'failed') {
+                    wp_redirect(admin_url('admin.php?page=wpz-broadcasts&err=1&msg=' . urlencode($msg)));
+                    exit;
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-broadcasts&msg=' . urlencode($msg)));
+                exit;
+
+            case 'delete_broadcast':
+                $broadcast_id = (int)($_POST['broadcast_id'] ?? 0);
+                if (!$broadcast_id) {
+                    wp_redirect(admin_url('admin.php?page=wpz-broadcasts&err=1&msg=' . urlencode('Рассылка не найдена')));
+                    exit;
+                }
+                if (function_exists('set_time_limit')) {
+                    @set_time_limit(0);
+                }
+                $token = self::bot_token();
+                $messages = $db->get_broadcast_messages($broadcast_id);
+                $left = 0;
+                foreach ($messages as $m) {
+                    if (!self::tg_delete_message($token, $m['chat_id'], $m['message_id'])) {
+                        $left++;
+                    }
+                    usleep(30000);
+                }
+                $db->delete_broadcast($broadcast_id);
+                $msg = 'Рассылка удалена';
+                if ($left > 0) {
+                    $msg .= ': из чатов не убрать ' . $left . ' из ' . count($messages)
+                        . ' сообщ. (Telegram не удаляет старше 48 ч.)';
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-broadcasts&msg=' . urlencode($msg)));
+                exit;
+
             case 'save_bot_settings':
                 $db = self::db();
                 $reward_keys = ['scan_balance','scan_xp','partner_scan_default','gift_min','gift_max','conversion_multiplier','expired_conversion_multiplier','level_up_bonus','tree_threshold_2','tree_threshold_3','tree_threshold_4','tree_threshold_5','tree_threshold_6'];
@@ -483,6 +817,9 @@ class WaterPrize_Pages {
                 }
                 if (isset($_POST['partner_referral_value'])) {
                     $db->set_setting('partner_referral_value', sanitize_text_field($_POST['partner_referral_value']));
+                }
+                if (isset($_POST['cleanup_minutes'])) {
+                    $db->set_setting('cleanup_minutes', sanitize_text_field($_POST['cleanup_minutes']));
                 }
                 foreach ($reward_keys as $k) {
                     if (isset($_POST[$k])) {
@@ -972,6 +1309,14 @@ class WaterPrize_Pages {
         $notifications = self::db()->get_notifications(200);
         $total = self::db()->count_notifications();
         include __DIR__ . '/../templates/notifications.php';
+    }
+
+    // ─── Broadcasts (рассылки) ────────────────────────
+    public static function broadcasts() {
+        $db = self::db();
+        $broadcasts = $db->get_broadcasts(200);
+        $broadcast_recipients = $db->count_broadcast_recipients();
+        include __DIR__ . '/../templates/broadcasts.php';
     }
 
     // ─── User QR Activations ──────────────────────────

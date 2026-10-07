@@ -1,15 +1,18 @@
+import asyncio
 import logging
+import mimetypes
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
 from .config import get_settings
 from .deps import db, BASE_DIR
+from . import bot as tg_bot
 from .routes.webhook import router as webhook_router
 from .routes.api import router as api_router, _validate_init_data
 
@@ -78,6 +81,8 @@ app.include_router(api_router)
 
 # ─── Startup / Shutdown ─────────────────────────────────
 
+_maintenance_task: asyncio.Task | None = None
+
 
 @app.on_event("startup")
 async def startup():
@@ -90,10 +95,17 @@ async def startup():
     logger.info("Database connected")
     logger.info(f"WEBAPP_URL={s['WEBAPP_URL']}")
     await _setup_bot_commands()
+    global _maintenance_task
+    _maintenance_task = asyncio.create_task(tg_bot.maintenance_loop(db))
+    logger.info("Bot maintenance loop started")
 
 
 @app.on_event("shutdown")
 async def shutdown():
+    global _maintenance_task
+    if _maintenance_task:
+        _maintenance_task.cancel()
+        _maintenance_task = None
     await db.close()
 
 
@@ -133,9 +145,49 @@ async def _setup_bot_commands():
 async def health():
     return {"status": "ok", "time": datetime.now().isoformat()}
 
-# ─── Static Files (after all routes) ──────────────────
+# ─── Uploads (диск + fallback в БД) / Static ───────────
 
 static_dir = BASE_DIR / "public"
+UPLOADS_DIR = static_dir / "uploads"
+
+# Без этих строк часть платформ отдаёт .webp как application/octet-stream
+mimetypes.add_type("image/webp", ".webp")
+mimetypes.add_type("image/avif", ".avif")
+mimetypes.add_type("image/svg+xml", ".svg")
+
+
+def _guess_mime(path) -> str:
+    return mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+
+
+@app.get("/uploads/{file_path:path}")
+async def uploads(file_path: str):
+    """Файл из public/uploads. Если его нет на диске (не задеплоен) —
+    картинка берётся из таблицы media_files, чтобы загрузки из админки
+    появлялись в мини-аппе без git push и редеплоя."""
+    if not file_path or ".." in file_path or file_path.startswith("/"):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    try:
+        root = UPLOADS_DIR.resolve()
+        disk = (UPLOADS_DIR / file_path).resolve()
+    except Exception:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    if str(disk).startswith(str(root)) and disk.is_file():
+        return FileResponse(
+            disk,
+            media_type=_guess_mime(disk.name),
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    row = await db.get_media_file_by_path(file_path)
+    if row:
+        return Response(
+            content=row["bytes"],
+            media_type=row["mime"],
+            headers={"Cache-Control": "public, max-age=86400"},
+        )
+    return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+
 if static_dir.exists():
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 

@@ -54,6 +54,70 @@ add_action('admin_init', function () {
             update_option('wpz_migration_partner_settlements', true);
         }
     }
+    if (!get_option('wpz_migration_broadcasts')) {
+        $db = WaterPrize_DB::instance();
+        $ok = $db->execute(
+            "CREATE TABLE IF NOT EXISTS broadcasts (
+                id BIGSERIAL PRIMARY KEY,
+                title TEXT NOT NULL DEFAULT '',
+                body TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'sending',
+                recipients INTEGER NOT NULL DEFAULT 0,
+                sent_count INTEGER NOT NULL DEFAULT 0,
+                error TEXT NOT NULL DEFAULT '',
+                created_by TEXT NOT NULL DEFAULT '',
+                media TEXT NOT NULL DEFAULT '[]',
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                sent_at TIMESTAMPTZ
+            )"
+        );
+        $ok = $ok && $db->execute(
+            "CREATE TABLE IF NOT EXISTS bot_messages (
+                id BIGSERIAL PRIMARY KEY,
+                chat_id BIGINT NOT NULL,
+                message_id BIGINT NOT NULL,
+                broadcast_id BIGINT REFERENCES broadcasts(id) ON DELETE CASCADE,
+                delete_after TIMESTAMPTZ,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )"
+        );
+        $ok = $ok && $db->execute(
+            "CREATE INDEX IF NOT EXISTS idx_bot_messages_delete_after ON bot_messages (delete_after)"
+        );
+        $ok = $ok && $db->execute(
+            "CREATE INDEX IF NOT EXISTS idx_bot_messages_chat_id ON bot_messages (chat_id)"
+        );
+        $ok = $ok && $db->execute(
+            "CREATE INDEX IF NOT EXISTS idx_bot_messages_broadcast_id ON bot_messages (broadcast_id)"
+        );
+        if ($ok) {
+            update_option('wpz_migration_broadcasts', true);
+        }
+    }
+    if (!get_option('wpz_migration_broadcast_media')) {
+        $db = WaterPrize_DB::instance();
+        if ($db->execute("ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS media TEXT NOT NULL DEFAULT '[]'")) {
+            update_option('wpz_migration_broadcast_media', true);
+        }
+    }
+    if (!get_option('wpz_migration_media_files')) {
+        $db = WaterPrize_DB::instance();
+        $ok = $db->execute(
+            "CREATE TABLE IF NOT EXISTS media_files (
+                id BIGSERIAL PRIMARY KEY,
+                path TEXT NOT NULL UNIQUE,
+                mime TEXT NOT NULL DEFAULT 'image/jpeg',
+                bytes BYTEA NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )"
+        );
+        $ok = $ok && $db->execute(
+            "CREATE INDEX IF NOT EXISTS idx_media_files_path ON media_files (path)"
+        );
+        if ($ok) {
+            update_option('wpz_migration_media_files', true);
+        }
+    }
 });
 
 add_action('wp_ajax_wpz_online', function () {

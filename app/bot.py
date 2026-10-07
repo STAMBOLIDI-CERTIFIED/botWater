@@ -1,11 +1,16 @@
 import json
 import logging
 import asyncio
+from datetime import datetime, timedelta, timezone
+
 import httpx
 
 logger = logging.getLogger(__name__)
 
 _API_BASE = "https://api.telegram.org/bot"
+
+# Сколько времени сообщения бота живут в чате, пока админ не настроил иначе.
+DEFAULT_CLEANUP_SECONDS = 600
 
 
 def _token() -> str:
@@ -17,7 +22,24 @@ def _url(method: str) -> str:
     return f"{_API_BASE}{_token()}/{method}"
 
 
-_chat_messages: dict[int, list[int]] = {}
+_cleanup_ttl: int = DEFAULT_CLEANUP_SECONDS
+
+
+def set_cleanup_ttl(seconds: int) -> None:
+    global _cleanup_ttl
+    _cleanup_ttl = max(0, int(seconds))
+
+
+def _ttl_deadline() -> datetime | None:
+    """Когда удалить сообщение. None → не удалять автоматически (TTL выключен)."""
+    if _cleanup_ttl <= 0:
+        return None
+    return datetime.now(timezone.utc) + timedelta(seconds=_cleanup_ttl)
+
+
+async def _track_message(chat_id: int, message_id: int, broadcast_id: int | None = None):
+    from .deps import db
+    await db.add_bot_message(chat_id, message_id, _ttl_deadline(), broadcast_id)
 
 
 async def send_message(chat_id: int, text: str, **kwargs):
@@ -27,31 +49,97 @@ async def send_message(chat_id: int, text: str, **kwargs):
             resp = await client.post(_url("sendMessage"), json=payload)
             data = resp.json()
             if data and data.get("ok") and data.get("result", {}).get("message_id"):
-                _chat_messages.setdefault(chat_id, []).append(data["result"]["message_id"])
+                try:
+                    await _track_message(chat_id, data["result"]["message_id"])
+                except Exception:
+                    logger.exception("track message failed: chat=%s", chat_id)
             return data
         except Exception as e:
             logger.error(f"sendMessage failed: {e}")
             return None
 
 
+async def _delete_tg_message(client: httpx.AsyncClient, chat_id: int, message_id: int) -> bool:
+    """True → строку учёта можно удалять. Сетевая ошибка/таймаут и 5xx → False
+    (повтор позже); любой другой ответ → True: сообщение удалено, не найдено,
+    старше 48ч или чат недоступен — повторять бессмысленно."""
+    try:
+        resp = await client.post(_url("deleteMessage"), json={"chat_id": chat_id, "message_id": message_id})
+    except Exception:
+        return False
+    return resp.status_code < 500
+
+
 async def delete_chat_messages(chat_id: int):
-    msgs = _chat_messages.pop(chat_id, [])
-    if not msgs:
+    """Флеш: удаляет из чата все обычные (не рассылочные) сообщения бота."""
+    from .deps import db
+    try:
+        rows = await db.get_chat_bot_messages(chat_id)
+    except Exception:
+        logger.exception("get_chat_bot_messages failed: chat=%s", chat_id)
         return
+    if not rows:
+        return
+    removed: list[int] = []
     async with httpx.AsyncClient() as client:
-        for msg_id in msgs:
-            try:
-                await client.post(_url("deleteMessage"), json={"chat_id": chat_id, "message_id": msg_id})
-            except Exception:
-                pass
+        for row in rows:
+            if await _delete_tg_message(client, chat_id, row["message_id"]):
+                removed.append(row["id"])
+    if removed:
+        try:
+            await db.delete_bot_message_rows(removed)
+        except Exception:
+            logger.exception("delete_bot_message_rows failed")
 
 
 async def _delete_message(chat_id: int, message_id: int):
+    from .deps import db
     async with httpx.AsyncClient() as client:
+        if await _delete_tg_message(client, chat_id, message_id):
+            try:
+                await db.delete_bot_message_row(chat_id, message_id)
+            except Exception:
+                logger.exception("delete_bot_message_row failed")
+
+
+async def sweep_due_messages(db) -> int:
+    """Удаляет сообщения, у которых истёк срок auto-cleanup. Возвращает число обработанных."""
+    try:
+        rows = await db.get_due_bot_messages(200)
+    except Exception:
+        logger.exception("get_due_bot_messages failed")
+        return 0
+    if not rows:
+        return 0
+    removed: list[int] = []
+    async with httpx.AsyncClient() as client:
+        for row in rows:
+            if await _delete_tg_message(client, row["chat_id"], row["message_id"]):
+                removed.append(row["id"])
+    if removed:
         try:
-            await client.post(_url("deleteMessage"), json={"chat_id": chat_id, "message_id": message_id})
+            await db.delete_bot_message_rows(removed)
         except Exception:
-            pass
+            logger.exception("delete_bot_message_rows failed")
+    return len(rows)
+
+
+async def maintenance_loop(db) -> None:
+    """Фоновый цикл: обновляет TTL из настроек и удаляет просроченные сообщения.
+
+    Рассылки (broadcast_id заполнен, delete_after IS NULL) не трогаются."""
+    logger.info("maintenance loop started (cleanup TTL=%ss)", _cleanup_ttl)
+    while True:
+        try:
+            ttl_min = await db.get_bot_setting_int("cleanup_minutes", 10)
+            set_cleanup_ttl(ttl_min * 60)
+        except Exception:
+            logger.exception("cleanup_minutes read failed")
+        try:
+            await sweep_due_messages(db)
+        except Exception:
+            logger.exception("sweep_due_messages failed")
+        await asyncio.sleep(30)
 
 
 async def answer_callback(callback_id: str, text: str = "", show_alert: bool = False):

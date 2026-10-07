@@ -9,6 +9,53 @@ logger = logging.getLogger(__name__)
 _FILTER_RE = re.compile(r"^([a-z_0-9]+)=(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^&]+)$")
 _DOT_FILTER_RE = re.compile(r"^([a-z_0-9]+)\.(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^,(]+)$")
 
+# ─── DDL: рассылки + учёт сообщений бота ─────────────────
+# Схема дублируется в migrations/017_broadcasts.sql и в WP-плагине
+# (waterprize-admin.php, admin_init).
+
+_BROADCASTS_DDL = """
+CREATE TABLE IF NOT EXISTS broadcasts (
+    id BIGSERIAL PRIMARY KEY,
+    title TEXT NOT NULL DEFAULT '',
+    body TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'sending',
+    recipients INTEGER NOT NULL DEFAULT 0,
+    sent_count INTEGER NOT NULL DEFAULT 0,
+    error TEXT NOT NULL DEFAULT '',
+    created_by TEXT NOT NULL DEFAULT '',
+    media TEXT NOT NULL DEFAULT '[]',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    sent_at TIMESTAMPTZ
+)
+"""
+
+_BOT_MESSAGES_DDL = """
+CREATE TABLE IF NOT EXISTS bot_messages (
+    id BIGSERIAL PRIMARY KEY,
+    chat_id BIGINT NOT NULL,
+    message_id BIGINT NOT NULL,
+    broadcast_id BIGINT REFERENCES broadcasts(id) ON DELETE CASCADE,
+    delete_after TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)
+"""
+
+_BOT_MESSAGES_INDEXES_DDL = (
+    "CREATE INDEX IF NOT EXISTS idx_bot_messages_delete_after ON bot_messages (delete_after)",
+    "CREATE INDEX IF NOT EXISTS idx_bot_messages_chat_id ON bot_messages (chat_id)",
+    "CREATE INDEX IF NOT EXISTS idx_bot_messages_broadcast_id ON bot_messages (broadcast_id)",
+)
+
+_MEDIA_FILES_DDL = """
+CREATE TABLE IF NOT EXISTS media_files (
+    id BIGSERIAL PRIMARY KEY,
+    path TEXT NOT NULL UNIQUE,
+    mime TEXT NOT NULL DEFAULT 'image/jpeg',
+    bytes BYTEA NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)
+"""
+
 
 class Database:
     def __init__(self):
@@ -29,11 +76,29 @@ class Database:
             )
         self.pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=10)
         logger.info("Postgres connected")
+        await self.ensure_broadcast_tables()
 
     async def close(self):
         if self.pool:
             await self.pool.close()
             self.pool = None
+
+    async def ensure_broadcast_tables(self):
+        """Таблицы рассылок, учёта сообщений бота и картинок в БД."""
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(_BROADCASTS_DDL)
+                await conn.execute(
+                    "ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS"
+                    " media TEXT NOT NULL DEFAULT '[]'"
+                )
+                await conn.execute(_BOT_MESSAGES_DDL)
+                for ddl in _BOT_MESSAGES_INDEXES_DDL:
+                    await conn.execute(ddl)
+                await conn.execute(_MEDIA_FILES_DDL)
+            logger.info("Broadcasts/bot_messages/media_files tables ready")
+        except Exception:
+            logger.exception("ensure_broadcast_tables failed")
 
     # ─── Query builder (Supabase-REST-like → SQL) ────────
 
@@ -1795,6 +1860,87 @@ class Database:
             return int(val)
         except (ValueError, TypeError):
             return default
+
+    # ─── Bot messages / Broadcasts ───────────────────────
+
+    async def add_bot_message(
+        self,
+        chat_id: int,
+        message_id: int,
+        delete_after: datetime | None = None,
+        broadcast_id: int | None = None,
+    ) -> None:
+        """Сообщение бота в чате. delete_after=None и broadcast_id=None →
+        удаляется вручную; delete_after задан → автоудаление в этот момент;
+        broadcast_id задан (delete_after=None) → рассылка, не удаляется никогда."""
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    "INSERT INTO bot_messages (chat_id, message_id, broadcast_id, delete_after)"
+                    " VALUES ($1, $2, $3, $4)",
+                    int(chat_id), int(message_id), broadcast_id, delete_after,
+                )
+        except Exception:
+            logger.exception("add_bot_message failed: chat=%s msg=%s", chat_id, message_id)
+
+    async def get_chat_bot_messages(self, chat_id: int) -> list[dict]:
+        """Не-рассылочные сообщения бота в чате (для ручного флеша)."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, message_id FROM bot_messages"
+                " WHERE chat_id=$1 AND broadcast_id IS NULL ORDER BY id",
+                int(chat_id),
+            )
+        return [dict(r) for r in rows]
+
+    async def delete_bot_message_rows(self, row_ids: list[int]) -> None:
+        if not row_ids:
+            return
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM bot_messages WHERE id = ANY($1::bigint[])", row_ids
+            )
+
+    async def delete_bot_message_row(self, chat_id: int, message_id: int) -> None:
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "DELETE FROM bot_messages WHERE chat_id=$1 AND message_id=$2",
+                int(chat_id), int(message_id),
+            )
+
+    async def get_due_bot_messages(self, limit: int = 200) -> list[dict]:
+        """Сообщения, срок автоудаления которых наступил."""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                "SELECT id, chat_id, message_id FROM bot_messages"
+                " WHERE delete_after IS NOT NULL AND delete_after <= NOW()"
+                " ORDER BY delete_after LIMIT $1",
+                int(limit),
+            )
+        return [dict(r) for r in rows]
+
+    # ─── Media files (картинки в БД) ───────────────────
+
+    async def get_media_file_by_path(self, path: str) -> dict | None:
+        """Картинка из media_files: {mime, bytes} или None."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT mime, bytes FROM media_files WHERE path = $1", path
+            )
+        if not row:
+            return None
+        return {"mime": row["mime"], "bytes": bytes(row["bytes"])}
+
+    async def save_media_file(self, path: str, mime: str, data: bytes) -> int:
+        """UPSERT картинки по относительному пути. Возвращает id."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "INSERT INTO media_files (path, mime, bytes) VALUES ($1, $2, $3)"
+                " ON CONFLICT (path) DO UPDATE SET mime = $2, bytes = $3"
+                " RETURNING id",
+                path, mime, data,
+            )
+        return int(row["id"]) if row else 0
 
     # ─── Daily Bonus ──────────────────────────────────────
 

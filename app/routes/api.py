@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..deps import db, get_settings
+from .. import bot as tg_bot
 
 router = APIRouter(prefix="/api")
 
@@ -569,18 +570,14 @@ async def api_support_send(request: Request):
             if a.get("telegram_id") and a["telegram_id"] not in admin_ids:
                 admin_ids.append(a["telegram_id"])
         if admin_ids:
-            import httpx
+            from html import escape
             user_name = user.get("name", "") if user else str(user_id)
-            text = f"💬 Новое сообщение в чате поддержки от {user_name}:\n\n{message}"
-            async with httpx.AsyncClient() as client:
-                for admin_tg_id in admin_ids:
-                    try:
-                        await client.post(
-                            f"https://api.telegram.org/bot{s['BOT_TOKEN']}/sendMessage",
-                            json={"chat_id": admin_tg_id, "text": text}, timeout=10
-                        )
-                    except Exception:
-                        pass
+            text = f"💬 Новое сообщение в чате поддержки от {escape(str(user_name))}:\n\n{escape(message)}"
+            for admin_tg_id in admin_ids:
+                try:
+                    await tg_bot.send_message(admin_tg_id, text)
+                except Exception:
+                    pass
     except Exception:
         pass
 
@@ -607,15 +604,9 @@ async def api_support_admin_reply(request: Request):
     try:
         chat = await db.get_support_chat_with_user(chat_id)
         if chat and chat.get("user_telegram_id"):
-            from ..config import get_settings
-            s = get_settings()
-            import httpx
-            text = f"💬 Ответ поддержки:\n\n{message}"
-            async with httpx.AsyncClient() as client:
-                await client.post(
-                    f"https://api.telegram.org/bot{s['BOT_TOKEN']}/sendMessage",
-                    json={"chat_id": chat["user_telegram_id"], "text": text}, timeout=10
-                )
+            from html import escape
+            text = f"💬 Ответ поддержки:\n\n{escape(message)}"
+            await tg_bot.send_message(chat["user_telegram_id"], text)
     except Exception:
         pass
 
