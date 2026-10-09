@@ -9,7 +9,7 @@
     background: linear-gradient(135deg, var(--gold), var(--gold-light));
     display: flex; align-items: center; justify-content: center;
     border: 2px solid var(--gold);
-    box-shadow: 0 0 16px rgba(201,168,76,0.15);
+    box-shadow: 0 0 16px rgba(var(--gold-rgb),0.15);
     flex-shrink: 0; overflow: hidden;
 }
 .top-avatar-photo {
@@ -19,7 +19,7 @@
     width: 100%; height: 100%; border-radius: 50%;
     background: linear-gradient(135deg, var(--gold), var(--gold-light));
     display: none; align-items: center; justify-content: center;
-    color: #fff; font-size: 18px;
+    color: var(--on-accent); font-size: 18px;
 }
 .top-info .top-label { font-size: 12px; color: var(--text-dim); }
 .top-info .top-name { font-size: 17px; font-weight: 700; transition: color .2s; }
@@ -43,11 +43,11 @@
 .top-balance {
     min-width: 72px; height: 40px; padding: 0 11px;
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(201,168,76,0.12), rgba(201,168,76,0.06));
-    border: 1px solid rgba(201,168,76,0.16);
+    background: linear-gradient(135deg, rgba(var(--gold-rgb),0.12), rgba(var(--gold-rgb),0.06));
+    border: 1px solid rgba(var(--gold-rgb),0.16);
     display: flex; align-items: center; justify-content: center; gap: 6px;
     color: var(--gold); font-size: 13px; font-weight: 800;
-    box-shadow: 0 4px 16px rgba(201,168,76,0.06);
+    box-shadow: 0 4px 16px rgba(var(--gold-rgb),0.06);
     white-space: nowrap;
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
@@ -96,7 +96,7 @@
 .notif-item:active { background: rgba(255,255,255,0.06); transform: scale(0.98); }
 .notif-item:hover { background: rgba(255,255,255,0.05); }
 .notif-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.notif-icon.scan { background: rgba(201,168,76,0.12); color: var(--gold); }
+.notif-icon.scan { background: rgba(var(--gold-rgb),0.12); color: var(--gold); }
 .notif-icon.points { background: rgba(61,158,106,0.12); color: var(--green); }
 .notif-icon.raffle { background: rgba(168,85,247,0.12); color: var(--purple); }
 .notif-icon.donation { background: rgba(239,68,68,0.12); color: var(--red); }

@@ -20,7 +20,7 @@
 .banner::before {
     content: ''; position: absolute; top: -20px; right: -20px;
     width: 80px; height: 80px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(201,168,76,0.15), transparent);
+    background: radial-gradient(circle, rgba(var(--gold-rgb),0.15), transparent);
 }
 .banner-left { display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
 .banner-icon { font-size: 28px; }

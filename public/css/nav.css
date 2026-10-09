@@ -62,7 +62,7 @@
 }
 
 .nav-item.active .nav-icon {
-    background: rgba(201, 168, 76, 0.12);
+    background: rgba(var(--gold-rgb),0.12);
 }
 
 .nav-item.active .nav-icon::after {

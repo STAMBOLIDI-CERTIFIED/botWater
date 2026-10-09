@@ -26,7 +26,7 @@
 }
 #splash::after {
     bottom: -32vmax; right: -26vmax;
-    background: radial-gradient(circle, rgba(201,168,76,.3), transparent 65%);
+    background: radial-gradient(circle, rgba(var(--gold-rgb),.3), transparent 65%);
     opacity: .5;
     animation-delay: -5.5s;
     animation-direction: alternate-reverse;
@@ -44,11 +44,11 @@
     margin: -85vmax 0 0 -85vmax;
     background: conic-gradient(from 0deg,
         transparent 0deg 16deg,
-        rgba(201,168,76,.05) 22deg,
+        rgba(var(--gold-rgb),.05) 22deg,
         transparent 28deg 46deg,
         rgba(111,207,151,.045) 52deg,
         transparent 58deg 76deg,
-        rgba(201,168,76,.05) 82deg,
+        rgba(var(--gold-rgb),.05) 82deg,
         transparent 88deg 116deg,
         rgba(111,207,151,.04) 122deg,
         transparent 128deg);
@@ -68,8 +68,8 @@
 .sp-dust {
     position: absolute;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,230,150,.95), rgba(201,168,76,.4) 55%, transparent 75%);
-    box-shadow: 0 0 7px rgba(201,168,76,.85), 0 0 16px rgba(201,168,76,.35);
+    background: radial-gradient(circle, rgba(255,230,150,.95), rgba(var(--gold-rgb),.4) 55%, transparent 75%);
+    box-shadow: 0 0 7px rgba(var(--gold-rgb),.85), 0 0 16px rgba(var(--gold-rgb),.35);
     animation: spTwinkle ease-in-out infinite alternate;
 }
 @keyframes spTwinkle {
@@ -117,13 +117,13 @@
     font-size: 30px; font-weight: 800;
     letter-spacing: 5px;
     text-transform: uppercase;
-    background: linear-gradient(105deg, var(--gold) 25%, #FFF0B8 45%, var(--gold) 62%);
+    background: linear-gradient(105deg, var(--gold) 25%, var(--gold-light) 45%, var(--gold) 62%);
     background-size: 240% 100%;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
     animation: spShine 3.2s linear infinite;
-    filter: drop-shadow(0 2px 14px rgba(201,168,76,.35));
+    filter: drop-shadow(0 2px 14px rgba(var(--gold-rgb),.35));
 }
 @keyframes spShine {
     from { background-position: 130% 0; }
@@ -140,7 +140,7 @@
 #splash .splash-dots span {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--gold);
-    box-shadow: 0 0 10px rgba(201,168,76,.7);
+    box-shadow: 0 0 10px rgba(var(--gold-rgb),.7);
     animation: dotBounce 1.2s ease-in-out infinite;
 }
 #splash .splash-dots span:nth-child(2) { animation-delay: .15s; }

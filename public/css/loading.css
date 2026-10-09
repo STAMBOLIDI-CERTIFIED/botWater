@@ -14,7 +14,7 @@
     position: absolute;
     inset: 0;
     transform: translateX(-100%);
-    background: linear-gradient(90deg, rgba(201, 168, 76, 0) 0%, rgba(201, 168, 76, 0.10) 50%, rgba(201, 168, 76, 0) 100%);
+    background: linear-gradient(90deg, rgba(var(--gold-rgb),0) 0%, rgba(var(--gold-rgb),0.10) 50%, rgba(var(--gold-rgb),0) 100%);
     animation: skShimmer 1.5s ease-in-out infinite;
 }
 
@@ -39,8 +39,8 @@
     height: 20px;
     border-radius: 50%;
     flex-shrink: 0;
-    border: 2.5px solid rgba(201, 168, 76, 0.18);
-    border-top-color: #C9A84C;
+    border: 2.5px solid rgba(var(--gold-rgb),0.18);
+    border-top-color: var(--gold);
     animation: skSpin 0.75s linear infinite;
 }
 
