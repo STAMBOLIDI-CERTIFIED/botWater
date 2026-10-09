@@ -136,7 +136,18 @@
     background: rgba(255, 255, 255, 0.06);
     font-size: 18px;
     font-weight: 700;
+    line-height: 0;
     transition: all .25s ease;
+}
+
+.bb-icon .icn {
+    display: inline-flex;
+    line-height: 0;
+}
+
+.bb-icon svg {
+    width: 15px;
+    height: 15px;
 }
 
 .back-btn:active .bb-icon {

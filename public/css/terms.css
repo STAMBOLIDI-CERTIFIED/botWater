@@ -47,12 +47,21 @@ hr {
     margin: 24px 0;
 }
 .back {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     margin-bottom: 20px;
     color: #0EA5E9;
     text-decoration: none;
     font-size: 14px;
     font-weight: 600;
+    line-height: 1;
+}
+
+.back svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
 }
 .back:hover { text-decoration: underline; }
 @media (max-width: 480px) {

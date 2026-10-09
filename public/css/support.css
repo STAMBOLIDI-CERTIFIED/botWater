@@ -125,7 +125,6 @@ body.chat-mode {
     color: var(--text);
     font-size: 20px;
     line-height: 1;
-    padding-bottom: 3px;
     transition: all var(--transition-fast);
     flex-shrink: 0;
 }
@@ -133,6 +132,16 @@ body.chat-mode {
 .support-header-back:active {
     transform: scale(0.9);
     background: var(--surface-hover);
+}
+
+.support-header-back .icn {
+    display: inline-flex;
+    line-height: 0;
+}
+
+.support-header-back svg {
+    width: 18px;
+    height: 18px;
 }
 
 /* ─── Messages Container ───────────────────────── */
