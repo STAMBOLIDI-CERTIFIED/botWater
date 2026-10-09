@@ -15,6 +15,12 @@ from .. import bot as tg_bot
 
 router = APIRouter(prefix="/api")
 
+# Каталог магазина — справочные данные, кэшируем на сервере и в браузере
+_CATALOG_TTL = 60.0
+_CATALOG_HEADERS = {"Cache-Control": "public, max-age=60"}
+_categories_cache: dict = {"ts": 0.0, "val": None}
+_category_cache: dict[int, tuple[float, dict]] = {}
+
 
 def _validate_init_data(init_data: str, bot_token: str) -> dict | None:
     if not init_data or not bot_token:
@@ -124,16 +130,29 @@ async def api_prizes():
 
 @router.get("/shop/categories")
 async def api_shop_categories():
-    return await db.get_shop_categories()
+    now = time.monotonic()
+    cached = _categories_cache["val"]
+    if cached is not None and now - _categories_cache["ts"] < _CATALOG_TTL:
+        return JSONResponse(cached, headers=_CATALOG_HEADERS)
+    val = await db.get_shop_categories()
+    _categories_cache["val"] = val
+    _categories_cache["ts"] = now
+    return JSONResponse(val, headers=_CATALOG_HEADERS)
 
 
 @router.get("/shop/categories/{category_id}")
 async def api_shop_category_items(category_id: int):
+    now = time.monotonic()
+    hit = _category_cache.get(category_id)
+    if hit and now - hit[0] < _CATALOG_TTL:
+        return JSONResponse(hit[1], headers=_CATALOG_HEADERS)
     category = await db.get_shop_category(category_id)
     if not category:
         return JSONResponse({"error": "not found"}, status_code=404)
     items = await db.get_prizes_by_category(category_id)
-    return {"category": category, "items": items}
+    payload = {"category": category, "items": items}
+    _category_cache[category_id] = (now, payload)
+    return JSONResponse(payload, headers=_CATALOG_HEADERS)
 
 
 @router.get("/shop/categories/{category_id}/items")
