@@ -670,21 +670,12 @@ function stopScanner() {
         try { return new Date(s).toLocaleDateString('ru-RU'); } catch (e) { return ''; }
     }
 
-    function hexA(hex, a) {
-        var h = String(hex || '#999').replace('#', '');
-        if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-        var n = parseInt(h, 16);
-        if (isNaN(n)) return 'rgba(153,153,153,' + a + ')';
-        return 'rgba(' + ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255) + ',' + a + ')';
-    }
-
 async function loadMyCoupons() {
         var uid = getUID();
         var list = document.getElementById('my-coupons-list');
         var chips = document.getElementById('my-coupons-chips');
         myCouponsData = [];
         myCouponsFilter = 'all';
-        renderMycPill();
         if (!uid) {
             if (chips) chips.style.display = 'none';
             list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('warning') + '</div><div class="empty-t">Пользователь не найден</div></div>';
@@ -697,17 +688,8 @@ async function loadMyCoupons() {
             return;
         }
         myCouponsData = data.coupons;
-        renderMycPill();
         renderMyCouponsChips();
         renderMyCouponsList();
-    }
-
-    function renderMycPill() {
-        var n = myCouponsData.filter(function (c) { return (c.status || 'active') === 'active'; }).length;
-        var pill = document.getElementById('myc-count-pill');
-        var val = document.getElementById('myc-active-count');
-        if (val) val.textContent = n;
-        if (pill) pill.classList.toggle('zero', !n);
     }
 
     function renderMyCouponsChips() {
@@ -761,9 +743,7 @@ async function loadMyCoupons() {
             list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon(e.ico) + '</div><div class="empty-t">' + e.t + '</div><div class="empty-d">' + e.d + '</div></div>';
             return;
         }
-        var rest = items.slice(1);
-        list.innerHTML = mycHeroHtml(items[0])
-            + (rest.length ? '<div class="myc-grid">' + rest.map(function (c, i) { return mycCardHtml(c, i + 1); }).join('') + '</div>' : '');
+        list.innerHTML = '<div class="myc-grid">' + items.map(function (c, i) { return mycCardHtml(c, i); }).join('') + '</div>';
 
         Array.prototype.forEach.call(list.querySelectorAll('[data-myc-idx]'), function (el) {
             var c = items[Number(el.getAttribute('data-myc-idx'))];
@@ -800,33 +780,6 @@ async function loadMyCoupons() {
         return '<span class="myc-stamp" style="color:' + st.color + ';border-color:' + st.color + '">' + st.label.toUpperCase() + '</span>';
     }
 
-    function mycHeroHtml(c) {
-        var st = mycStatus(c);
-        var isActive = (c.status || 'active') === 'active';
-        var badge = isActive
-            ? '<span class="shop-hero-badge ok"><i></i>Готов к активации</span>'
-            : '<span class="shop-hero-badge"><i></i>' + esc(st.label) + '</span>';
-        var price = c.is_gift
-            ? '<div class="shop-hero-price myc-gift-line">' + icon('gift') + '<b>Подарок</b></div>'
-            : '<div class="shop-hero-price">' + icon('coin') + '<b>' + esc(c.prize_price || 0) + '</b> <span>баллов</span></div>';
-        var exp = isActive && c.expires_at ? '<span class="myc-exp">до ' + mycDate(c.expires_at) + '</span>' : '';
-        return '<div class="shop-hero myc-hero" data-myc-idx="0">'
-            + '<div class="shop-hero-media' + (mycIsArchive(c) ? ' myc-arch' : '') + '">'
-            + mycImgHtml(c) + mycStampHtml(c) + mycFavBtnHtml(0, c.is_favorite)
-            + '</div>'
-            + '<div class="shop-hero-body">'
-            + '<div class="shop-hero-head">'
-            + '<span class="shop-hero-label" style="color:' + esc(c.partner_color || '#C9A84C') + '">' + esc((c.partner_name || 'Купон').toUpperCase()) + '</span>'
-            + badge
-            + '</div>'
-            + '<div class="shop-hero-title">' + esc(c.prize_name || 'Приз') + '</div>'
-            + '<div class="shop-hero-desc">' + esc(c.prize_description || (c.is_gift ? 'Подарок от партнёра.' : 'Покажите QR-код партнёру для активации.')) + '</div>'
-            + '<div class="shop-hero-foot">'
-            + '<div class="myc-hero-meta">' + price + exp + '</div>'
-            + '<button type="button" class="shop-hero-arrow" aria-label="Открыть">↗</button>'
-            + '</div></div></div>';
-    }
-
     function mycCardHtml(c, idx) {
         var st = mycStatus(c);
         var isActive = (c.status || 'active') === 'active';
@@ -835,7 +788,6 @@ async function loadMyCoupons() {
             ? '<div class="myc-price myc-gift-line">' + icon('gift') + '<b>Подарок</b></div>'
             : '<div class="myc-price">' + icon('coin') + '<b>' + esc(c.prize_price || 0) + '</b> <span>баллов</span></div>';
         var exp = isActive && c.expires_at ? '<span class="myc-exp">до ' + mycDate(c.expires_at) + '</span>' : '';
-        var giftBadge = c.is_gift ? '<span class="myc-gift">' + icon('gift') + ' Подарок</span>' : '';
         var foot = isActive
             ? '<div class="myc-foot">'
                 + '<button type="button" class="myc-qr-btn">Показать QR</button>'
@@ -853,19 +805,14 @@ async function loadMyCoupons() {
             + '</div>'
             + '<div class="myc-body">'
             + '<div class="myc-title">' + esc(c.prize_name || 'Приз') + '</div>'
-            + '<div class="myc-meta-row">'
-            + '<span class="myc-status" style="color:' + st.color + ';background:' + hexA(st.color, 0.15) + '"><i style="background:' + st.color + '"></i>' + esc(st.label) + '</span>'
-            + giftBadge + exp
-            + '</div>'
-            + price
+            + '<div class="myc-row">' + price + exp + '</div>'
             + foot
             + '</div></div>';
     }
 
     function toggleMycFavorite(c) {
         setCouponFavorite(c, !c.is_favorite, function () {
-            renderMycPill();
-            renderMyCouponsChips();
+                renderMyCouponsChips();
             renderMyCouponsList();
         });
     }
@@ -994,8 +941,7 @@ async function loadMyCoupons() {
         if (!c) return;
         setCouponFavorite(c, !c.is_favorite, function () {
             updateCouponFavBtn();
-            renderMycPill();
-            renderMyCouponsChips();
+                renderMyCouponsChips();
             renderMyCouponsList();
         });
     }
