@@ -1,3 +1,22 @@
+    (function() {
+        var host = document.getElementById('splash-bubbles');
+        if (!host) return;
+        var frag = document.createDocumentFragment();
+        for (var i = 0; i < 16; i++) {
+            var b = document.createElement('span');
+            b.className = 'sp-bubble';
+            var sz = 4 + Math.random() * 13;
+            b.style.width = sz + 'px';
+            b.style.height = sz + 'px';
+            b.style.left = (2 + Math.random() * 96) + '%';
+            b.style.animationDuration = (5 + Math.random() * 6) + 's';
+            b.style.animationDelay = '-' + (Math.random() * 8).toFixed(2) + 's';
+            b.style.opacity = (0.3 + Math.random() * 0.45).toFixed(2);
+            frag.appendChild(b);
+        }
+        host.appendChild(frag);
+    })();
+
     window._splashHidden = false;
     var _splashStart = Date.now();
     function hideSplash() {
