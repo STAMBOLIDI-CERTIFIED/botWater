@@ -77,6 +77,7 @@ class Database:
         self.pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=10)
         logger.info("Postgres connected")
         await self.ensure_broadcast_tables()
+        await self.ensure_coupon_favorites()
 
     async def close(self):
         if self.pool:
@@ -99,6 +100,23 @@ class Database:
             logger.info("Broadcasts/bot_messages/media_files tables ready")
         except Exception:
             logger.exception("ensure_broadcast_tables failed")
+
+    async def ensure_coupon_favorites(self):
+        """Колонка избранного у купонов (см. migrations/019_coupon_favorites.sql)."""
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    "ALTER TABLE user_coupons ADD COLUMN IF NOT EXISTS"
+                    " is_favorite BOOLEAN NOT NULL DEFAULT FALSE"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_user_coupons_favorite"
+                    " ON user_coupons(user_id, is_favorite)"
+                )
+            self._col_cache.pop("user_coupons", None)
+            logger.info("user_coupons.is_favorite ready")
+        except Exception:
+            logger.exception("ensure_coupon_favorites failed")
 
     # ─── Query builder (Supabase-REST-like → SQL) ────────
 
@@ -1186,6 +1204,17 @@ class Database:
                 user_id,
             )
         return [dict(r) for r in rows]
+
+    async def set_user_coupon_favorite(self, user_id: int, coupon_id: int, favorite: bool) -> dict | None:
+        """Пометить купон пользователя избранным. Возвращает купон или None (не найден)."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "UPDATE user_coupons SET is_favorite = $3 "
+                "WHERE id = $1 AND user_id = $2 "
+                "RETURNING id, is_favorite",
+                coupon_id, user_id, bool(favorite),
+            )
+        return dict(row) if row else None
 
     async def get_user_coupon_by_qr(self, qr_code: str) -> dict | None:
         async with self.pool.acquire() as conn:

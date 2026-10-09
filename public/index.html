@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>try{if(localStorage.getItem('wpz_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
-    <link rel="stylesheet" href="/css/app.css?v=202610099">
+    <link rel="stylesheet" href="/css/app.css?v=202610100">
 </head>
 <body>
 
@@ -25,7 +25,7 @@
     <div class="splash-title">ИСТОКЪ</div>
     <div class="splash-dots"><span></span><span></span><span></span></div>
 </div>
-<script src="/js/splash.js?v=202610099"></script>
+<script src="/js/splash.js?v=202610100"></script>
 
 <!-- ГЛАВНОЕ МЕНЮ -->
 <div id="page-menu" class="page active">
@@ -284,6 +284,7 @@
     <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
     <div class="section-title" style="margin-bottom:4px">Мои купоны</div>
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Купленные и использованные купоны</p>
+    <div id="my-coupons-chips" class="shop-chips" style="display:none"></div>
     <div id="my-coupons-list">
         <div class="sk-rows"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>
     </div>
@@ -302,15 +303,37 @@
 
 <!-- МОДАЛКА КУПОНА -->
 <div id="coupon-modal" class="prize-modal-overlay" onclick="if(event.target===this)closeCouponModal()">
-    <div class="prize-modal">
+    <div class="prize-modal cd-sheet">
         <button class="prize-modal-close" onclick="closeCouponModal()">✕</button>
-        <div id="coupon-modal-img" class="prize-modal-img"></div>
-        <div class="prize-modal-body">
-            <div id="coupon-modal-name" class="prize-modal-name"></div>
-            <div id="coupon-modal-desc" class="prize-modal-desc"></div>
-            <div id="coupon-modal-status" class="prize-modal-price"></div>
-            <div id="coupon-modal-qr" style="text-align:center;margin:16px 0"></div>
-            <div id="coupon-modal-action"></div>
+        <div class="cd-scroll">
+            <div class="cd-media">
+                <div class="cd-media-top">
+                    <span id="cd-brand" class="cd-brand"></span>
+                    <span id="cd-model" class="cd-model"></span>
+                </div>
+                <div id="coupon-modal-img" class="cd-media-img"></div>
+            </div>
+            <div class="cd-body">
+                <div class="cd-title-row">
+                    <div id="coupon-modal-name" class="cd-title"></div>
+                    <span id="coupon-modal-meta" class="cd-meta"></span>
+                </div>
+                <div id="coupon-modal-badge" class="cd-pill"></div>
+                <div id="coupon-modal-desc" class="cd-desc"></div>
+                <div class="cd-price-row">
+                    <div class="cd-price-wrap">
+                        <span id="coupon-modal-price" class="cd-price"></span>
+                        <span id="coupon-modal-sub" class="cd-price-sub"></span>
+                    </div>
+                    <button id="coupon-modal-copy" class="cd-link" type="button">Копировать код ↗</button>
+                </div>
+                <div id="coupon-modal-qr" class="cd-qr"></div>
+                <div id="coupon-modal-fine" class="cd-fine"></div>
+            </div>
+        </div>
+        <div class="cd-actions">
+            <button id="coupon-modal-fav" class="cd-fav" type="button" onclick="toggleCouponFavorite()">+ В избранное</button>
+            <button id="coupon-modal-buy" class="cd-buy" type="button">Показать QR</button>
         </div>
     </div>
 </div>
@@ -479,5 +502,5 @@
     </div>
 </div>
 
-<script src="/js/app.js?v=202610099" defer></script>
+<script src="/js/app.js?v=202610100" defer></script>
 </body>

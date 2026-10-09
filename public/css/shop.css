@@ -1119,3 +1119,350 @@
 .shop-card-media img.img-loaded {
     opacity: 1;
 }
+
+/* ═══════════════════════════════════════════
+   ДЕТАЛЬНАЯ КАРТОЧКА КУПОНА
+   ═══════════════════════════════════════════ */
+
+#coupon-modal .prize-modal.cd-sheet {
+    display: flex;
+    flex-direction: column;
+    max-height: 88vh;
+    overflow: hidden;
+    background: var(--bg-elevated);
+}
+
+.cd-scroll {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* ─── Медиа-шапка ─── */
+
+.cd-media {
+    position: relative;
+    margin: 10px 12px 0;
+    padding: 14px 14px 4px;
+    border-radius: 18px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+    border: 1px solid var(--glass-border);
+    overflow: hidden;
+}
+
+.cd-media-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-right: 36px;
+    font-size: 11px;
+}
+
+.cd-brand {
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--text-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cd-model {
+    font-size: 12.5px;
+    font-weight: 800;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.cd-media-img {
+    height: 208px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px 16px;
+}
+
+.cd-media-img img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 16px 26px rgba(0,0,0,0.35));
+}
+
+.cd-media-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.35;
+}
+
+.cd-media-fallback .icn svg {
+    width: 64px;
+    height: 64px;
+}
+
+/* ─── Тело ─── */
+
+.cd-body {
+    padding: 18px 20px 22px;
+}
+
+.cd-title-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.cd-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 25px;
+    line-height: 1.16;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: var(--text);
+    word-break: break-word;
+}
+
+.cd-meta {
+    flex: 0 0 auto;
+    padding-top: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cd-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    background: var(--surface-active);
+    border: 1px solid var(--border-light);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.cd-pill .icn svg {
+    width: 15px;
+    height: 15px;
+}
+
+.cd-desc {
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.cd-price-row {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.cd-price-wrap {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+}
+
+.cd-price {
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    color: var(--text);
+}
+
+.cd-price-sub {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-dim);
+}
+
+.cd-link {
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.cd-link:active { opacity: 0.7; }
+
+/* ─── QR / состояние ─── */
+
+.cd-qr {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.cd-qr-card {
+    display: inline-flex;
+    padding: 10px;
+    background: #fff;
+    border-radius: 18px;
+    box-shadow: var(--shadow-md);
+}
+
+.cd-qr-card img {
+    display: block;
+    width: 188px;
+    height: 188px;
+}
+
+.cd-qr-hint {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.cd-id {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    margin-top: 16px;
+}
+
+.cd-id-label {
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+}
+
+.cd-id-value {
+    max-width: 100%;
+    padding: 7px 11px;
+    border-radius: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    word-break: break-all;
+    text-align: center;
+}
+
+.cd-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 0 4px;
+}
+
+.cd-state-ico { font-size: 40px; }
+
+.cd-state-txt {
+    font-size: 13px;
+    color: var(--text-dim);
+}
+
+.cd-fine {
+    margin-top: 16px;
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--text-dim);
+}
+
+.cd-qr-flash {
+    animation: cdQrFlash 1s var(--ease-out);
+}
+
+@keyframes cdQrFlash {
+    0%, 100% { filter: none; }
+    25%, 65% { filter: drop-shadow(0 0 18px rgba(201,168,76,0.55)); }
+}
+
+/* ─── Нижняя панель действий ─── */
+
+.cd-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+    background: var(--surface-solid);
+    border-top: 1px solid var(--glass-border);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+}
+
+.cd-fav {
+    padding: 0;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 800;
+    color: #FF7A50;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.cd-fav:active { transform: scale(0.96); }
+
+.cd-fav.on { color: var(--gold); }
+
+.cd-buy {
+    flex: 0 0 auto;
+    min-width: 172px;
+    padding: 15px 22px;
+    border: none;
+    border-radius: 14px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    color: #14161B;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(201,168,76,0.28);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.cd-buy:active { transform: scale(0.97); }
+
+.cd-buy:disabled {
+    background: var(--surface-active);
+    color: var(--text-dim);
+    box-shadow: none;
+    cursor: default;
+}
+
+/* ─── Избранное в списке ─── */
+
+.shop-chip .icn { display: inline-flex; }
+.shop-chip .icn svg { width: 14px; height: 14px; }
+
+.coupon-card-fav {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 7px;
+    border-radius: 8px;
+    background: var(--gold-glow);
+    border: 1px solid var(--border);
+    color: var(--gold);
+    font-size: 12px;
+    line-height: 1.3;
+}

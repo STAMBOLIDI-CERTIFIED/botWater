@@ -645,25 +645,72 @@ function stopScanner() {
 // PAGE: MY COUPONS
 // ═══════════════════════════════════════════
 
+    var myCouponsData = [];
+    var myCouponsFilter = 'all';
+    var currentCouponDetail = null;
+
 async function loadMyCoupons() {
         var uid = getUID();
         var list = document.getElementById('my-coupons-list');
-        if (!uid) { list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('warning') + '</div><div class="empty-t">Пользователь не найден</div></div>'; return; }
+        var chips = document.getElementById('my-coupons-chips');
+        myCouponsData = [];
+        myCouponsFilter = 'all';
+        if (!uid) {
+            if (chips) chips.style.display = 'none';
+            list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('warning') + '</div><div class="empty-t">Пользователь не найден</div></div>';
+            return;
+        }
         var data = await apiFetch('/user/' + uid + '/coupons');
         if (!data || !data.ok || !data.coupons || !data.coupons.length) {
+            if (chips) chips.style.display = 'none';
             list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('gift') + '</div><div class="empty-t">Купонов пока нет</div><div class="empty-d">Обменивайте баллы на призы в магазине</div></div>';
+            return;
+        }
+        myCouponsData = data.coupons;
+        renderMyCouponsChips();
+        renderMyCouponsList();
+    }
+
+    function renderMyCouponsChips() {
+        var chips = document.getElementById('my-coupons-chips');
+        if (!chips) return;
+        if (!myCouponsData.length) { chips.style.display = 'none'; chips.innerHTML = ''; return; }
+        var favCount = myCouponsData.filter(function (c) { return !!c.is_favorite; }).length;
+        chips.style.display = 'flex';
+        chips.innerHTML = ''
+            + '<button type="button" class="shop-chip' + (myCouponsFilter === 'all' ? ' active' : '') + '" onclick="filterMyCoupons(\'all\')">Все <span class="shop-chip-count">' + myCouponsData.length + '</span></button>'
+            + '<button type="button" class="shop-chip' + (myCouponsFilter === 'fav' ? ' active' : '') + '" onclick="filterMyCoupons(\'fav\')">' + icon('star') + ' Избранное <span class="shop-chip-count">' + favCount + '</span></button>';
+    }
+
+    function filterMyCoupons(f) {
+        myCouponsFilter = f === 'fav' ? 'fav' : 'all';
+        renderMyCouponsChips();
+        renderMyCouponsList();
+    }
+
+    function renderMyCouponsList() {
+        var list = document.getElementById('my-coupons-list');
+        if (!list) return;
+        var items = myCouponsFilter === 'fav'
+            ? myCouponsData.filter(function (c) { return !!c.is_favorite; })
+            : myCouponsData.slice();
+        if (!items.length) {
+            list.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('star') + '</div><div class="empty-t">В избранном пока нет</div><div class="empty-d">Откройте купон и нажмите «В избранное»</div></div>';
             return;
         }
         var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк', revoked: 'Отозван' };
         var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444', revoked: '#EF4444' };
-        list.innerHTML = data.coupons.map(function(c, i) {
+        list.innerHTML = items.map(function (c, i) {
             var st = c.status || 'active';
             var stColor = statusColors[st] || '#999';
-            var shortCode = (c.qr_code || '').replace('coupon_','');
+            var shortCode = (c.qr_code || '').replace('coupon_', '');
             var uidLabel = 'Купон #' + c.id + (c.order_id ? ' • Заказ #' + c.order_id : '') + (shortCode ? ' • ' + shortCode : '');
             var idBadge = '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:2px 8px;font-size:11px;color:var(--text-dim);font-family:monospace">' + esc(uidLabel) + '</span>';
             if (c.is_gift) {
                 idBadge += '<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(236,64,122,0.14);border:1px solid rgba(236,64,122,0.3);border-radius:8px;padding:2px 8px;font-size:11px;color:#F48FB1">' + icon('gift') + ' Подарок</span>';
+            }
+            if (c.is_favorite) {
+                idBadge += '<span class="coupon-card-fav" title="В избранном">★</span>';
             }
             var imgHtml = c.prize_image
                 ? '<img class="coupon-card-img" src="' + esc(c.prize_image) + '" onerror="this.remove()">'
@@ -678,7 +725,7 @@ async function loadMyCoupons() {
             var expLine = c.is_gift && c.expires_at
                 ? '<div style="font-size:11px;color:#F48FB1;margin-top:2px">Действует до ' + new Date(c.expires_at).toLocaleDateString('ru-RU') + '</div>'
                 : '';
-            return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + stColor + '">'
+            return '<div class="coupon-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + stColor + '" onclick="openCouponModal(' + JSON.stringify(c).replace(/"/g, '&quot;') + ')">'
                 + '<div style="display:flex;gap:12px;align-items:flex-start;position:relative;z-index:1">'
                 + imgHtml
                 + '<div style="flex:1;min-width:0">'
@@ -688,7 +735,7 @@ async function loadMyCoupons() {
                 + '</div>'
                 + '<div class="coupon-card-meta">' + meta + '</div>'
                 + expLine
-                + '<div style="margin:6px 0">' + idBadge + '</div>'
+                + '<div style="margin:6px 0;display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + idBadge + '</div>'
                 + '</div></div>'
                 + '<div class="coupon-card-date">' + icon('clock') + ' ' + new Date(c.created_at).toLocaleString('ru-RU') + (c.used_at ? ' → ' + new Date(c.used_at).toLocaleString('ru-RU') : '') + '</div>'
                 + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">' + btnHtml + copyBtn + '</div>'
@@ -697,55 +744,126 @@ async function loadMyCoupons() {
     }
 
     function openCouponModal(coupon) {
-        var modal = document.getElementById('coupon-modal');
-        var imgEl = document.getElementById('coupon-modal-img');
-        var nameEl = document.getElementById('coupon-modal-name');
-        var descEl = document.getElementById('coupon-modal-desc');
-        var statusEl = document.getElementById('coupon-modal-status');
-        var qrEl = document.getElementById('coupon-modal-qr');
-        var actionEl = document.getElementById('coupon-modal-action');
-
-        if (coupon.prize_image) {
-            imgEl.innerHTML = '<img src="' + esc(coupon.prize_image) + '" onerror="this.parentElement.innerHTML=\'<div class=prize-modal-img-fallback>' + icon('gift') + '</div>\'">';
-            imgEl.style.display = 'block';
-        } else {
-            imgEl.innerHTML = '<div class="prize-modal-img-fallback">' + icon('gift') + '</div>';
-            imgEl.style.display = 'block';
-        }
-
-        nameEl.textContent = coupon.prize_name || 'Приз';
-        descEl.textContent = coupon.prize_description || '';
-
+        coupon = coupon || {};
+        currentCouponDetail = coupon;
+        var st = coupon.status || 'active';
         var statusLabels = { active: 'Активен', used: 'Использован', expired: 'Истёк', revoked: 'Отозван' };
         var statusColors = { active: '#0EA5E9', used: '#EAB308', expired: '#EF4444', revoked: '#EF4444' };
-        var st = coupon.status || 'active';
-        var badgeHtml = coupon.is_gift
-            ? '<div style="margin-top:6px;display:inline-flex;align-items:center;gap:4px;background:rgba(236,64,122,0.14);border:1px solid rgba(236,64,122,0.3);border-radius:8px;padding:2px 8px;font-size:11px;color:#F48FB1">' + icon('gift') + ' Подарок от партнёра • 0 XP</div>'
-            : '';
-        if (coupon.is_gift && coupon.expires_at) {
-            badgeHtml += '<div style="margin-top:6px;font-size:11px;color:#F48FB1">Действует до ' + new Date(coupon.expires_at).toLocaleDateString('ru-RU') + '</div>';
-        }
-        statusEl.innerHTML = '<span style="color:' + (statusColors[st] || '#999') + '">' + (statusLabels[st] || st) + '</span>' + badgeHtml;
+        var stColor = statusColors[st] || '#999';
 
-        qrEl.innerHTML = '';
-        actionEl.innerHTML = '';
-        // Always show unique ID block
-        var idBlock = '<div style="display:flex;flex-direction:column;gap:4px;align-items:center;margin-bottom:12px">'
-            + '<span style="font-size:11px;color:var(--text-dim)">Уникальный ID</span>'
-            + '<span style="font-family:monospace;font-size:13px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:8px;padding:4px 10px;word-break:break-all">#' + coupon.id + ' • Заказ #' + (coupon.order_id||'—') + ' • ' + esc(coupon.qr_code||'') + '</span>'
-            + '<button class="coupon-card-btn" style="margin-top:4px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\'' + esc(coupon.qr_code) + '\');showToast(\'Код скопирован\')">' + icon('clipboard') + ' Копировать код</button>'
+        var brandEl = document.getElementById('cd-brand');
+        if (brandEl) brandEl.textContent = (coupon.partner_name || 'Купон').toUpperCase();
+        var modelEl = document.getElementById('cd-model');
+        if (modelEl) modelEl.textContent = coupon.is_gift ? 'Подарок' : 'Купон';
+
+        var imgEl = document.getElementById('coupon-modal-img');
+        if (coupon.prize_image) {
+            imgEl.innerHTML = '<img src="' + esc(coupon.prize_image) + '" alt="">';
+        } else {
+            imgEl.innerHTML = '<div class="cd-media-fallback">' + icon('gift') + '</div>';
+        }
+
+        document.getElementById('coupon-modal-name').textContent = coupon.prize_name || 'Приз';
+        document.getElementById('coupon-modal-meta').innerHTML = '<span style="color:' + stColor + '">' + (statusLabels[st] || st) + '</span>';
+
+        var pill = document.getElementById('coupon-modal-badge');
+        pill.innerHTML = coupon.is_gift
+            ? icon('gift') + ' Подарок от ' + esc(coupon.partner_name || 'партнёра')
+            : (Number(coupon.prize_price || 0) > 0 ? esc(coupon.prize_price + ' баллов') : 'Бесплатно');
+
+        document.getElementById('coupon-modal-desc').textContent = coupon.prize_description
+            || ('Купон партнёра «' + (coupon.partner_name || 'партнёр') + '». Покажите QR-код партнёру для активации.');
+
+        document.getElementById('coupon-modal-price').textContent = coupon.is_gift
+            ? 'Подарок'
+            : Number(coupon.prize_price || 0) + ' баллов';
+        document.getElementById('coupon-modal-sub').textContent = coupon.is_gift
+            ? '/ 0 XP'
+            : (coupon.order_id ? '/ заказ #' + coupon.order_id : '/ купон #' + (coupon.id || '—'));
+
+        var copyEl = document.getElementById('coupon-modal-copy');
+        copyEl.onclick = function () {
+            if (!coupon.qr_code) return;
+            if (navigator.clipboard) navigator.clipboard.writeText(coupon.qr_code);
+            showToast('Код скопирован');
+        };
+
+        var idBlock = '<div class="cd-id">'
+            + '<span class="cd-id-label">Уникальный ID</span>'
+            + '<span class="cd-id-value">#' + (coupon.id || '—') + ' • Заказ #' + (coupon.order_id || '—') + ' • ' + esc(coupon.qr_code || '') + '</span>'
             + '</div>';
+
+        var qrEl = document.getElementById('coupon-modal-qr');
         if (st === 'active' && coupon.qr_code) {
             var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(coupon.qr_code);
-            qrEl.innerHTML = idBlock + '<img src="' + qrUrl + '" style="width:200px;height:200px;border-radius:16px;background:#fff;padding:8px" alt="QR купон">'
-                + '<div style="margin-top:8px;font-size:11px;color:var(--text-dim)">Покажите QR партнёру для списания</div>';
+            qrEl.innerHTML = '<div class="cd-qr-card"><img src="' + qrUrl + '" width="188" height="188" alt="QR купон"></div>'
+                + '<div class="cd-qr-hint">Покажите QR партнёру для списания</div>'
+                + idBlock;
         } else if (st === 'used') {
-            qrEl.innerHTML = idBlock + '<div style="padding:16px;text-align:center;font-size:48px">✅</div><div style="font-size:12px;color:var(--text-dim)">Использован ' + (coupon.used_at ? new Date(coupon.used_at).toLocaleString('ru-RU') : '') + '</div>';
+            qrEl.innerHTML = '<div class="cd-state"><div class="cd-state-ico">✅</div><div class="cd-state-txt">Использован ' + (coupon.used_at ? new Date(coupon.used_at).toLocaleString('ru-RU') : '') + '</div></div>' + idBlock;
         } else {
-            qrEl.innerHTML = idBlock;
+            qrEl.innerHTML = '<div class="cd-state"><div class="cd-state-ico">⏳</div><div class="cd-state-txt">' + esc(statusLabels[st] || st) + '</div></div>' + idBlock;
         }
 
-        modal.classList.add('active');
+        var fine = 'Купон создан ' + new Date(coupon.created_at || Date.now()).toLocaleString('ru-RU');
+        if (coupon.expires_at) fine += ' • Действует до ' + new Date(coupon.expires_at).toLocaleDateString('ru-RU');
+        if (coupon.used_at) fine += ' • Использован ' + new Date(coupon.used_at).toLocaleString('ru-RU');
+        document.getElementById('coupon-modal-fine').textContent = fine;
+
+        var buyBtn = document.getElementById('coupon-modal-buy');
+        if (st === 'active' && coupon.qr_code) {
+            buyBtn.disabled = false;
+            buyBtn.textContent = 'Показать QR';
+            buyBtn.onclick = revealCouponQr;
+        } else {
+            buyBtn.disabled = true;
+            buyBtn.textContent = statusLabels[st] || st;
+            buyBtn.onclick = null;
+        }
+        updateCouponFavBtn();
+
+        document.getElementById('coupon-modal').classList.add('active');
+    }
+
+    function updateCouponFavBtn() {
+        var btn = document.getElementById('coupon-modal-fav');
+        if (!btn || !currentCouponDetail) return;
+        var fav = !!currentCouponDetail.is_favorite;
+        btn.classList.toggle('on', fav);
+        btn.innerHTML = fav ? '★ В избранном' : '+ В избранное';
+    }
+
+    function revealCouponQr() {
+        var scroll = document.querySelector('#coupon-modal .cd-scroll');
+        var qr = document.getElementById('coupon-modal-qr');
+        if (!scroll || !qr) return;
+        var top = qr.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop - 16;
+        scroll.scrollTo({ top: top, behavior: 'smooth' });
+        qr.classList.remove('cd-qr-flash');
+        void qr.offsetWidth;
+        qr.classList.add('cd-qr-flash');
+    }
+
+    function toggleCouponFavorite() {
+        var c = currentCouponDetail;
+        var uid = getUID();
+        if (!c || !c.id || !uid) return;
+        var next = !c.is_favorite;
+        fetch(API_BASE + '/coupon/favorite', {
+            method: 'POST',
+            headers: _h({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ user_id: uid, coupon_id: c.id, favorite: next })
+        }).then(function (r) { return r.json(); }).then(function (res) {
+            if (!res || !res.ok) { showToast('Не удалось обновить избранное'); return; }
+            c.is_favorite = res.is_favorite;
+            for (var i = 0; i < myCouponsData.length; i++) {
+                if (myCouponsData[i].id === c.id) myCouponsData[i].is_favorite = res.is_favorite;
+            }
+            updateCouponFavBtn();
+            renderMyCouponsChips();
+            renderMyCouponsList();
+            showToast(res.is_favorite ? 'Добавлено в избранное' : 'Убрано из избранного');
+        }).catch(function () { showToast('Сеть недоступна'); });
     }
 
     function closeCouponModal() {

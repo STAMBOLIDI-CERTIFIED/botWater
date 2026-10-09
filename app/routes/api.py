@@ -512,6 +512,25 @@ async def api_user_coupons(user_id: int):
     return {"ok": True, "coupons": coupons}
 
 
+@router.post("/coupon/favorite")
+async def api_coupon_favorite(request: Request):
+    body = await request.json()
+    user_id = body.get("user_id", 0)
+    coupon_id = body.get("coupon_id", 0)
+    favorite = bool(body.get("favorite", True))
+
+    if not user_id or not coupon_id:
+        return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
+    user = await db.get_user(user_id)
+    if not user:
+        return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
+
+    coupon = await db.set_user_coupon_favorite(user["id"], coupon_id, favorite)
+    if not coupon:
+        return JSONResponse({"ok": False, "error": "coupon not found"}, status_code=404)
+    return {"ok": True, "coupon_id": coupon["id"], "is_favorite": bool(coupon["is_favorite"])}
+
+
 # ─── Partner Dashboard ────────────────────────────────
 
 @router.get("/partner-account/{telegram_id}")
