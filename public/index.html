@@ -187,34 +187,23 @@
 <div id="page-shop" class="page">
     <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
 
-    <div class="shop-header">
-        <div class="shop-header-icon">icon('store')</div>
-        <div class="shop-header-title">Магазин купонов</div>
-        <div class="shop-header-sub">Обменивайте баллы на призы от партнёров</div>
+    <div class="shop-top">
+        <div class="shop-top-info">
+            <div class="shop-top-title">Магазин купонов</div>
+            <div class="shop-top-sub">Обменивайте баллы на призы от партнёров</div>
+        </div>
+        <div class="shop-balance-pill"><b id="shop-balance-val">—</b> <span>баллов</span></div>
     </div>
 
-    <div class="shop-balance-new">
-        <div class="sbn-coin">icon('coin')</div>
-        <div class="sbn-info">
-            <div class="sbn-label">Ваш баланс</div>
-            <div class="sbn-value"><b id="shop-balance-val">—</b> <span>баллов</span></div>
-        </div>
-    </div>
+    <div id="shop-banner" class="shop-promo" style="display:none"></div>
 
-    <div id="shop-partners-section" class="shop-section" style="display:none">
-        <div class="shop-section-header">
-            <div class="shop-section-title">Партнёры</div>
-        </div>
-        <div id="shop-partners-list" class="shop-partners-scroll"></div>
-    </div>
+    <div id="shop-chips" class="shop-chips" style="display:none"></div>
 
-    <div id="shop-recommended-section" class="shop-section" style="display:none">
-        <div class="shop-section-header">
-            <div class="shop-section-title">Рекомендации</div>
-            <div class="shop-section-count" id="shop-rec-count"></div>
-        </div>
-        <div id="shop-recommended-grid" class="shop-rec-grid"></div>
-    </div>
+    <div id="shop-hero" class="shop-hero" style="display:none"></div>
+
+    <div id="shop-grid" class="shop-grid" style="display:none"></div>
+
+    <div id="shop-partner-detail" style="display:none"></div>
 
     <div id="shop-empty" style="display:none"></div>
 </div>
