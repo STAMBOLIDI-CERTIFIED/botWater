@@ -1,17 +1,17 @@
     (function() {
-        var host = document.getElementById('splash-bubbles');
+        var host = document.getElementById('splash-dust');
         if (!host) return;
         var frag = document.createDocumentFragment();
-        for (var i = 0; i < 16; i++) {
+        for (var i = 0; i < 18; i++) {
             var b = document.createElement('span');
-            b.className = 'sp-bubble';
-            var sz = 4 + Math.random() * 13;
+            b.className = 'sp-dust';
+            var sz = 2 + Math.random() * 4;
             b.style.width = sz + 'px';
             b.style.height = sz + 'px';
-            b.style.left = (2 + Math.random() * 96) + '%';
-            b.style.animationDuration = (5 + Math.random() * 6) + 's';
-            b.style.animationDelay = '-' + (Math.random() * 8).toFixed(2) + 's';
-            b.style.opacity = (0.3 + Math.random() * 0.45).toFixed(2);
+            b.style.left = (Math.random() * 100).toFixed(1) + '%';
+            b.style.top = (Math.random() * 100).toFixed(1) + '%';
+            b.style.animationDuration = (3.5 + Math.random() * 4.5).toFixed(2) + 's';
+            b.style.animationDelay = '-' + (Math.random() * 6).toFixed(2) + 's';
             frag.appendChild(b);
         }
         host.appendChild(frag);

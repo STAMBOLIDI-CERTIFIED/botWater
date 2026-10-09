@@ -26,7 +26,7 @@
 }
 #splash::after {
     bottom: -32vmax; right: -26vmax;
-    background: radial-gradient(circle, rgba(56,189,248,.32), transparent 65%);
+    background: radial-gradient(circle, rgba(201,168,76,.3), transparent 65%);
     opacity: .5;
     animation-delay: -5.5s;
     animation-direction: alternate-reverse;
@@ -36,26 +36,45 @@
     to   { transform: translate(9vmax, 7vmax) scale(1.18); }
 }
 
-/* ── Восходящие пузырьки воды ── */
-.splash-bubbles {
+/* ── Медленно вращающиеся световые лучи ── */
+.splash-rays {
+    position: absolute;
+    left: 50%; top: 50%;
+    width: 170vmax; height: 170vmax;
+    margin: -85vmax 0 0 -85vmax;
+    background: conic-gradient(from 0deg,
+        transparent 0deg 16deg,
+        rgba(201,168,76,.05) 22deg,
+        transparent 28deg 46deg,
+        rgba(111,207,151,.045) 52deg,
+        transparent 58deg 76deg,
+        rgba(201,168,76,.05) 82deg,
+        transparent 88deg 116deg,
+        rgba(111,207,151,.04) 122deg,
+        transparent 128deg);
+    animation: spSpin 16s linear infinite;
+    pointer-events: none;
+}
+@keyframes spSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Золотые частицы-искры ── */
+.splash-dust {
     position: absolute; inset: 0;
     overflow: hidden;
     pointer-events: none;
 }
-.sp-bubble {
+.sp-dust {
     position: absolute;
-    bottom: -24px;
     border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.85), rgba(143,216,255,.4) 55%, rgba(56,189,248,.1));
-    border: 1px solid rgba(143,216,255,.4);
-    animation: spRise linear infinite;
+    background: radial-gradient(circle, rgba(255,230,150,.95), rgba(201,168,76,.4) 55%, transparent 75%);
+    box-shadow: 0 0 7px rgba(201,168,76,.85), 0 0 16px rgba(201,168,76,.35);
+    animation: spTwinkle ease-in-out infinite alternate;
 }
-@keyframes spRise {
-    0%   { transform: translateY(0) translateX(0) scale(.5); opacity: 0; }
-    12%  { opacity: .75; }
-    50%  { transform: translateY(-52vh) translateX(16px) scale(.9); }
-    88%  { opacity: .45; }
-    100% { transform: translateY(-106vh) translateX(-10px) scale(1.1); opacity: 0; }
+@keyframes spTwinkle {
+    from { transform: translate(0, 0) scale(.65); opacity: .12; }
+    to   { transform: translate(-16px, -44px) scale(1.2); opacity: .9; }
 }
 
 /* ── Иконка с расходящимися волнами ── */
@@ -129,31 +148,6 @@
 @keyframes dotBounce {
     0%, 80%, 100% { opacity: .3; transform: scale(.8); }
     40% { opacity: 1; transform: scale(1.25); }
-}
-
-/* ── Волны внизу экрана ── */
-.splash-waves {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    height: 140px;
-    z-index: 1;
-    pointer-events: none;
-    opacity: .6;
-    -webkit-mask-image: linear-gradient(to top, #000 45%, transparent);
-    mask-image: linear-gradient(to top, #000 45%, transparent);
-}
-.splash-waves svg {
-    position: absolute;
-    left: 0; top: 0;
-    width: 200%; height: 100%;
-    animation: spFlow 9s linear infinite;
-}
-.splash-waves svg.s1 path { fill: rgba(46,158,106,.30); }
-.splash-waves svg.s2 { animation-duration: 6s; animation-direction: reverse; }
-.splash-waves svg.s2 path { fill: rgba(56,189,248,.22); }
-@keyframes spFlow {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
 }
 
 @media (prefers-reduced-motion: reduce) {
