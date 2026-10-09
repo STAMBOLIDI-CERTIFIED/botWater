@@ -25,9 +25,13 @@ app = FastAPI(title="WaterPrize")
 class NoCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        if "text/html" in response.headers.get("content-type", ""):
+        content_type = response.headers.get("content-type", "")
+        if "text/html" in content_type:
             response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
             response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        elif "text/css" in content_type or "javascript" in content_type:
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, private"
             response.headers["Expires"] = "0"
         return response
 
