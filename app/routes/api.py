@@ -338,7 +338,17 @@ async def api_scan(request: Request):
 @router.get("/settings")
 async def api_settings():
     splash_logo_url = await db.get_setting("splash_logo_url")
-    return {"splash_logo_url": splash_logo_url or ""}
+    tiles = {}
+    for key, name in (
+        ("tile_shop_image", "shop"),
+        ("tile_coupons_image", "coupons"),
+        ("tile_partner_image", "partner"),
+        ("tile_support_image", "support"),
+    ):
+        val = await db.get_setting(key)
+        if val:
+            tiles[name] = val
+    return {"splash_logo_url": splash_logo_url or "", "tiles": tiles}
 
 
 @router.get("/daily-bonus/status")

@@ -425,6 +425,39 @@ function countUp(el, target, duration) {
         box.style.display = 'flex';
     }
 
+    var _homeTilesLoaded = false;
+    async function loadHomeTiles() {
+        if (_homeTilesLoaded) return;
+        _homeTilesLoaded = true;
+        try {
+            var d = await apiFetch('/settings');
+            var tiles = (d && d.tiles) || {};
+            var map = {
+                'card-shop-home': tiles.shop,
+                'card-my-coupons': tiles.coupons,
+                'card-partner-dashboard': tiles.partner,
+                'card-support': tiles.support
+            };
+            Object.keys(map).forEach(function(id) {
+                var url = map[id];
+                if (!url) return;
+                var card = document.getElementById(id);
+                if (!card) return;
+                var media = card.querySelector('.menu-card-media');
+                if (!media) return;
+                var img = new Image();
+                img.className = 'menu-card-photo';
+                img.alt = '';
+                img.onload = function() {
+                    media.insertBefore(img, media.firstChild);
+                    var icn = media.querySelector('.icn');
+                    if (icn) icn.style.display = 'none';
+                };
+                img.src = url;
+            });
+        } catch (e) {}
+    }
+
     // Simultaneous reveal: wait for both splash and data
     window._menuDataReady = false;
     window._pendingTopBalance = null;
@@ -444,6 +477,7 @@ function countUp(el, target, duration) {
     };
     loadUserData();
     loadMenuTree();
+    loadHomeTiles();
 
     // ═══════════════════════════════════════════
 // NOTIFICATIONS
@@ -535,7 +569,7 @@ function stopScanner() {
             }
         }
         document.body.classList.toggle('chat-mode', page === 'support');
-        if (page === 'menu') { loadUserData(); loadMenuTree(); }
+        if (page === 'menu') { loadUserData(); loadMenuTree(); loadHomeTiles(); }
         if (page === 'scanner') {
             var sr = document.getElementById('scan-result');
             if (sr) sr.classList.remove('show');

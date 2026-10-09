@@ -6,6 +6,16 @@ $db_name = get_option('wpz_db_name', 'bothost_db_8d8917dc2bab');
 $db_user = get_option('wpz_db_user', 'bothost_db_8d8917dc2bab');
 $db_pass = get_option('wpz_db_pass', 'Bi75g85iDTRx8KjIsX2PUnzr6QahElWAy_vdrxCgoVM');
 $splash_logo = $db->get_setting('splash_logo_url') ?: '';
+$tile_slugs = [
+    'shop' => 'Магазин купонов',
+    'coupons' => 'Мои купоны',
+    'partner' => 'Панель партнёра',
+    'support' => 'Поддержка',
+];
+$tile_images = [];
+foreach ($tile_slugs as $tile_slug => $_label) {
+    $tile_images[$tile_slug] = $db->get_setting('tile_' . $tile_slug . '_image') ?: '';
+}
 $daily_bonus_points = $db->get_setting('daily_bonus_points');
 if ($daily_bonus_points === null || $daily_bonus_points === false || $daily_bonus_points === '') {
     $daily_bonus_points = '50';
@@ -54,6 +64,49 @@ if ($daily_bonus_points === null || $daily_bonus_points === false || $daily_bonu
                     </div>
                 </div>
             </div>
+        </form>
+    </div>
+
+    <!-- ═══ Home Tiles ═══ -->
+    <div class="wpz-card">
+        <h2>🏠 Обложки плиток главной страницы</h2>
+        <p style="color:#646970;font-size:13px;margin:0 0 16px;">Фото на плитках меню мини-приложения вместо иконок.
+            Если изображение не задано — плитка остаётся с обычной иконкой.</p>
+        <form method="post">
+            <?php wp_nonce_field('wpz_action'); ?>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+                <?php foreach ($tile_slugs as $tile_slug => $tile_label): ?>
+                    <?php $tile_val = $tile_images[$tile_slug]; ?>
+                    <div style="border:1px solid #dcdcde;border-radius:10px;padding:12px;">
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div id="tile-preview-<?php echo esc_attr($tile_slug); ?>"
+                                 style="width:110px;height:82px;border-radius:8px;border:2px dashed #c3c4c7;display:flex;align-items:center;justify-content:center;background:#f6f6f6;overflow:hidden;flex-shrink:0;<?php echo $tile_val ? 'border-style:solid;' : ''; ?>">
+                                <?php if ($tile_val): ?>
+                                    <img src="<?php echo esc_url($tile_val); ?>" style="width:100%;height:100%;object-fit:cover;" alt="">
+                                <?php else: ?>
+                                    <span style="color:#999;font-size:28px;">📷</span>
+                                <?php endif; ?>
+                            </div>
+                            <div style="flex:1;min-width:0;">
+                                <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;"><?php echo esc_html($tile_label); ?></label>
+                                <input type="text" id="tile_<?php echo esc_attr($tile_slug); ?>_url"
+                                       name="tile_<?php echo esc_attr($tile_slug); ?>_url"
+                                       value="<?php echo esc_attr($tile_val); ?>"
+                                       class="regular-text" style="width:100%;box-sizing:border-box;">
+                                <div style="display:flex;gap:6px;margin-top:8px;">
+                                    <button type="button" class="button wpz-tile-upload" data-slug="<?php echo esc_attr($tile_slug); ?>">📁 Загрузить</button>
+                                    <button type="button" class="button wpz-btn-danger wpz-tile-remove" data-slug="<?php echo esc_attr($tile_slug); ?>">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <p class="description" style="margin-top:12px;">Рекомендуемое соотношение сторон — как у плитки (ширина больше высоты).
+                Изображение сохраняется в медиатеку WordPress и в базу мини-приложения.</p>
+            <p class="submit" style="margin-top:12px;">
+                <button type="submit" name="action" value="save_home_tiles" class="button button-primary">💾 Сохранить обложки</button>
+            </p>
         </form>
     </div>
 
@@ -146,5 +199,40 @@ document.addEventListener('DOMContentLoaded', function() {
             preview.style.borderStyle = 'dashed';
         });
     }
+
+    var tileFrames = {};
+    document.querySelectorAll('.wpz-tile-upload').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var slug = btn.getAttribute('data-slug');
+            var input = document.getElementById('tile_' + slug + '_url');
+            var tilePreview = document.getElementById('tile-preview-' + slug);
+            if (tileFrames[slug]) { tileFrames[slug].open(); return; }
+            tileFrames[slug] = wp.media({
+                title: 'Выберите изображение для плитки',
+                button: { text: 'Использовать' },
+                multiple: false
+            });
+            tileFrames[slug].on('select', function() {
+                var attachment = tileFrames[slug].state().get('selection').first().toJSON();
+                input.value = attachment.url;
+                tilePreview.innerHTML = '<img src="' + attachment.url + '" style="width:100%;height:100%;object-fit:cover;" alt="">';
+                tilePreview.style.borderStyle = 'solid';
+            });
+            tileFrames[slug].open();
+        });
+    });
+
+    document.querySelectorAll('.wpz-tile-remove').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var slug = btn.getAttribute('data-slug');
+            var input = document.getElementById('tile_' + slug + '_url');
+            var tilePreview = document.getElementById('tile-preview-' + slug);
+            input.value = '';
+            tilePreview.innerHTML = '<span style="color:#999;font-size:28px;">📷</span>';
+            tilePreview.style.borderStyle = 'dashed';
+        });
+    });
 });
 </script>

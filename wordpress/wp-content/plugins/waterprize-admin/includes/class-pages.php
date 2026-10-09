@@ -460,6 +460,14 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode($msg)));
                 exit;
 
+            case 'save_home_tiles':
+                foreach (['shop', 'coupons', 'partner', 'support'] as $tile) {
+                    $url = self::normalize_media_url($_POST['tile_' . $tile . '_url'] ?? '');
+                    $db->set_setting('tile_' . $tile . '_image', $url);
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('Обложки плиток главной обновлены')));
+                exit;
+
             case 'save_daily_bonus':
                 $points = (int)($_POST['daily_bonus_points'] ?? 0);
                 if ($points < 0) {
