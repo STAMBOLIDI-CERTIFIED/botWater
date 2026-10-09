@@ -343,7 +343,19 @@ function countUp(el, target, duration) {
                 var displayName = d.name || user.first_name || 'Пользователь';
                 document.getElementById('top-name').textContent = displayName;
                 document.getElementById('profile-name').textContent = displayName;
-                document.getElementById('profile-id').innerHTML = 'ID: <span>' + (user.id || d.telegram_id || uid || '—') + '</span>';
+                var idEl = document.getElementById('profile-id');
+                if (idEl) idEl.textContent = user.id || d.telegram_id || uid || '—';
+                var initialEl = document.getElementById('profile-initial');
+                if (initialEl) initialEl.textContent = (displayName || '?').trim().charAt(0).toUpperCase();
+                var handleEl = document.getElementById('profile-handle');
+                if (handleEl) {
+                    if (d.username) {
+                        handleEl.textContent = '@' + d.username;
+                        handleEl.style.display = 'block';
+                    } else {
+                        handleEl.style.display = 'none';
+                    }
+                }
                 countUp(document.getElementById('profile-balance'), d.balance);
                 countUp(document.getElementById('profile-scans'), d.total_scans);
                 // top balance is on the hidden main screen — count it when the reveal happens
@@ -455,6 +467,29 @@ function countUp(el, target, duration) {
                 };
                 img.src = url;
             });
+        } catch (e) {}
+    }
+
+    async function loadProfileExtras() {
+        var uid = getUID();
+        if (!uid) return;
+        try {
+            var d = await apiFetch('/tree?user_id=' + uid);
+            if (!d || typeof d.level === 'undefined') return;
+            var lv = d.level || 1;
+            var pr = Math.max(0, Math.min(100, d.progress || 0));
+            var stage = (TL[lv - 1] || TL[0]).name;
+            var chip = document.getElementById('profile-level-chip');
+            if (chip) {
+                chip.innerHTML = 'Уровень <b>' + lv + '</b> · ' + stage;
+                chip.style.display = 'inline-flex';
+            }
+            var lvlEl = document.getElementById('profile-level');
+            if (lvlEl) lvlEl.textContent = lv;
+            var fill = document.getElementById('profile-xp-fill');
+            if (fill) fill.style.width = pr + '%';
+            var statCard = lvlEl ? lvlEl.closest('.profile-stat-card') : null;
+            if (statCard) statCard.title = stage + ' · ' + pr + '%';
         } catch (e) {}
     }
 
@@ -578,7 +613,7 @@ function stopScanner() {
             var sb = document.getElementById('scan-btn');
             if (sb) { sb.textContent = 'Включить камеру'; sb.disabled = false; }
         }
-        if (page === 'profile') loadUserData();
+        if (page === 'profile') { loadUserData(); loadProfileExtras(); }
         if (page === 'history') switchHistoryTab('scans');
         if (page === 'shop') loadShop();
         if (page === 'raffles') loadRaffles();

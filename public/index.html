@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/css/app.css?v=202610097">
+    <link rel="stylesheet" href="/css/app.css?v=202610098">
 </head>
 <body>
 
@@ -24,7 +24,7 @@
     <div class="splash-title">ИСТОКЪ</div>
     <div class="splash-dots"><span></span><span></span><span></span></div>
 </div>
-<script src="/js/splash.js?v=202610097"></script>
+<script src="/js/splash.js?v=202610098"></script>
 
 <!-- ГЛАВНОЕ МЕНЮ -->
 <div id="page-menu" class="page active">
@@ -119,35 +119,59 @@
 <!-- ПРОФИЛЬ -->
 <div id="page-profile" class="page profile-page">
     <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
-    <div class="profile-header-card">
-        <div class="profile-bottle-glow" id="profile-bottle-glow"></div>
-        <img class="profile-photo" id="profile-photo" alt="" style="display:none">
-        <div class="profile-photo-placeholder" id="profile-placeholder" style="display:flex">icon('home')</div>
-        <div class="profile-name-wrap">
-            <div class="profile-name-grad" id="profile-name">Загрузка...</div>
-            <div class="profile-id-label" id="profile-id">ID: <span>—</span></div>
+
+    <div class="profile-hero">
+        <div class="profile-hero-aura"></div>
+        <div class="profile-avatar-wrap">
+            <img class="profile-photo" id="profile-photo" alt="" style="display:none">
+            <div class="profile-photo-placeholder" id="profile-placeholder" style="display:flex"><span id="profile-initial">…</span></div>
+        </div>
+        <div class="profile-name-grad" id="profile-name">Загрузка...</div>
+        <div class="profile-handle" id="profile-handle" style="display:none"></div>
+        <div class="profile-chips">
+            <span class="profile-chip">ID <b id="profile-id">—</b></span>
+            <span class="profile-chip profile-chip-level" id="profile-level-chip" style="display:none"></span>
         </div>
     </div>
 
-    <div class="profile-stats">
-        <div class="profile-stat-card ps-gold">
-            <div class="ps-bg-icon">icon('coin')</div>
-            <div class="ps-icon">icon('coin')</div>
-            <div class="ps-value" id="profile-balance">—</div>
-            <div class="ps-label">баллов</div>
+    <div class="profile-balance-card" role="button" tabindex="0" onclick="openPage('shop')">
+        <div class="pbc-info">
+            <div class="pbc-label">Баланс</div>
+            <div class="pbc-value"><span id="profile-balance">—</span><span class="pbc-unit">баллов</span></div>
+            <div class="pbc-sub">Обменивайте на призы от партнёров</div>
         </div>
+        <div class="pbc-cta">В магазин<span class="pbc-arrow">→</span></div>
+        <div class="pbc-watermark">icon('coin')</div>
+    </div>
+
+    <div class="profile-stats">
         <div class="profile-stat-card">
-            <div class="ps-bg-icon">icon('target')</div>
-            <div class="ps-icon">icon('target')</div>
+            <div class="ps-icon ps-ico-scans">icon('target')</div>
             <div class="ps-value" id="profile-scans">—</div>
             <div class="ps-label">сканирований</div>
+        </div>
+        <div class="profile-stat-card">
+            <div class="ps-icon ps-ico-tree">icon('tree')</div>
+            <div class="ps-value" id="profile-level">—</div>
+            <div class="ps-label">уровень дерева</div>
+            <div class="ps-bar"><div class="ps-bar-fill" id="profile-xp-fill"></div></div>
         </div>
     </div>
 
     <div class="profile-actions">
-        <button class="profile-action-btn" onclick="switchHistoryTab('points'); openPage('history')">
+        <button class="profile-action-btn pa-history" onclick="switchHistoryTab('points'); openPage('history')">
             <span class="pab-icon">icon('history')</span>
             <span class="pab-text">История операций</span>
+            <span class="pab-arrow">›</span>
+        </button>
+        <button class="profile-action-btn pa-coupons" onclick="openPage('my-coupons')">
+            <span class="pab-icon">icon('gift')</span>
+            <span class="pab-text">Мои купоны</span>
+            <span class="pab-arrow">›</span>
+        </button>
+        <button class="profile-action-btn pa-shop" onclick="openPage('shop')">
+            <span class="pab-icon">icon('store')</span>
+            <span class="pab-text">Магазин купонов</span>
             <span class="pab-arrow">›</span>
         </button>
     </div>
@@ -445,5 +469,5 @@
     </div>
 </div>
 
-<script src="/js/app.js?v=202610097" defer></script>
+<script src="/js/app.js?v=202610098" defer></script>
 </body>
