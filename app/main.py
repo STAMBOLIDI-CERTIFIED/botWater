@@ -130,7 +130,7 @@ async def _setup_bot_commands():
         await client.post(f"{api}/setChatMenuButton", json={
             "menu_button": {
                 "type": "web_app",
-                "text": "Меню",
+                "text": "Открыть приложение",
                 "web_app": {"url": s["WEBAPP_URL"]},
             },
         })
