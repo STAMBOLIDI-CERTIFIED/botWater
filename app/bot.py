@@ -153,37 +153,15 @@ async def answer_callback(callback_id: str, text: str = "", show_alert: bool = F
 
 # ─── Keyboards ──────────────────────────────────────────
 
-# Exact labels used on the persistent reply-keyboard. Kept as constants so the
-# text-message dispatcher in handle_message can match them reliably.
+# Legacy labels of the removed persistent reply-keyboard. Kept so that users
+# who still have the old keyboard pinned can tap its buttons and get an
+# answer (every reply is sent with remove_keyboard to clear it).
 BTN_OPEN_APP = "📲 Открыть приложение"
 BTN_BALANCE = "🪙 Баланс"
 BTN_STATS = "📈 Статистика"
 BTN_RAFFLE = "🎯 Розыгрыши"
 
-
-def persistent_menu_keyboard(webapp_url: str, is_admin: bool = False, chat_id: int = 0, is_partner: bool = False, partner_category_id: int = 0) -> dict:
-    """Reply keyboard that stays pinned under the text input box (not tied to
-    a single message like an inline keyboard). web_app buttons open the mini
-    app directly; the rest are plain text buttons handled in handle_message.
-    """
-    app_url = webapp_url
-    if chat_id:
-        sep = "&" if "?" in app_url else "?"
-        app_url = app_url + sep + "user_id=" + str(chat_id)
-    if is_partner:
-        app_url = app_url + "&is_partner=true&partner_category_id=" + str(partner_category_id)
-
-    rows = [
-        [{"text": BTN_OPEN_APP, "web_app": {"url": app_url}}],
-        [{"text": BTN_BALANCE}, {"text": BTN_STATS}],
-        [{"text": BTN_RAFFLE}],
-    ]
-
-    return {
-        "keyboard": rows,
-        "resize_keyboard": True,
-        "is_persistent": True,
-    }
+REMOVE_KEYBOARD = {"remove_keyboard": True}
 
 
 def contact_keyboard() -> dict:
@@ -282,28 +260,12 @@ async def process_expired_payouts(db):
         logger.info(f"Auto-converted {count} expired payouts to points")
 
 
-async def apply_persistent_menu(db, chat_id: int):
-    """Push/refresh the persistent reply-keyboard for a chat. Call this once
-    after a user is created and again whenever admin status could have
-    changed, so the correct set of buttons (incl. admin panel) is shown.
-    Sending it as an invisible-ish service message keeps the chat log clean;
-    feel free to fold this into whatever message you already send instead.
-    """
-    s = get_settings()
-    is_admin = await db.is_admin(chat_id)
-    await send_message(
-        chat_id,
-        "⌨️ Меню обновлено.",
-        reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id),
-    )
-
-
 async def send_balance(db, chat_id: int):
     stats = await db.get_user_stats(chat_id)
     msg = await db.get_bot_setting("msg_balance",
         f"🪙 <b>Ваш баланс:</b> {stats['balance']} баллов\n📈 Всего сканирований: {stats['total_scans']}")
     msg = msg.replace("{balance}", str(stats['balance'])).replace("{total_scans}", str(stats['total_scans']))
-    await send_message(chat_id, msg)
+    await send_message(chat_id, msg, reply_markup=REMOVE_KEYBOARD)
 
 
 async def send_stats(db, chat_id: int):
@@ -317,7 +279,7 @@ async def send_stats(db, chat_id: int):
         f"🧊 Свободных бутылок: <b>{unassigned}</b>")
     msg = msg.replace("{total_scans}", str(stats['total_scans'])).replace("{balance}", str(stats['balance']))
     msg = msg.replace("{codes_count}", str(codes_count)).replace("{unassigned}", str(unassigned))
-    await send_message(chat_id, msg)
+    await send_message(chat_id, msg, reply_markup=REMOVE_KEYBOARD)
 
 
 async def send_raffle_info(db, chat_id: int):
@@ -328,6 +290,7 @@ async def send_raffle_info(db, chat_id: int):
         f"Всего розыгрышей: <b>{raf_stats['total_raffles']}</b>\n"
         f"Завершено: <b>{raf_stats['completed']}</b>\n\n"
         f"Следите за новостями в приложении!",
+        reply_markup=REMOVE_KEYBOARD,
     )
 
 
@@ -375,10 +338,11 @@ async def handle_message(db, msg: dict):
         await handle_webapp_data(db, web_app_data.get("data", ""), chat_id)
         return
 
-    # ── Persistent reply-keyboard text buttons ──
-    # These replace the old inline "balance"/"stats"/"raffle_info" callbacks
-    # since the buttons now live on the persistent keyboard, not attached to
-    # a specific message. Also handle stripped versions (some clients drop emoji).
+    # ── Legacy reply-keyboard text buttons ──
+    # The persistent bottom keyboard was removed (only the mini-app menu button
+    # left of the input remains); these handlers keep old pinned keyboards
+    # working — every reply below carries remove_keyboard to clear them.
+    # Also handle stripped versions (some clients drop emoji).
     t_stripped = text.strip()
     if t_stripped == BTN_BALANCE or t_stripped == "Баланс" or t_stripped.endswith("Баланс"):
         await send_balance(db, chat_id)
@@ -608,23 +572,20 @@ async def show_main_menu(db, chat_id: int, user: dict | None = None):
     user = await db.get_user(chat_id) or await db.create_user(chat_id)
     if user["step"] != "menu":
         await db.update_user_step(chat_id, "menu")
-    s = get_settings()
-    is_admin = await db.is_admin(chat_id)
     partner_account = await db.get_partner_account_by_telegram_id(chat_id)
     is_partner = partner_account is not None
-    partner_category_id = partner_account.get("category_id", 0) if partner_account else 0
     name = user['name'] or 'друг'
     balance = user['balance']
     partner_info = ""
     if is_partner:
-        cat = await db.get_shop_category(partner_category_id)
+        cat = await db.get_shop_category(partner_account.get("category_id", 0))
         partner_info = f"\n\n🏢 <b>Бизнес-партнёр:</b> {cat.get('title', '') if cat else ''}"
     msg = await db.get_bot_setting("msg_welcome",
         f"💧 <b>Главное меню</b>\n\nПривет, {name}! 👋\n🪙 Баланс: <b>{balance} баллов</b>{partner_info}\n\n"
         f"Сканируйте QR-коды на бутылках и получайте баллы!\n"
-        f"Кнопки для быстрого доступа теперь под полем ввода 👇")
+        f"Откройте приложение кнопкой слева от поля ввода 👇")
     msg = msg.replace("{name}", name).replace("{balance}", str(balance))
-    await send_message(chat_id, msg, reply_markup=persistent_menu_keyboard(s["WEBAPP_URL"], is_admin, chat_id, is_partner, partner_category_id))
+    await send_message(chat_id, msg, reply_markup=REMOVE_KEYBOARD)
 
 
 # ─── Profile ────────────────────────────────────────────
