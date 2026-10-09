@@ -10,6 +10,9 @@ if (!window.Telegram || !window.Telegram.WebApp) {
             banner.textContent = '⚠️ Предпросмотр в браузере — откройте в Telegram для полной функциональности';
             banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#C9A84C;color:#111318;text-align:center;font-size:11px;padding:6px;z-index:9999';
             document.body.prepend(banner);
+            requestAnimationFrame(function() {
+                document.body.style.setProperty('--banner-h', banner.offsetHeight + 'px');
+            });
         });
     }
 
@@ -531,6 +534,7 @@ function stopScanner() {
                 nav.classList.remove('nav-hidden');
             }
         }
+        document.body.classList.toggle('chat-mode', page === 'support');
         if (page === 'menu') { loadUserData(); loadMenuTree(); }
         if (page === 'scanner') {
             var sr = document.getElementById('scan-result');
@@ -2213,7 +2217,7 @@ var supportChatId = null;
         supportPollTimer = setInterval(pollSupportMessages, 5000);
     }
 
-    function renderSupportMessages(messages) {
+    function renderSupportMessages(messages, keepScrollTop) {
         var el = document.getElementById('support-messages');
         if (!messages.length) {
             var emptyChatIco = icoRaw('chat');
@@ -2228,37 +2232,39 @@ var supportChatId = null;
             var isUser = m.sender_type === 'user';
             var time = formatMsgTime(m.created_at);
             var showDate = shouldShowDateSep(messages, i);
-            var consecutive = isConsecutive(messages, i);
+            var groupFirst = i === 0 || !isConsecutive(messages, i);
+            var groupLast = i === messages.length - 1 || !isConsecutive(messages, i + 1);
 
             if (showDate) {
                 html += '<div class="support-date-sep"><span>' + formatDateSep(m.created_at) + '</span></div>';
             }
 
-            html += '<div class="support-msg ' + (isUser ? 'support-msg-user' : 'support-msg-admin') + (consecutive ? ' is-consecutive' : '') + '">';
+            html += '<div class="support-msg ' + (isUser ? 'support-msg-user' : 'support-msg-admin')
+                + (groupFirst ? ' is-first' : '') + (groupLast ? ' is-last' : '') + '">';
 
-            if (!isUser && !consecutive) {
+            if (!isUser && groupFirst) {
                 html += '<div class="support-msg-avatar"><span class="icn">' + (shieldIco || '🛡') + '</span></div>';
             }
 
-            html += '<div class="support-msg-bubble">' + esc(m.message) + '</div>';
-
-            if (!consecutive) {
-                html += '<div class="support-msg-meta">';
-                html += '<span class="support-msg-sender">' + (isUser ? 'Вы' : 'Поддержка') + '</span>';
-                html += '<span class="support-msg-time">' + time + '</span>';
-                if (isUser) {
-                    html += '<span class="support-msg-status">✓</span>';
-                }
-                html += '</div>';
+            html += '<div class="support-msg-bubble">';
+            if (!isUser && groupFirst) {
+                html += '<span class="support-msg-sender">Поддержка</span>';
             }
-
-            html += '</div>';
+            html += '<span class="support-msg-text">' + esc(m.message) + '</span>';
+            html += '<span class="support-msg-meta"><span class="support-msg-time">' + time + '</span>'
+                + (isUser ? '<span class="support-msg-status">✓</span>' : '')
+                + '</span>';
+            html += '</div></div>';
         }
 
         el.innerHTML = html;
 
         requestAnimationFrame(function() {
-            el.scrollTop = el.scrollHeight;
+            if (typeof keepScrollTop === 'number') {
+                el.scrollTop = keepScrollTop;
+            } else {
+                el.scrollTop = el.scrollHeight;
+            }
         });
     }
 
@@ -2277,12 +2283,15 @@ var supportChatId = null;
         var emptyEl = msgsEl.querySelector('.support-empty');
         if (emptyEl) emptyEl.remove();
 
+        var typingEl = document.getElementById('support-typing');
+        if (typingEl) typingEl.classList.add('show');
+
         var msgEl = document.createElement('div');
-        msgEl.className = 'support-msg support-msg-user';
-        msgEl.innerHTML = '<div class="support-msg-bubble">' + esc(msg) + '</div>'
-            + '<div class="support-msg-meta"><span class="support-msg-sender">Вы</span>'
+        msgEl.className = 'support-msg support-msg-user is-first is-last';
+        msgEl.innerHTML = '<div class="support-msg-bubble"><span class="support-msg-text">' + esc(msg) + '</span>'
+            + '<span class="support-msg-meta">'
             + '<span class="support-msg-time">' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}) + '</span>'
-            + '<span class="support-msg-status">✓</span></div>';
+            + '<span class="support-msg-status">✓</span></span></div>';
         msgsEl.appendChild(msgEl);
         msgsEl.scrollTop = msgsEl.scrollHeight;
 
@@ -2297,6 +2306,7 @@ var supportChatId = null;
                 await pollSupportMessages();
             }
         } catch(e) {}
+        if (typingEl) typingEl.classList.remove('show');
 
         input.disabled = false;
         document.getElementById('support-send-btn').disabled = false;
@@ -2310,7 +2320,9 @@ var supportChatId = null;
             var d = await apiFetch('/support/chat?user_id=' + uid);
             if (d && d.messages) {
                 if (d.messages.length !== supportLastMsgCount) {
-                    renderSupportMessages(d.messages);
+                    var box = document.getElementById('support-messages');
+                    var nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+                    renderSupportMessages(d.messages, nearBottom ? undefined : box.scrollTop);
                     supportLastMsgCount = d.messages.length;
                 }
                 if (d.chat) {
