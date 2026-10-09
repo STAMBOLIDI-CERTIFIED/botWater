@@ -1068,25 +1068,6 @@
     animation: fadeIn .3s var(--ease-out);
 }
 
-.sk {
-    position: relative;
-    overflow: hidden;
-    background: #161920;
-}
-
-.sk::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    transform: translateX(-100%);
-    background: linear-gradient(90deg, rgba(201, 168, 76, 0) 0%, rgba(201, 168, 76, 0.10) 50%, rgba(201, 168, 76, 0) 100%);
-    animation: skShimmer 1.5s ease-in-out infinite;
-}
-
-@keyframes skShimmer {
-    100% { transform: translateX(100%); }
-}
-
 .sk-banner {
     height: 66px;
     border-radius: 18px;
@@ -1122,31 +1103,6 @@
 .sk-card {
     height: 218px;
     border-radius: 18px;
-}
-
-.sk-load {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    padding: 4px 0 2px;
-    color: var(--text-dim);
-    font-size: 12.5px;
-    font-weight: 600;
-}
-
-.sk-spinner {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    flex-shrink: 0;
-    border: 2.5px solid rgba(201, 168, 76, 0.18);
-    border-top-color: #C9A84C;
-    animation: skSpin 0.75s linear infinite;
-}
-
-@keyframes skSpin {
-    to { transform: rotate(360deg); }
 }
 
 /* ─── Плавное появление картинок ─── */

@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/css/app.css?v=202610092">
+    <link rel="stylesheet" href="/css/app.css?v=202610093">
 </head>
 <body>
 
@@ -22,7 +22,7 @@
     <div class="splash-title">ИСТОКЪ</div>
     <div class="splash-dots"><span></span><span></span><span></span></div>
 </div>
-<script src="/js/splash.js?v=202610092"></script>
+<script src="/js/splash.js?v=202610093"></script>
 
 <!-- ГЛАВНОЕ МЕНЮ -->
 <div id="page-menu" class="page active">
@@ -48,7 +48,7 @@
     </div>
     <div class="notif-dropdown" id="notif-dropdown">
         <div class="notif-header"><h4>Уведомления</h4><button class="notif-clear" onclick="event.stopPropagation();clearNotifs()">Очистить</button></div>
-        <div class="notif-list" id="notif-list"><div class="notif-loading">Загрузка...</div></div>
+        <div class="notif-list" id="notif-list"><div class="notif-loading"><div class="sk-load" style="padding:0"><div class="sk-spinner"></div><span>Загрузка…</span></div></div></div>
     </div>
 
     <div class="menu-promo" onclick="openPage('raffles')">
@@ -173,7 +173,7 @@
         <button class="tab-btn" id="tab-points" onclick="switchHistoryTab('points')">icon('coin') Баллы</button>
     </div>
     <div id="history-list">
-        <div class="empty-state"><div class="empty-ico">icon('hourglass')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="sk-rows"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>
     </div>
 </div>
 
@@ -243,7 +243,7 @@
     <div class="section-title" style="margin-bottom:4px">Розыгрыши</div>
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Прошедшие розыгрыши и победители</p>
     <div id="raffles-list">
-        <div class="empty-state"><div class="empty-ico">icon('raffle')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="sk-rows"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>
     </div>
 </div>
 
@@ -253,7 +253,7 @@
     <div class="section-title" style="margin-bottom:4px">Мои купоны</div>
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Купленные и использованные купоны</p>
     <div id="my-coupons-list">
-        <div class="empty-state"><div class="empty-ico">icon('gift')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="sk-rows"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>
     </div>
 </div>
 
@@ -264,7 +264,7 @@
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px" id="partner-dash-subtitle">Использованные купоны</p>
     <div id="partner-dash-stats"></div>
     <div id="partner-dash-list">
-        <div class="empty-state"><div class="empty-ico">icon('store')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="sk-rows"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>
     </div>
 </div>
 
@@ -351,7 +351,7 @@
 <div id="page-bottles" class="page shelf-page">
     <button class="back-btn" onclick="openPage('menu')"><span class="bb-icon">‹</span> Назад</button>
     <div id="bottles-content">
-        <div class="empty-state"><div class="empty-ico">icon('bottle')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="sk-load" style="padding:34px 0"><div class="sk-spinner"></div><span>Загружаем полку…</span></div>
     </div>
 </div>
 
@@ -361,7 +361,7 @@
     <div class="section-title" style="margin-bottom:4px">Моё дерево</div>
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Сканируй бутылки и расти</p>
     <div id="tree-container">
-        <div class="empty-state"><div class="empty-ico">icon('tree')</div><div class="empty-t">Загрузка...</div></div>
+        <div class="sk-load" style="padding:34px 0"><div class="sk-spinner"></div><span>Загружаем дерево…</span></div>
     </div>
 </div>
 
@@ -447,5 +447,5 @@
     </div>
 </div>
 
-<script src="/js/app.js?v=202610092" defer></script>
+<script src="/js/app.js?v=202610093" defer></script>
 </body>

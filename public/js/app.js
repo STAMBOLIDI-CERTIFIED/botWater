@@ -804,6 +804,8 @@ async function startCouponScanner() {
 function switchHistoryTab(tab) {
         document.getElementById('tab-scans').className = 'tab-btn' + (tab === 'scans' ? ' active' : '');
         document.getElementById('tab-points').className = 'tab-btn' + (tab === 'points' ? ' active' : '');
+        var list = document.getElementById('history-list');
+        if (list) list.innerHTML = skRowsHtml(3);
         if (tab === 'scans') renderHistory(); else renderPointsLog();
     }
 
@@ -900,6 +902,12 @@ function closePrizeModal() {
 
     function loadingHtml(text) {
         return '<div class="sk-load"><div class="sk-spinner"></div><span>' + (text || 'Загрузка…') + '</span></div>';
+    }
+
+    function skRowsHtml(n) {
+        var rows = '';
+        for (var i = 0; i < (n || 3); i++) rows += '<div class="sk sk-row"></div>';
+        return '<div class="sk-rows">' + rows + '</div>';
     }
 
     function shopOpenPrize(p) {
@@ -1251,7 +1259,7 @@ function closePrizeModal() {
                 + '<div style="display:grid;grid-template-columns:1fr;gap:10px">'
                 + coupons.map(function(c, i) {
                     return '<div class="partner-item-card" style="animation-delay:' + (i * 0.05) + 's;border-left:3px solid ' + (cat.color || '#0EA5E9') + ';display:flex;gap:10px;align-items:center;padding:10px 12px">'
-                        + (c.prize_image ? '<img src="' + esc(c.prize_image) + '" alt="" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.remove()">' : '')
+                        + (c.prize_image ? '<img src="' + esc(c.prize_image) + '" loading="lazy" decoding="async" alt="" style="width:52px;height:52px;border-radius:10px;object-fit:cover;flex-shrink:0" onerror="this.remove()">' : '')
                         + '<div class="partner-item-body" style="flex:1;min-width:0;padding:0"><div class="partner-item-name">' + esc(c.prize_name || 'Приз') + '</div>'
                         + '<div class="partner-item-desc">Заказ #' + c.id + '</div>'
                         + '<button class="partner-item-btn primary" onclick="handleRedeemCoupon(' + c.id + ',' + cat.id + ')">' + icon('check') + ' Использовать купон</button>'
@@ -2156,8 +2164,7 @@ var supportChatId = null;
         var uid = getUID();
         if (!uid) return;
         var msgsEl = document.getElementById('support-messages');
-        var hgIco = icoRaw('hourglass');
-        msgsEl.innerHTML = '<div class="support-loading">' + (hgIco ? '<span class="icn">' + hgIco + '</span>' : '') + ' Загрузка...</div>';
+        msgsEl.innerHTML = loadingHtml('Загружаем переписку…');
 
         initSupportIcons();
 
