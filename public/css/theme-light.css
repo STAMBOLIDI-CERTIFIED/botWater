@@ -141,16 +141,16 @@ html[data-theme="light"] .profile-photo-placeholder {
 
 /* ── Детальная карточка купона ──────────────────── */
 
-html[data-theme="light"] #coupon-modal .prize-modal.cd-sheet {
+html[data-theme="light"] .prize-modal.cd-sheet {
     background: #FFFFFF;
 }
 
-html[data-theme="light"] #coupon-modal .prize-modal-close {
+html[data-theme="light"] .cd-sheet .prize-modal-close {
     background: rgba(17,19,24,0.08);
     color: #111318;
 }
 
-html[data-theme="light"] #coupon-modal .prize-modal-close:hover {
+html[data-theme="light"] .cd-sheet .prize-modal-close:hover {
     background: rgba(17,19,24,0.14);
 }
 
@@ -173,10 +173,22 @@ html[data-theme="light"] .cd-desc {
     color: #5C5854;
 }
 
-html[data-theme="light"] .cd-pill {
+html[data-theme="light"] .cd-pill:not(.cd-pill-ok):not(.cd-pill-warn) {
     background: #111318;
     border-color: transparent;
     color: #FFFFFF;
+}
+
+html[data-theme="light"] .cd-pill-ok {
+    background: rgba(47,143,91,0.12);
+    border-color: rgba(47,143,91,0.30);
+    color: #2F8F5B;
+}
+
+html[data-theme="light"] .cd-pill-warn {
+    background: rgba(220,38,38,0.10);
+    border-color: rgba(220,38,38,0.28);
+    color: #DC2626;
 }
 
 html[data-theme="light"] .cd-link {

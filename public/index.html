@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>try{if(localStorage.getItem('wpz_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
-    <link rel="stylesheet" href="/css/app.css?v=202610101">
+    <link rel="stylesheet" href="/css/app.css?v=202610102">
 </head>
 <body>
 
@@ -25,7 +25,7 @@
     <div class="splash-title">ИСТОКЪ</div>
     <div class="splash-dots"><span></span><span></span><span></span></div>
 </div>
-<script src="/js/splash.js?v=202610101"></script>
+<script src="/js/splash.js?v=202610102"></script>
 
 <!-- ГЛАВНОЕ МЕНЮ -->
 <div id="page-menu" class="page active">
@@ -482,14 +482,34 @@
 
 <!-- MODAL: Prize Detail -->
 <div id="prize-modal" class="prize-modal-overlay" onclick="if(event.target===this)closePrizeModal()">
-    <div class="prize-modal">
+    <div class="prize-modal cd-sheet">
         <button class="prize-modal-close" onclick="closePrizeModal()">✕</button>
-        <div id="prize-modal-img" class="prize-modal-img"></div>
-        <div class="prize-modal-body">
-            <div id="prize-modal-name" class="prize-modal-name"></div>
-            <div id="prize-modal-desc" class="prize-modal-desc"></div>
-            <div id="prize-modal-price" class="prize-modal-price"></div>
-            <div id="prize-modal-action"></div>
+        <div class="cd-scroll">
+            <div class="cd-media">
+                <div class="cd-media-top">
+                    <span id="prize-modal-brand" class="cd-brand"></span>
+                    <span id="prize-modal-model" class="cd-model"></span>
+                </div>
+                <div id="prize-modal-img" class="cd-media-img"></div>
+            </div>
+            <div class="cd-body">
+                <div class="cd-title-row">
+                    <div id="prize-modal-name" class="cd-title"></div>
+                    <span id="prize-modal-meta" class="cd-meta"></span>
+                </div>
+                <div id="prize-modal-badge" class="cd-pill"></div>
+                <div id="prize-modal-desc" class="cd-desc"></div>
+                <div class="cd-price-row">
+                    <div class="cd-price-wrap">
+                        <span id="prize-modal-price" class="cd-price"></span>
+                        <span id="prize-modal-sub" class="cd-price-sub"></span>
+                    </div>
+                </div>
+                <div id="prize-modal-fine" class="cd-fine"></div>
+            </div>
+        </div>
+        <div class="cd-actions cd-actions-single">
+            <div id="prize-modal-action" class="cd-action-full"></div>
         </div>
     </div>
 </div>
@@ -509,5 +529,5 @@
     </div>
 </div>
 
-<script src="/js/app.js?v=202610101" defer></script>
+<script src="/js/app.js?v=202610102" defer></script>
 </body>

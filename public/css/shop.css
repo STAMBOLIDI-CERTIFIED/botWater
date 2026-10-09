@@ -1124,7 +1124,7 @@
    ДЕТАЛЬНАЯ КАРТОЧКА КУПОНА
    ═══════════════════════════════════════════ */
 
-#coupon-modal .prize-modal.cd-sheet {
+.prize-modal.cd-sheet {
     display: flex;
     flex-direction: column;
     max-height: 88vh;
@@ -1254,6 +1254,20 @@
     width: 15px;
     height: 15px;
 }
+
+.cd-pill-ok {
+    background: var(--green-glow);
+    border-color: rgba(61,158,106,0.32);
+    color: var(--green);
+}
+
+.cd-pill-warn {
+    background: var(--red-glow);
+    border-color: rgba(239,68,68,0.32);
+    color: var(--red);
+}
+
+.cd-meta:empty { display: none; }
 
 .cd-desc {
     margin-top: 14px;
@@ -1447,6 +1461,19 @@
     color: var(--text-dim);
     box-shadow: none;
     cursor: default;
+}
+
+/* ─── Вариант с одной широкой кнопкой (магазин) ─── */
+
+.cd-actions-single { justify-content: stretch; }
+
+.cd-actions-single > * { flex: 1 1 auto; }
+
+.cd-action-full { display: block; }
+
+.cd-buy-wide {
+    width: 100%;
+    min-width: 0;
 }
 
 /* ─── Избранное в списке ─── */
