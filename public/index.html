@@ -50,58 +50,51 @@
         <div class="notif-list" id="notif-list"><div class="notif-loading">Загрузка...</div></div>
     </div>
 
-    <div class="banner hero-banner" onclick="openPage('raffles')" style="background:radial-gradient(circle at 85% 20%,rgba(168,85,247,0.18),transparent 38%),var(--glass-bg);border-color:rgba(168,85,247,0.18);box-shadow:inset 0 0 40px rgba(168,85,247,0.04),var(--shadow-md)">
-        <div class="banner-left">
-            <div class="banner-icon" style="background:rgba(168,85,247,0.14);color:#C084FC">icon('raffle')</div>
-            <div class="banner-text">
-                <div class="banner-title">Розыгрыши каждую неделю</div>
-                <div class="banner-sub">Участвуй и выигрывай призы</div>
-            </div>
+    <div class="menu-promo" onclick="openPage('raffles')">
+        <div class="menu-promo-media">icon('raffle')</div>
+        <div class="menu-promo-body">
+            <div class="menu-promo-label">Розыгрыши</div>
+            <div class="menu-promo-title">Розыгрыши каждую неделю</div>
+            <div class="menu-promo-sub">Участвуй и выигрывай призы</div>
         </div>
-        <div class="banner-arrow" style="background:rgba(168,85,247,0.14);color:#C084FC">›</div>
+        <span class="menu-promo-arrow">↗</span>
     </div>
 
-    <div class="section-title">Меню</div>
-    <div class="card-grid">
-        <div class="card card-full card-shop" onclick="openPage('shop')" style="--i:0;background:linear-gradient(135deg,var(--glass-bg),rgba(14,165,233,0.06));border-color:rgba(14,165,233,0.2)">
-            <div class="card-left" style="flex:1">
-                <div class="card-tag" style="color:#0EA5E9">Магазин купонов</div>
-                <div class="card-label">Партнёры и призы</div>
-                <div class="card-desc">Обменивайте баллы на товары от партнёров</div>
+    <div class="menu-grid">
+        <div class="menu-card" id="card-shop-home" onclick="openPage('shop')" style="--i:0">
+            <div class="menu-card-media" style="background:linear-gradient(135deg,rgba(14,165,233,0.16),rgba(14,165,233,0.04));color:#38BDF8">icon('store')</div>
+            <div class="menu-card-body">
+                <div class="menu-card-title">Магазин купонов</div>
+                <div class="menu-card-sub">Партнёры и призы</div>
             </div>
-            <div class="card-ico" style="background:rgba(14,165,233,0.12);border-color:rgba(14,165,233,0.3);color:#38BDF8">icon('store')</div>
         </div>
-        <div class="card card-full" id="card-my-coupons" onclick="openPage('my-coupons')" style="--i:0;background:linear-gradient(135deg,var(--glass-bg),rgba(234,179,8,0.06));border-color:rgba(234,179,8,0.2)">
-            <div class="card-left" style="flex:1">
-                <div class="card-tag" style="color:#EAB308">Мои купоны</div>
-                <div class="card-label">Купленные купоны</div>
-                <div class="card-desc">Активные и использованные купоны</div>
+        <div class="menu-card" id="card-my-coupons" onclick="openPage('my-coupons')" style="--i:1">
+            <div class="menu-card-media" style="background:linear-gradient(135deg,rgba(234,179,8,0.16),rgba(234,179,8,0.04));color:#FACC15">icon('gift')</div>
+            <div class="menu-card-body">
+                <div class="menu-card-title">Мои купоны</div>
+                <div class="menu-card-sub">Активные и использованные</div>
             </div>
-            <div class="card-ico" style="background:rgba(234,179,8,0.12);border-color:rgba(234,179,8,0.3);color:#FACC15">icon('gift')</div>
         </div>
-        <div class="card card-full" id="card-partner-dashboard" onclick="openPage('partner-dashboard')" style="--i:0;display:none;background:linear-gradient(135deg,var(--glass-bg),rgba(168,85,247,0.06));border-color:rgba(168,85,247,0.2)">
-            <div class="card-left" style="flex:1">
-                <div class="card-tag" style="color:#A855F7">Панель партнёра</div>
-                <div class="card-label" id="card-partner-name">Бизнес-партнёр</div>
-                <div class="card-desc">Использованные купоны вашего заведения</div>
+        <div class="menu-card" id="card-partner-dashboard" onclick="openPage('partner-dashboard')" style="--i:2;display:none">
+            <div class="menu-card-media" style="background:linear-gradient(135deg,rgba(168,85,247,0.16),rgba(168,85,247,0.04));color:#C084FC">icon('store')</div>
+            <div class="menu-card-body">
+                <div class="menu-card-title">Панель партнёра</div>
+                <div class="menu-card-sub" id="card-partner-name">Бизнес-партнёр</div>
             </div>
-            <div class="card-ico" style="background:rgba(168,85,247,0.14);border-color:rgba(168,85,247,0.32);color:#C084FC">icon('store')</div>
         </div>
-        <div class="card card-full" onclick="openPage('tree')" style="--i:0;background:linear-gradient(135deg,var(--glass-bg),rgba(61,158,106,0.06));border-color:rgba(61,158,106,0.2)">
-            <div class="card-left" style="flex:1">
-                <div class="card-tag" style="color:var(--green)">Дерево</div>
-                <div class="card-label">Моё дерево</div>
-                <div class="card-desc">Расти вместе с деревом</div>
+        <div class="menu-card" onclick="openPage('tree')" style="--i:3">
+            <div class="menu-card-media" style="background:linear-gradient(135deg,rgba(61,158,106,0.16),rgba(61,158,106,0.04));color:#6FCF97">icon('tree')</div>
+            <div class="menu-card-body">
+                <div class="menu-card-title">Дерево</div>
+                <div class="menu-card-sub">Расти вместе с деревом</div>
             </div>
-            <div class="card-ico" style="background:rgba(61,158,106,0.14);border-color:rgba(61,158,106,0.32);color:#6FCF97">icon('tree')</div>
         </div>
-        <div class="card card-full" onclick="openPage('support')" style="--i:0;background:linear-gradient(135deg,var(--glass-bg),rgba(245,158,11,0.06));border-color:rgba(245,158,11,0.2)">
-            <div class="card-left" style="flex:1">
-                <div class="card-tag" style="color:#F59E0B">Поддержка</div>
-                <div class="card-label">Чат с поддержкой</div>
-                <div class="card-desc">Напишите нам, если нужна помощь</div>
+        <div class="menu-card" onclick="openPage('support')" style="--i:4">
+            <div class="menu-card-media" style="background:linear-gradient(135deg,rgba(245,158,11,0.16),rgba(245,158,11,0.04));color:#FBBF24">icon('chat')</div>
+            <div class="menu-card-body">
+                <div class="menu-card-title">Поддержка</div>
+                <div class="menu-card-sub">Помощь и связь с нами</div>
             </div>
-            <div class="card-ico" style="background:rgba(245,158,11,0.12);border-color:rgba(245,158,11,0.3);color:#FBBF24">icon('chat')</div>
         </div>
     </div>
 </div>

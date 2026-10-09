@@ -81,7 +81,9 @@ input:focus-visible {
     .card-full,
     .card-tree,
     .card-shop,
-    .card-history {
+    .card-history,
+    .menu-promo,
+    .menu-card {
         animation: none !important;
     }
 }

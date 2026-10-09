@@ -23,32 +23,20 @@
 }
 /* Main menu: every block hidden until the synchronized reveal */
 #page-menu .top-bar,
-#page-menu .hero-banner,
-#page-menu .section-title,
-#page-menu .card-grid .card {
+#page-menu .menu-promo,
+#page-menu .menu-grid .menu-card {
     opacity: 0;
     transform: translateY(14px);
     animation: none;
 }
 /* Synchronized reveal: one wave, identical timing for every block */
 #page-menu.menu-revealed .top-bar,
-#page-menu.menu-revealed .hero-banner,
-#page-menu.menu-revealed .section-title,
-#page-menu.menu-revealed .card-grid .card {
+#page-menu.menu-revealed .menu-promo,
+#page-menu.menu-revealed .menu-grid .menu-card {
     opacity: 1;
     transform: none;
-    animation: slideUp .65s var(--ease-out) .05s both;
+    animation: slideUp .65s var(--ease-out) calc(.05s + var(--i, 0) * .05s) both;
 }
-/* Restore card glows on top of the reveal entrance */
-#page-menu.menu-revealed .card-grid .card-tree {
-    animation: cardTreeGlow 3s ease-in-out infinite, slideUp .65s var(--ease-out) .05s both;
-    animation-delay: 0s, .05s;
-}
-#page-menu.menu-revealed .card-grid .card-shop {
-    animation: cardShopGlow 3s ease-in-out infinite, slideUp .65s var(--ease-out) .05s both;
-    animation-delay: 0s, .05s;
-}
-#page-menu.menu-revealed .card-grid { opacity: 1; transform: none; }
 .card:active { transform: scale(0.96); }
 .card:hover {
     border-color: rgba(255,255,255,0.1);
@@ -210,84 +198,153 @@
     pointer-events: none;
 }
 
-.card-full {
-    grid-column: 1 / -1;
-    display: flex; align-items: center; gap: 14px;
-    padding: 15px 16px;
-    border-radius: var(--radius-md);
+/* ─── ГЛАВНАЯ: баннер розыгрышей + плитки меню (в стиле магазина) ─── */
+
+.menu-promo {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px;
+    margin-bottom: 16px;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--glass-border);
-    transition: all var(--transition-normal);
-    animation: slideUp .5s var(--ease-out) .55s both;
+    border-radius: 20px;
+    cursor: pointer;
+    overflow: hidden;
     box-shadow: var(--shadow-sm);
+    transition: border-color .2s var(--ease-out), transform .2s var(--ease-out);
 }
-.card-full:hover {
-    border-color: rgba(201,168,76,0.25);
-    box-shadow: var(--shadow-glow-gold), var(--shadow-md);
-    transform: translateY(-2px);
-}
-.card-full::after {
-    content: ''; position: absolute; inset: 0;
-    background: linear-gradient(135deg, rgba(201,168,76,0.04), transparent 50%);
+
+.menu-promo::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent 55%);
     pointer-events: none;
 }
-.card-full .card-left { flex: 1; position: relative; z-index: 1; min-width: 0; }
-/* Icon tile on the right of menu cards */
-.card-ico {
-    width: 54px; height: 54px;
-    border-radius: 15px;
-    border: 1px solid rgba(255,255,255,0.1);
-    display: flex; align-items: center; justify-content: center;
+
+.menu-promo:active { transform: scale(0.98); }
+.menu-promo:hover { border-color: rgba(201,168,76,0.3); }
+
+.menu-promo-media {
+    position: relative;
+    z-index: 1;
+    width: 58px;
+    height: 58px;
     flex-shrink: 0;
-    position: relative; z-index: 1;
-    transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-    animation: treeEmojiFloat 3s ease-in-out infinite;
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(168,85,247,0.18), rgba(168,85,247,0.05));
+    color: #C084FC;
 }
-.card-ico .icn, .card-ico svg { width: 26px; height: 26px; }
-.card-ico svg { stroke: currentColor; }
-.card:hover .card-ico {
-    animation: none;
-    transform: scale(1.1);
-    box-shadow: 0 6px 18px rgba(0,0,0,0.25);
-}
-.card-full .card-tag {
-    font-size: 10px; font-weight: 600; color: var(--gold);
-    text-transform: uppercase; letter-spacing: 0.5px;
-    margin-bottom: 4px;
-}
-.card-full .card-desc {
-    font-size: 11px; color: var(--text-dim); margin-top: 4px; line-height: 1.4;
-}
-.card-full .card-btn {
-    background: rgba(201,168,76,0.12);
+
+.menu-promo-media .icn svg { width: 26px; height: 26px; }
+
+.menu-promo-body { flex: 1; min-width: 0; position: relative; z-index: 1; }
+
+.menu-promo-label {
+    font-size: 9.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .8px;
     color: var(--gold);
-    border: 1px solid rgba(201,168,76,0.2);
-    border-radius: var(--radius-sm);
-    padding: 9px 18px;
-    font-family: inherit; font-size: 12px; font-weight: 700;
-    cursor: pointer; margin-top: 10px;
-    transition: all var(--transition-fast);
+    margin-bottom: 2px;
 }
-.card-full:hover .card-btn {
+
+.menu-promo-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.menu-promo-sub {
+    font-size: 11.5px;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.menu-promo-arrow {
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: linear-gradient(135deg, var(--gold), var(--gold-light));
-    color: #fff;
-    border-color: transparent;
-    box-shadow: 0 4px 16px rgba(201,168,76,0.3);
-    transform: scale(1.05);
+    color: #111318;
+    font-size: 16px;
+    font-weight: 800;
+    box-shadow: 0 4px 14px rgba(201,168,76,0.3);
 }
-.card-full .card-btn:active { transform: scale(0.95); }
-.card-full .card-img {
-    width: 84px; height: 84px; border-radius: var(--radius-md);
-    background: rgba(255,255,255,0.04);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 36px; flex-shrink: 0;
-    transition: transform var(--transition-normal);
-    position: relative; z-index: 1;
-    border: 1px solid rgba(255,255,255,0.04);
+
+.menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 16px;
 }
-.card-full:hover .card-img { transform: scale(1.1) rotate(8deg); }
+
+.menu-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: 18px;
+    overflow: hidden;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: border-color .2s var(--ease-out), transform .2s var(--ease-out);
+}
+
+.menu-card:active { transform: scale(0.97); }
+.menu-card:hover { border-color: rgba(201,168,76,0.3); }
+
+.menu-card-media {
+    width: 100%;
+    aspect-ratio: 1.35;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.menu-card-media .icn { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.25)); }
+.menu-card-media .icn svg { width: 34px; height: 34px; }
+
+.menu-card-body { padding: 11px 12px 13px; }
+
+.menu-card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.3;
+}
+
+.menu-card-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
 
 .activity-card {
     background: var(--glass-bg);
