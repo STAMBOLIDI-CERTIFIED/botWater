@@ -7,7 +7,7 @@ from urllib.parse import parse_qsl
 import hashlib
 import hmac
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..deps import db, get_settings
@@ -15,9 +15,10 @@ from .. import bot as tg_bot
 
 router = APIRouter(prefix="/api")
 
-# Каталог магазина — справочные данные, кэшируем на сервере и в браузере
+# Каталог магазина — справочные данные, кэшируем на сервере и в браузере.
+# Возвращаем «сырые» объекты (в них datetime), сериализацию делает FastAPI.
 _CATALOG_TTL = 60.0
-_CATALOG_HEADERS = {"Cache-Control": "public, max-age=60"}
+_CATALOG_CACHE_CONTROL = "public, max-age=60"
 _categories_cache: dict = {"ts": 0.0, "val": None}
 _category_cache: dict[int, tuple[float, dict]] = {}
 
@@ -129,30 +130,32 @@ async def api_prizes():
 
 
 @router.get("/shop/categories")
-async def api_shop_categories():
+async def api_shop_categories(response: Response):
+    response.headers["Cache-Control"] = _CATALOG_CACHE_CONTROL
     now = time.monotonic()
     cached = _categories_cache["val"]
     if cached is not None and now - _categories_cache["ts"] < _CATALOG_TTL:
-        return JSONResponse(cached, headers=_CATALOG_HEADERS)
+        return cached
     val = await db.get_shop_categories()
     _categories_cache["val"] = val
     _categories_cache["ts"] = now
-    return JSONResponse(val, headers=_CATALOG_HEADERS)
+    return val
 
 
 @router.get("/shop/categories/{category_id}")
-async def api_shop_category_items(category_id: int):
+async def api_shop_category_items(category_id: int, response: Response):
+    response.headers["Cache-Control"] = _CATALOG_CACHE_CONTROL
     now = time.monotonic()
     hit = _category_cache.get(category_id)
     if hit and now - hit[0] < _CATALOG_TTL:
-        return JSONResponse(hit[1], headers=_CATALOG_HEADERS)
+        return hit[1]
     category = await db.get_shop_category(category_id)
     if not category:
         return JSONResponse({"error": "not found"}, status_code=404)
     items = await db.get_prizes_by_category(category_id)
     payload = {"category": category, "items": items}
     _category_cache[category_id] = (now, payload)
-    return JSONResponse(payload, headers=_CATALOG_HEADERS)
+    return payload
 
 
 @router.get("/shop/categories/{category_id}/items")
