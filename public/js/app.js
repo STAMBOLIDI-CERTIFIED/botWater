@@ -403,6 +403,25 @@ function countUp(el, target, duration) {
         window._menuDataReady = true;
         if (window.tryRevealMenu) window.tryRevealMenu();
     }
+    async function loadMenuTree() {
+        var box = document.getElementById('menu-tree');
+        if (!box) return;
+        var uid = getUID();
+        if (!uid) return;
+        var d = await apiFetch('/tree?user_id=' + uid);
+        if (!d || typeof d.level === 'undefined') return;
+        var xp = d.xp || 0, lv = d.level || 1, nx = d.next_level_xp || 100;
+        var pr = Math.max(0, Math.min(100, d.progress || 0));
+        var mx = lv >= 6;
+        document.getElementById('menu-tree-lvl').textContent = mx ? 'Уровень ' + lv + ' ★' : 'Уровень ' + lv;
+        document.getElementById('menu-tree-fill').style.width = pr + '%';
+        document.getElementById('menu-tree-pct').textContent = pr + '%';
+        document.getElementById('menu-tree-foot').textContent = mx
+            ? xp + ' XP · максимальный уровень'
+            : xp + ' / ' + nx + ' XP · ещё ' + Math.max(0, nx - xp) + ' до ' + (lv + 1) + ' уровня';
+        box.style.display = 'flex';
+    }
+
     // Simultaneous reveal: wait for both splash and data
     window._menuDataReady = false;
     window._pendingTopBalance = null;
@@ -421,6 +440,7 @@ function countUp(el, target, duration) {
         }, 1100);
     };
     loadUserData();
+    loadMenuTree();
 
     // ═══════════════════════════════════════════
 // NOTIFICATIONS
@@ -511,7 +531,7 @@ function stopScanner() {
                 nav.classList.remove('nav-hidden');
             }
         }
-        if (page === 'menu') loadUserData();
+        if (page === 'menu') { loadUserData(); loadMenuTree(); }
         if (page === 'scanner') {
             var sr = document.getElementById('scan-result');
             if (sr) sr.classList.remove('show');

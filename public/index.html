@@ -51,14 +51,17 @@
         <div class="notif-list" id="notif-list"><div class="notif-loading"><div class="sk-load" style="padding:0"><div class="sk-spinner"></div><span>Загрузка…</span></div></div></div>
     </div>
 
-    <div class="menu-promo" onclick="openPage('raffles')">
-        <div class="menu-promo-media">icon('raffle')</div>
-        <div class="menu-promo-body">
-            <div class="menu-promo-label">Розыгрыши</div>
-            <div class="menu-promo-title">Розыгрыши каждую неделю</div>
-            <div class="menu-promo-sub">Участвуй и выигрывай призы</div>
+    <div class="menu-tree" id="menu-tree" onclick="openPage('tree')" style="display:none">
+        <div class="menu-tree-head">
+            <span class="menu-tree-ico">icon('tree')</span>
+            <span class="menu-tree-title">Моё дерево</span>
+            <span class="menu-tree-lvl" id="menu-tree-lvl">Уровень 1</span>
         </div>
-        <span class="menu-promo-arrow">↗</span>
+        <div class="menu-tree-row">
+            <div class="menu-tree-track"><div class="menu-tree-fill" id="menu-tree-fill"></div></div>
+            <span class="menu-tree-pct" id="menu-tree-pct">0%</span>
+        </div>
+        <div class="menu-tree-foot" id="menu-tree-foot"></div>
     </div>
 
     <div class="menu-grid">
