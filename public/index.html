@@ -13,7 +13,8 @@
     <link rel="preconnect" href="https://unpkg.com">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
-    <link rel="stylesheet" href="/css/app.css?v=202610098">
+    <script>try{if(localStorage.getItem('wpz_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
+    <link rel="stylesheet" href="/css/app.css?v=202610099">
 </head>
 <body>
 
@@ -24,7 +25,7 @@
     <div class="splash-title">ИСТОКЪ</div>
     <div class="splash-dots"><span></span><span></span><span></span></div>
 </div>
-<script src="/js/splash.js?v=202610098"></script>
+<script src="/js/splash.js?v=202610099"></script>
 
 <!-- ГЛАВНОЕ МЕНЮ -->
 <div id="page-menu" class="page active">
@@ -156,6 +157,15 @@
             <div class="ps-label">уровень дерева</div>
             <div class="ps-bar"><div class="ps-bar-fill" id="profile-xp-fill"></div></div>
         </div>
+    </div>
+
+    <div class="profile-theme-row">
+        <span class="ptr-icon">icon('sun')</span>
+        <div class="ptr-text">
+            <div class="ptr-title">Светлая тема</div>
+            <div class="ptr-sub">Белое оформление приложения</div>
+        </div>
+        <button class="theme-switch" id="theme-switch" type="button" role="switch" aria-checked="false" aria-label="Светлая тема" onclick="toggleTheme()"><span class="ts-knob"></span></button>
     </div>
 
     <div class="profile-actions">
@@ -469,5 +479,5 @@
     </div>
 </div>
 
-<script src="/js/app.js?v=202610098" defer></script>
+<script src="/js/app.js?v=202610099" defer></script>
 </body>

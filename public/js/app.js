@@ -28,16 +28,31 @@ if (!window.Telegram || !window.Telegram.WebApp) {
         showAlert: function(m){ alert(m); }
     };
     try { tg.ready(); tg.expand(); } catch(e) {}
-    try { tg.setBackgroundColor('#111318'); } catch(e) {}
-    try { tg.setHeaderColor('#111318'); } catch(e) {}
     try { tg.disableVerticalSwipes(); } catch(e) {}
-    document.documentElement.style.colorScheme = 'dark';
-    document.body.style.background = '#111318';
+
+    function getTheme() {
+        try { return localStorage.getItem('wpz_theme') === 'light' ? 'light' : 'dark'; } catch (e) { return 'dark'; }
+    }
+    function applyTheme(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        document.documentElement.style.colorScheme = t;
+        try { localStorage.setItem('wpz_theme', t); } catch (e) {}
+        var bg = t === 'light' ? '#F3F0E9' : '#111318';
+        document.body.style.background = bg;
+        try { tg.setBackgroundColor(bg); } catch (e) {}
+        try { tg.setHeaderColor(bg); } catch (e) {}
+        var sw = document.getElementById('theme-switch');
+        if (sw) {
+            sw.classList.toggle('on', t === 'light');
+            sw.setAttribute('aria-checked', t === 'light' ? 'true' : 'false');
+        }
+    }
+    function toggleTheme() { applyTheme(getTheme() === 'light' ? 'dark' : 'light'); }
+    applyTheme(getTheme());
+
     try {
         tg.onEvent('themeChanged', function() {
-            try { tg.setBackgroundColor('#111318'); } catch(e) {}
-            try { tg.setHeaderColor('#111318'); } catch(e) {}
-            document.body.style.background = '#111318';
+            applyTheme(getTheme());
         });
     } catch(e) {}
 
@@ -76,6 +91,7 @@ if (!window.Telegram || !window.Telegram.WebApp) {
 // ═══════════════════════════════════════════
 
 const ICONS = {
+        sun:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-sun)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#C9A84C"/></linearGradient></defs><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
         bell:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bell)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset="1" stop-color="#E8A33D"/></linearGradient></defs><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>',
         bolt:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bolt)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bolt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF59D"/><stop offset="1" stop-color="#FBC02D"/></linearGradient></defs><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11" /></svg>',
         bottle:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bottle)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bottle" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4FC3F7"/><stop offset="1" stop-color="#1E88E5"/></linearGradient></defs><path d="M10 5h4v-2a1 1 0 0 0 -1 -1h-2a1 1 0 0 0 -1 1v2" /><path d="M14 3.5c0 1.626 .507 3.212 1.45 4.537l.05 .07a8.093 8.093 0 0 1 1.5 4.694v6.199a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-6.2c0 -1.682 .524 -3.322 1.5 -4.693l.05 -.07a7.823 7.823 0 0 0 1.45 -4.537" /><path d="M7 14.803a2.4 2.4 0 0 0 1 -.803a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 1 -.805" /></svg>',
@@ -613,7 +629,7 @@ function stopScanner() {
             var sb = document.getElementById('scan-btn');
             if (sb) { sb.textContent = 'Включить камеру'; sb.disabled = false; }
         }
-        if (page === 'profile') { loadUserData(); loadProfileExtras(); }
+        if (page === 'profile') { applyTheme(getTheme()); loadUserData(); loadProfileExtras(); }
         if (page === 'history') switchHistoryTab('scans');
         if (page === 'shop') loadShop();
         if (page === 'raffles') loadRaffles();
