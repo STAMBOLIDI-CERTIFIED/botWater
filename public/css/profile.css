@@ -226,8 +226,16 @@
 }
 
 .pbc-arrow {
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
     font-size: 15px;
     transition: transform .2s var(--ease-out);
+}
+
+.pbc-arrow svg {
+    width: 15px;
+    height: 15px;
 }
 
 .profile-balance-card:active .pbc-arrow {
@@ -392,9 +400,17 @@
 }
 
 .profile-action-btn .pab-arrow {
+    display: inline-flex;
+    align-items: center;
+    line-height: 0;
     font-size: 18px;
     color: var(--text-dim);
     transition: transform .3s ease;
+}
+
+.profile-action-btn .pab-arrow svg {
+    width: 16px;
+    height: 16px;
 }
 
 .profile-action-btn:active .pab-arrow {

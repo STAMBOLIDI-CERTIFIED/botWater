@@ -92,6 +92,8 @@ if (!window.Telegram || !window.Telegram.WebApp) {
 
 const ICONS = {
         back:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7l7 7" /></svg>',
+        next:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7l-7 7" /></svg>',
+        arrow:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h14M13 6l6 6l-6 6" /></svg>',
         sun:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-sun)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE082"/><stop offset="1" stop-color="#C9A84C"/></linearGradient></defs><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>',
         bell:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bell)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bell" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE08A"/><stop offset="1" stop-color="#E8A33D"/></linearGradient></defs><path d="M10 5a2 2 0 1 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>',
         bolt:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="url(#ig-bolt)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><defs><linearGradient id="ig-bolt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF59D"/><stop offset="1" stop-color="#FBC02D"/></linearGradient></defs><path d="M13 3l0 7l6 0l-8 11l0 -7l-6 0l8 -11" /></svg>',
@@ -1683,7 +1685,7 @@ async function loadRaffles() {
                 + '<div class="activity-icon">' + (w ? '' + icon('trophy') + '' : '' + icon('raffle') + '') + '</div>'
                 + '<div class="activity-info"><div class="activity-title">' + (w ? 'Вы выиграли!' : 'Розыгрыш') + '</div>'
                 + '<div class="activity-sub">' + icon('coin') + ' ' + r.prize_amount + ' руб.' + (w ? ' • Код: ' + esc(r.winning_code || '') : '') + '</div></div>'
-                + '<div class="activity-arrow">›</div></div>';
+                + '<div class="activity-arrow">' + icon('next') + '</div></div>';
         }).join('');
     }
 

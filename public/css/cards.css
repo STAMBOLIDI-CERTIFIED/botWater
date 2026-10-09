@@ -411,7 +411,18 @@
 .activity-info { flex: 1; }
 .activity-title { font-size: 14px; font-weight: 600; }
 .activity-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-.activity-arrow { color: var(--text-dim); font-size: 14px; }
+.activity-arrow {
+    display: flex;
+    align-items: center;
+    line-height: 0;
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+.activity-arrow svg {
+    width: 15px;
+    height: 15px;
+}
 
 .icn { display: inline-flex; align-items: center; justify-content: center; }
 .icn svg { display: block; }
