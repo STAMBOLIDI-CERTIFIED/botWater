@@ -402,7 +402,8 @@ class Database:
     async def update_user_balance(self, telegram_id: int, balance: int):
         await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"balance": balance})
 
-    async def add_tree_xp(self, telegram_id: int, xp: int):
+    async def add_tree_xp(self, telegram_id: int, xp: int, reason: str = "",
+                          partner_id: int | None = None, ref_id: int | None = None):
         user = await self.get_user(telegram_id)
         if not user:
             return
@@ -420,7 +421,55 @@ class Database:
             "tree_xp": new_xp,
             "tree_level": new_level,
         })
+        if xp:
+            await self._log_tree_xp(user["id"], xp, reason, partner_id, ref_id)
         return {"new_level": new_level, "level_changed": level_changed}
+
+    async def _log_tree_xp(self, user_pk: int, xp: int, reason: str = "",
+                           partner_id: int | None = None, ref_id: int | None = None):
+        """Пишет начисление опыта в журнал (для блока «История опыта»)."""
+        try:
+            await self._fetch("tree_xp_log", method="POST", json_data={
+                "user_id": user_pk,
+                "xp": xp,
+                "reason": reason or "",
+                "partner_id": partner_id,
+                "ref_id": ref_id,
+            })
+        except Exception:
+            pass
+
+    async def get_tree_xp_history(self, telegram_id: int, limit: int = 8) -> list[dict]:
+        """Последние начисления опыта с названиями партнёров."""
+        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
+        if not user:
+            return []
+        rows = await self._fetch(
+            "tree_xp_log",
+            f"user_id=eq.{user['id']}&order=created_at.desc&limit={limit}&select=xp,reason,partner_id,created_at",
+        )
+        if not rows:
+            return []
+        partner_ids = {r["partner_id"] for r in rows if r.get("partner_id")}
+        titles = {}
+        if partner_ids:
+            or_cond = ",".join(f"id.eq.{i}" for i in sorted(partner_ids))
+            cats = await self._fetch(
+                "shop_categories",
+                f"select=id,title,icon&or=({or_cond})",
+            )
+            titles = {c["id"]: c for c in cats}
+        out = []
+        for r in rows:
+            p = titles.get(r.get("partner_id")) if r.get("partner_id") else None
+            out.append({
+                "xp": r.get("xp") or 0,
+                "reason": r.get("reason") or "",
+                "partner": (p.get("title") if p else ""),
+                "icon": (p.get("icon") if p else ""),
+                "created_at": r.get("created_at") or "",
+            })
+        return out
 
     def _calc_level(self, current_xp: int, current_level: int, thresholds: dict | None = None) -> int:
         if thresholds is None:
@@ -525,7 +574,8 @@ class Database:
 
         user = await self._fetch_one("users", f"id=eq.{user_pk}&select=telegram_id")
         if user and user.get("telegram_id"):
-            await self.add_tree_xp(user["telegram_id"], grant)
+            await self.add_tree_xp(user["telegram_id"], grant, reason="coupon_redeem",
+                                   partner_id=category_id, ref_id=coupon_id)
         if category_id:
             await self.add_partner_xp(user_pk, category_id, grant)
         return {"granted": grant, "processed": True}
@@ -935,7 +985,8 @@ class Database:
         await self.record_journey(user["id"], "partner_scan", partner_id=category.get("id"))
 
         await self.add_balance(telegram_id, scan_points, "partner_scan", f"Сканирование QR партнёра «{partner_name}»")
-        await self.add_tree_xp(telegram_id, scan_points)
+        await self.add_tree_xp(telegram_id, scan_points, reason="partner_scan",
+                               partner_id=category.get("id"))
         await self.create_notification(
             telegram_id, "scan", "Партнёр",
             f"+{scan_points} баллов за сканирование QR «{partner_name}»", "history"

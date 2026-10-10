@@ -511,7 +511,7 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
         scan_balance = await db.get_bot_setting_int("scan_balance", 10)
         scan_xp = await db.get_bot_setting_int("scan_xp", 10)
         await db.add_balance(chat_id, scan_balance, "scan", f"Сканирование бутылки {bottle_id}")
-        level_result = await db.add_tree_xp(chat_id, scan_xp)
+        level_result = await db.add_tree_xp(chat_id, scan_xp, reason="scan")
         await db.create_notification(chat_id, "scan", "Сканирование", f"+{scan_balance} баллов за бутылку {bottle_id}", "history")
 
         if level_result and level_result.get("level_changed"):

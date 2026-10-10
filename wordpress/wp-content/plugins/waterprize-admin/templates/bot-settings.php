@@ -4,6 +4,7 @@ $db = WaterPrize_DB::instance();
 $reward_keys = [
     'scan_balance' => ['label' => 'Баллы за скан бутылки', 'default' => '10', 'type' => 'number'],
     'scan_xp' => ['label' => 'Опыт за скан бутылки', 'default' => '10', 'type' => 'number'],
+    'coupon_buy_xp_mult' => ['label' => 'Множитель опыта за ПОКУПКУ купона (1 = цена купона, 0 = выкл.)', 'default' => '1', 'type' => 'number'],
     'partner_scan_default' => ['label' => 'Баллы за скан партнёра (дефолт)', 'default' => '10', 'type' => 'number'],
     'gift_min' => ['label' => 'Мин. баллы за подарок', 'default' => '10', 'type' => 'number'],
     'gift_max' => ['label' => 'Макс. баллы за подарок', 'default' => '100', 'type' => 'number'],

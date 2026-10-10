@@ -2316,9 +2316,13 @@ async function loadTree() {
             const xp = d.xp||0, lv = d.level||1, nx = d.next_level_xp||100, pr = d.progress||0;
             const partners = Array.isArray(d.partners) ? d.partners : [];
             const gift = d.gift || {};
+            const rules = Array.isArray(d.rules) ? d.rules : [];
+            const history = Array.isArray(d.history) ? d.history : [];
+            const toNext = d.to_next||0;
             const idx = Math.min(Math.max(lv,1), TL.length);
             const cur = TL[idx-1] || TL[0];
-            const sn = cur.name, si = cur.icon, mx = lv>=6;
+            const nxt = TL[idx] || null;
+            const sn = cur.name, mx = lv>=6;
             c.innerHTML = `<div class="tree-hero">
                 <div class="tree-hero-scene">
                     <div class="tree-hero-glow"></div>
@@ -2330,14 +2334,13 @@ async function loadTree() {
                     <div class="tree-hero-name">${sn}</div>
                     <div class="tree-hero-sub">Стадия ${idx} из ${TL.length}</div>
                 </div>
-                <div class="xp-bar-wrap">
-                    <div class="xp-label"><span>${icon('bolt')} Опыт</span><span>${xp} ${mx?'★ MAX':'/ '+nx}</span></div>
-                    <div class="xp-track"><div class="xp-fill" style="width:${mx?100:pr}%"></div></div>
-                </div>
+                ${treeGoalHtml(xp, nx, pr, toNext, mx, nxt)}
             </div>
         ${treeGiftHtml(gift)}
         ${treeStagesHtml(lv)}
-        ${treePartnersHtml(partners)}`;
+        ${treeRulesHtml(rules)}
+        ${treePartnersHtml(partners)}
+        ${treeHistoryHtml(history)}`;
             var strip = c.querySelector('.tree-stages-strip');
             var curCard = c.querySelector('.stage-card.current');
             if (strip && curCard) {
@@ -2368,6 +2371,85 @@ async function loadTree() {
             + '<div class="tree-stages-head">' + icon('chart') + ' Стадии роста</div>'
             + '<div class="tree-stages-strip">' + cards + '</div>'
             + '</div>';
+    }
+
+    // Цель: кольцо прогресса + «ещё N XP до следующей стадии»
+    function treeGoalHtml(xp, nx, pr, toNext, mx, nxt) {
+        var C = 2 * Math.PI * 27;
+        var pct = mx ? 100 : Math.max(0, Math.min(100, pr || 0));
+        var off = C * (1 - pct / 100);
+        var ring = '<div class="tree-ring">'
+            + '<svg viewBox="0 0 62 62">'
+            + '<circle class="tree-ring-track" cx="31" cy="31" r="27"></circle>'
+            + '<circle class="tree-ring-fill" cx="31" cy="31" r="27" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"></circle>'
+            + '</svg>'
+            + '<span class="tree-ring-val">' + (mx ? 'MAX' : Math.round(pct) + '%') + '</span>'
+            + '</div>';
+        var title, sub;
+        if (mx) {
+            title = 'Дерево достигло <b>максимума</b>';
+            sub = 'Всего накоплено опыта: ' + xp + ' XP. Спасибо, что растёшь вместе с нами!';
+        } else {
+            title = 'Ещё <b>' + toNext + ' XP</b>';
+            sub = 'до стадии «' + esc(nxt ? nxt.name : '—') + '» · всего ' + xp + ' / ' + nx + ' XP';
+        }
+        return '<div class="tree-goal' + (mx ? ' max' : '') + '">' + ring
+            + '<div class="tree-goal-body"><div class="tree-goal-title">' + title + '</div>'
+            + '<div class="tree-goal-sub">' + sub + '</div></div></div>';
+    }
+
+    // За что начисляется опыт
+    var XP_RULE_ICONS = { scan: 'bottle', coupon_buy: 'cart', coupon_redeem: 'check', partner_scan: 'scanner' };
+    function treeRulesHtml(rules) {
+        if (!rules || !rules.length) return '';
+        var items = rules.map(function (r) {
+            return '<div class="rule-item">'
+                + '<div class="rule-ico">' + icon(XP_RULE_ICONS[r.key] || 'bolt') + '</div>'
+                + '<div class="rule-body"><div class="rule-title">' + esc(r.title) + '</div>'
+                + '<div class="rule-desc">' + esc(r.desc) + '</div></div>'
+                + '<span class="rule-val">' + esc(r.value) + '</span>'
+                + '</div>';
+        }).join('');
+        return '<div class="tree-panel">'
+            + '<div class="tree-panel-head">' + icon('bolt') + ' За что начисляется опыт</div>'
+            + items + '</div>';
+    }
+
+    // История последних начислений опыта
+    var XP_REASON_TITLES = {
+        scan: 'Сканирование бутылки',
+        coupon_buy: 'Покупка купона',
+        coupon_redeem: 'Активация купона',
+        partner_scan: 'Сканирование QR партнёра',
+    };
+    var XP_REASON_ICONS = { scan: '🍾', coupon_buy: '🛒', coupon_redeem: '✅', partner_scan: '📍' };
+    function xpDateShort(iso) {
+        try {
+            var dt = new Date(iso);
+            if (isNaN(dt)) return '';
+            var now = new Date();
+            var sameDay = dt.toDateString() === now.toDateString();
+            if (sameDay) return 'Сегодня, ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+            return dt.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        } catch(e) { return ''; }
+    }
+    function treeHistoryHtml(history) {
+        var head = '<div class="tree-panel-head">' + icon('history') + ' История опыта</div>';
+        if (!history || !history.length) {
+            return '<div class="tree-panel">' + head
+                + '<div class="tree-panel-empty">Опыт ещё не начислялся — отсканируй первую бутылку.</div></div>';
+        }
+        var items = history.map(function (h) {
+            var ico = h.icon || XP_REASON_ICONS[h.reason] || '⚡';
+            var title = h.partner || XP_REASON_TITLES[h.reason] || 'Начисление опыта';
+            return '<div class="hist-item">'
+                + '<div class="hist-ico">' + ico + '</div>'
+                + '<div class="hist-body"><div class="hist-title">' + esc(title) + '</div>'
+                + '<div class="hist-date">' + esc(xpDateShort(h.created_at)) + '</div></div>'
+                + '<span class="hist-xp">+' + (h.xp||0) + ' XP</span>'
+                + '</div>';
+        }).join('');
+        return '<div class="tree-panel">' + head + items + '</div>';
     }
 
     // Подарок любимого партнёра на странице дерева

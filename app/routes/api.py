@@ -189,17 +189,42 @@ async def api_points_log(user_id: int = 0):
 async def api_tree(user_id: int = 0):
     if not user_id:
         return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0,
-                "partners": [], "gift": {"available": False, "reason": "no_user"}}
+                "partners": [], "gift": {"available": False, "reason": "no_user"},
+                "rules": await _tree_xp_rules(), "history": []}
     state = await db.get_tree_state(user_id)
     user = await db.get_user(user_id)
     if user:
         info = await db.get_partner_gift_info(user["id"])
         state["partners"] = info.get("partners", [])
         state["gift"] = info.get("gift", {})
+        state["history"] = await db.get_tree_xp_history(user_id, limit=8)
     else:
         state["partners"] = []
         state["gift"] = {"available": False, "reason": "user_not_found"}
+        state["history"] = []
+    state["rules"] = await _tree_xp_rules()
+    # Цель: сколько опыта осталось до следующей стадии
+    xp = state.get("xp") or 0
+    nxt = state.get("next_level_xp") or 0
+    state["to_next"] = max(0, nxt - xp) if (state.get("level") or 1) < 6 else 0
     return state
+
+
+async def _tree_xp_rules() -> list[dict]:
+    """Источники опыта для блока «За что начисляется опыт»."""
+    scan_xp = await db.get_bot_setting_int("scan_xp", 10)
+    buy_mult = await db.get_bot_setting_int("coupon_buy_xp_mult", 1)
+    return [
+        {"key": "scan", "title": "Сканируй бутылки",
+         "desc": "QR-код на бутылке ИСТОКЪ", "value": f"+{scan_xp} XP"},
+        {"key": "coupon_buy", "title": "Покупай купоны",
+         "desc": "Опыт равен цене купона в баллах",
+         "value": f"+{'цена купона' if buy_mult == 1 else str(buy_mult) + '× цена'} XP"},
+        {"key": "coupon_redeem", "title": "Трать купоны",
+         "desc": "Активируй купон у партнёра", "value": "+цена купона XP"},
+        {"key": "partner_scan", "title": "Сканируй QR партнёров",
+         "desc": "QR на точках любимых партнёров", "value": "+баллы партнёра"},
+    ]
 
 
 @router.post("/tree/gift/claim")
@@ -327,7 +352,7 @@ async def api_scan(request: Request):
     scan_balance = await db.get_bot_setting_int("scan_balance", 10)
     scan_xp = await db.get_bot_setting_int("scan_xp", 10)
     await db.add_balance(user_id, scan_balance, "scan", f"Сканирование бутылки {bottle_id}")
-    await db.add_tree_xp(user_id, scan_xp)
+    await db.add_tree_xp(user_id, scan_xp, reason="scan")
     await db.create_notification(user_id, "scan", "Сканирование", f"+{scan_balance} баллов за бутылку {bottle_id}", "history")
 
     stats = await db.get_user_stats(user_id)
@@ -475,8 +500,20 @@ async def api_exchange(request: Request):
         await db.add_balance(user_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user["id"], prize_id)
         await db.record_journey(user["id"], "coupon_buy", partner_id=prize.get("category_id"), related_id=order_id, points_used=prize["price_points"])
+        # Опыт за покупку купона = цена приза (можно убавить множителем coupon_buy_xp_mult)
+        buy_mult = await db.get_bot_setting_int("coupon_buy_xp_mult", 1)
+        buy_xp = max(0, int(prize["price_points"] or 0)) * max(0, buy_mult)
+        tree = None
+        if buy_xp > 0:
+            tree = await db.add_tree_xp(user_id, buy_xp, reason="coupon_buy",
+                                        partner_id=prize.get("category_id"), ref_id=order_id)
         await db.create_notification(user_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
-        return {"ok": True, "order_id": order_id, "prize_name": prize["name"], "balance": (user.get("balance") or 0) - prize["price_points"]}
+        resp = {"ok": True, "order_id": order_id, "prize_name": prize["name"],
+                "balance": (user.get("balance") or 0) - prize["price_points"]}
+        if buy_xp > 0:
+            resp["xp_earned"] = buy_xp
+            resp["level_up"] = bool(tree and tree.get("level_changed"))
+        return resp
     except Exception as e:
         import logging
         logging.getLogger(__name__).exception(f"exchange error: {e}")
