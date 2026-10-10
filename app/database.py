@@ -78,6 +78,7 @@ class Database:
         logger.info("Postgres connected")
         await self.ensure_broadcast_tables()
         await self.ensure_coupon_favorites()
+        await self.ensure_tree_xp_log()
 
     async def close(self):
         if self.pool:
@@ -117,6 +118,40 @@ class Database:
             logger.info("user_coupons.is_favorite ready")
         except Exception:
             logger.exception("ensure_coupon_favorites failed")
+
+    async def ensure_tree_xp_log(self):
+        """Журнал начислений опыта (см. migrations/020_tree_xp_log.sql).
+
+        Создаётся автоматически, чтобы раздел «Дерево» не падал,
+        если миграция 020 не применена вручную.
+        """
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    "CREATE TABLE IF NOT EXISTS tree_xp_log ("
+                    " id BIGSERIAL PRIMARY KEY,"
+                    " user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,"
+                    " xp INTEGER NOT NULL DEFAULT 0,"
+                    " reason TEXT NOT NULL DEFAULT '',"
+                    " partner_id INTEGER,"
+                    " ref_id BIGINT,"
+                    " created_at TIMESTAMPTZ DEFAULT NOW())"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_tree_xp_log_user_id"
+                    " ON tree_xp_log(user_id)"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_tree_xp_log_created_at"
+                    " ON tree_xp_log(created_at)"
+                )
+                await conn.execute(
+                    "ALTER TABLE tree_xp_log ENABLE ROW LEVEL SECURITY"
+                )
+            self._col_cache.pop("tree_xp_log", None)
+            logger.info("tree_xp_log ready")
+        except Exception:
+            logger.exception("ensure_tree_xp_log failed")
 
     # ─── Query builder (Supabase-REST-like → SQL) ────────
 
