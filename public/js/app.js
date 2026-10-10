@@ -174,12 +174,12 @@ const ICONS = {
 // ═══════════════════════════════════════════
 
 var TL = [
-        { level: 1, name: 'Росток', icon: icon('sprout'), xp: '0–99' },
-        { level: 2, name: 'Саженец', icon: icon('sprout'), xp: '100–499' },
-        { level: 3, name: 'Молодое дерево', icon: icon('tree'), xp: '500–999' },
-        { level: 4, name: 'Крепкое дерево', icon: icon('tree'), xp: '1000–1999' },
-        { level: 5, name: 'Могучее дерево', icon: icon('tree'), xp: '2000–4999' },
-        { level: 6, name: 'Древо жизни', icon: icon('star'), xp: '5000+' },
+        { level: 1, name: 'Росток', icon: icon('sprout'), xp: '0–99', img: '/uploads/tree/stage-1.png' },
+        { level: 2, name: 'Саженец', icon: icon('sprout'), xp: '100–499', img: '/uploads/tree/stage-2.png' },
+        { level: 3, name: 'Молодое дерево', icon: icon('tree'), xp: '500–999', img: '/uploads/tree/stage-3.png' },
+        { level: 4, name: 'Крепкое дерево', icon: icon('tree'), xp: '1000–1999', img: '/uploads/tree/stage-4.png' },
+        { level: 5, name: 'Могучее дерево', icon: icon('tree'), xp: '2000–4999', img: '/uploads/tree/stage-5.png' },
+        { level: 6, name: 'Древо жизни', icon: icon('star'), xp: '5000+', img: '/uploads/tree/stage-6.png' },
     ];
 
     // ═══════════════════════════════════════════
@@ -2316,31 +2316,58 @@ async function loadTree() {
             const xp = d.xp||0, lv = d.level||1, nx = d.next_level_xp||100, pr = d.progress||0;
             const partners = Array.isArray(d.partners) ? d.partners : [];
             const gift = d.gift || {};
-            const sn = TL[lv-1]?.name||'Древо жизни', si = TL[lv-1]?.icon||'' + icon('star') + '', mx = lv>=6;
-            let ex = '';
-            for (let i=3;i<=12;i++) ex+='<div class="tree-leaf"></div>';
-            if (mx) { ex+='<div class="tree-glow"></div>'; for(let i=9;i<=12;i++) ex+='<div class="tree-dot"></div>'; }
-            c.innerHTML = `<div class="tree-wrap">
-            <div class="tree-stage">${si} ${sn}</div>
-            <div class="tree-level-badge">Уровень ${lv}${mx?' ★':''}</div>
-            <div class="tree-art tree-l${Math.min(lv,6)}"><div class="tree-ground"></div><div class="tree-trunk"></div><div class="tree-top"></div>${ex}</div>
-            <div class="xp-bar-wrap"><div class="xp-label"><span>${icon('bolt')} Опыт</span><span>${xp} ${mx?'★ MAX':'/ '+nx}</span></div><div class="xp-track"><div class="xp-fill" style="width:${mx?100:pr}%"></div></div></div>
-        </div>
+            const idx = Math.min(Math.max(lv,1), TL.length);
+            const cur = TL[idx-1] || TL[0];
+            const sn = cur.name, si = cur.icon, mx = lv>=6;
+            c.innerHTML = `<div class="tree-hero">
+                <div class="tree-hero-scene">
+                    <div class="tree-hero-glow"></div>
+                    <img class="tree-hero-img" src="${cur.img}" alt="${sn}" />
+                    <div class="tree-hero-particles">${mx?'<i></i><i></i><i></i><i></i><i></i>':''}</div>
+                </div>
+                <div class="tree-hero-meta">
+                    <span class="tree-level-badge">Уровень ${lv}${mx?' ★':''}</span>
+                    <div class="tree-hero-name">${sn}</div>
+                    <div class="tree-hero-sub">Стадия ${idx} из ${TL.length}</div>
+                </div>
+                <div class="xp-bar-wrap">
+                    <div class="xp-label"><span>${icon('bolt')} Опыт</span><span>${xp} ${mx?'★ MAX':'/ '+nx}</span></div>
+                    <div class="xp-track"><div class="xp-fill" style="width:${mx?100:pr}%"></div></div>
+                </div>
+            </div>
         ${treeGiftHtml(gift)}
-        <div class="tree-stats">
-            <div class="tree-stat"><div class="tree-stat-icon">${icon('chart')}</div><div class="tree-stat-val">${xp}</div><div class="tree-stat-lbl">опыта</div></div>
-            <div class="tree-stat"><div class="tree-stat-icon">${si}</div><div class="tree-stat-val">${lv}</div><div class="tree-stat-lbl">уровень</div></div>
-        </div>
-        ${treePartnersHtml(partners)}
-        <div class="tree-levels"><div class="tree-levels-title">${icon('clipboard')} Уровни</div>
-            ${TL.map(t => {
-                const a=t.level===lv, dn=t.level<lv, lk=t.level>lv;
-                return `<div class="tree-level-item ${a?'active':dn?'done':'locked'}"><div class="tli-icon">${t.icon}</div><div class="tli-name">${t.name}</div><div class="tli-xp">${t.xp} XP</div><div class="tli-status">${a?icon('star'):dn?icon('check'):icon('lock')}</div></div>`;
-            }).join('')}
-        </div>`;
+        ${treeStagesHtml(lv)}
+        ${treePartnersHtml(partners)}`;
+            var strip = c.querySelector('.tree-stages-strip');
+            var curCard = c.querySelector('.stage-card.current');
+            if (strip && curCard) {
+                requestAnimationFrame(function () {
+                    var d = curCard.getBoundingClientRect().left - strip.getBoundingClientRect().left;
+                    var off = d + strip.scrollLeft - (strip.clientWidth - curCard.offsetWidth) / 2;
+                    strip.scrollLeft = Math.max(0, off);
+                });
+            }
         } catch(e) {
             document.getElementById('tree-container').innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('tree') + '</div><div class="empty-t">Ошибка</div><div class="empty-d">' + e.message + '</div></div>';
         }
+    }
+
+    // Лента стадий роста дерева (пройдено / текущая / заблокировано)
+    function treeStagesHtml(lv) {
+        var cards = TL.map(function (t) {
+            var state = t.level < lv ? 'done' : (t.level === lv ? 'current' : 'locked');
+            var status = state === 'done' ? icon('check') : (state === 'current' ? icon('star') : icon('lock'));
+            return '<div class="stage-card ' + state + '">'
+                + '<div class="stage-thumb"><img src="' + t.img + '" alt="' + esc(t.name) + '" loading="lazy" /><span class="stage-status">' + status + '</span></div>'
+                + '<div class="stage-lvl">' + t.level + '</div>'
+                + '<div class="stage-name">' + esc(t.name) + '</div>'
+                + '<div class="stage-xp">' + t.xp + ' XP</div>'
+                + '</div>';
+        }).join('');
+        return '<div class="tree-stages">'
+            + '<div class="tree-stages-head">' + icon('chart') + ' Стадии роста</div>'
+            + '<div class="tree-stages-strip">' + cards + '</div>'
+            + '</div>';
     }
 
     // Подарок любимого партнёра на странице дерева
