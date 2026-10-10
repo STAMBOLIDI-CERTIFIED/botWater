@@ -440,36 +440,43 @@ class Database:
             pass
 
     async def get_tree_xp_history(self, telegram_id: int, limit: int = 8) -> list[dict]:
-        """Последние начисления опыта с названиями партнёров."""
-        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
-        if not user:
-            return []
-        rows = await self._fetch(
-            "tree_xp_log",
-            f"user_id=eq.{user['id']}&order=created_at.desc&limit={limit}&select=xp,reason,partner_id,created_at",
-        )
-        if not rows:
-            return []
-        partner_ids = {r["partner_id"] for r in rows if r.get("partner_id")}
-        titles = {}
-        if partner_ids:
-            or_cond = ",".join(f"id.eq.{i}" for i in sorted(partner_ids))
-            cats = await self._fetch(
-                "shop_categories",
-                f"select=id,title,icon&or=({or_cond})",
+        """Последние начисления опыта с названиями партнёров.
+
+        Защищено от ошибок: если таблица tree_xp_log ещё не создана
+        (миграция 020 не применена), возвращаем пустой список, а не 500.
+        """
+        try:
+            user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
+            if not user:
+                return []
+            rows = await self._fetch(
+                "tree_xp_log",
+                f"user_id=eq.{user['id']}&order=created_at.desc&limit={limit}&select=xp,reason,partner_id,created_at",
             )
-            titles = {c["id"]: c for c in cats}
-        out = []
-        for r in rows:
-            p = titles.get(r.get("partner_id")) if r.get("partner_id") else None
-            out.append({
-                "xp": r.get("xp") or 0,
-                "reason": r.get("reason") or "",
-                "partner": (p.get("title") if p else ""),
-                "icon": (p.get("icon") if p else ""),
-                "created_at": r.get("created_at") or "",
-            })
-        return out
+            if not rows:
+                return []
+            partner_ids = {r["partner_id"] for r in rows if r.get("partner_id")}
+            titles = {}
+            if partner_ids:
+                or_cond = ",".join(f"id.eq.{i}" for i in sorted(partner_ids))
+                cats = await self._fetch(
+                    "shop_categories",
+                    f"select=id,title,icon&or=({or_cond})",
+                )
+                titles = {c["id"]: c for c in cats}
+            out = []
+            for r in rows:
+                p = titles.get(r.get("partner_id")) if r.get("partner_id") else None
+                out.append({
+                    "xp": r.get("xp") or 0,
+                    "reason": r.get("reason") or "",
+                    "partner": (p.get("title") if p else ""),
+                    "icon": (p.get("icon") if p else ""),
+                    "created_at": r.get("created_at") or "",
+                })
+            return out
+        except Exception:
+            return []
 
     def _calc_level(self, current_xp: int, current_level: int, thresholds: dict | None = None) -> int:
         if thresholds is None:
