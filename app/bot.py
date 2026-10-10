@@ -508,41 +508,15 @@ async def handle_start(db, chat_id: int, user: dict | None, payload: str):
         user_row = await db.get_user(chat_id)
         await db.assign_bottle(bottle_id, user_row["id"])
         await db.activate_qr_code(chat_id, bottle_id)
-        scan_balance = await db.get_bot_setting_int("scan_balance", 10)
-        scan_xp = await db.get_bot_setting_int("scan_xp", 10)
-        await db.add_balance(chat_id, scan_balance, "scan", f"Сканирование бутылки {bottle_id}")
-        level_result = await db.add_tree_xp(chat_id, scan_xp, reason="scan")
-        await db.create_notification(chat_id, "scan", "Сканирование", f"+{scan_balance} баллов за бутылку {bottle_id}", "history")
-
-        if level_result and level_result.get("level_changed"):
-            level_names = {2: "Саженец", 3: "Молодое дерево", 4: "Крепкое дерево", 5: "Могучее дерево", 6: "Древо"}
-            new_lvl = level_result["new_level"]
-            level_name = level_names.get(new_lvl, f"Уровень {new_lvl}")
-            level_msg = await db.get_bot_setting("msg_level_up", f'🎉 <b>Поздравляем!</b>\n\nВаше дерево выросло до уровня «{level_name}»!')
-            level_msg = level_msg.replace("{level_name}", level_name)
-            await send_message(chat_id, level_msg)
-            level_up_bonus = await db.get_bot_setting_int("level_up_bonus", 0)
-            if level_up_bonus > 0:
-                await db.add_balance(chat_id, level_up_bonus, "level_up", f"Бонус за уровень «{level_name}»")
-                await send_message(chat_id, f"🪙 +{level_up_bonus} баллов за повышение уровня!")
-
-        s = get_settings()
-        app_url = s["WEBAPP_URL"]
-        if chat_id:
-            sep = "&" if "?" in app_url else "?"
-            app_url = app_url + sep + "user_id=" + str(chat_id)
-
+        # Сканирование бутылок отключено: не начисляем баллы и опыт.
         await send_message(
             chat_id,
-            await db.get_bot_setting("msg_scan_success_1",
-                "🥳 <b>Поздравляем!</b>\n\nВы зарегистрировали бутылку и автоматически стали участником главного конкурса призов.\n\nНо это ещё не всё 👇"),
+            await db.get_bot_setting(
+                "msg_bottle_scan_disabled",
+                "Спасибо, что отсканировали бутылку! Но начисление баллов за сканирование бутылок пока отключено.",
+            ),
         )
-        await send_message(
-            chat_id,
-            await db.get_bot_setting("msg_scan_success_2",
-                "🎀 <b>Для вас доступен моментальный подарок!</b>\n\nОткройте мини-приложение и получите свой первый приз прямо сейчас.\n\nВнутри вас уже ждут случайные баллы, которые можно копить и обменивать на реальные призы."),
-            reply_markup=gift_keyboard(app_url),
-        )
+        await show_main_menu(db, chat_id, user)
         return
 
     try:
@@ -582,7 +556,7 @@ async def show_main_menu(db, chat_id: int, user: dict | None = None):
         partner_info = f"\n\n🏢 <b>Бизнес-партнёр:</b> {cat.get('title', '') if cat else ''}"
     msg = await db.get_bot_setting("msg_welcome",
         f"💧 <b>Главное меню</b>\n\nПривет, {name}! 👋\n🪙 Баланс: <b>{balance} баллов</b>{partner_info}\n\n"
-        f"Сканируйте QR-коды на бутылках и получайте баллы!\n"
+        f"Покупайте купоны, активируйте их у партнёров и копите баллы!\n"
         f"Откройте приложение кнопкой слева от поля ввода 👇")
     msg = msg.replace("{name}", name).replace("{balance}", str(balance))
     await send_message(chat_id, msg, reply_markup=REMOVE_KEYBOARD)

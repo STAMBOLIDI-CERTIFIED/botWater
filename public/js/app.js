@@ -1849,21 +1849,9 @@ function startScan() {
                 };
             }
         } else {
-            var uid = getUID();
-            if (uid && data) {
-                try {
-                    const r = await fetch(API_BASE + '/scan', { method: 'POST', headers: _h({ 'Content-Type': 'application/json' }), body: JSON.stringify({ user_id: uid, bottle_id: raw }) });
-                    const res = await r.json();
-                    if (res.ok) {
-                        document.getElementById('top-balance').textContent = res.balance;
-                        document.getElementById('scan-data').innerHTML = esc(raw) + '<br><br>' + icon('check') + ' +10 баллов! Баланс: ' + res.balance;
-                    } else {
-                        document.getElementById('scan-data').innerHTML = esc(raw) + '<br><br>' + icon('warning') + ' ' + esc(res.error || 'Ошибка');
-                    }
-                } catch (e) { document.getElementById('scan-data').innerHTML = esc(raw) + '<br><br>' + icon('warning') + ' Ошибка сети'; }
-            }
-            // Only for bottles forward to bot as fallback (partner is handled via API activation button)
-            try { tg.sendData(raw); } catch(e) {}
+            // Сканирование бутылок отключено: не начисляем баллы, не отправляем в бота.
+            document.getElementById('scan-data').innerHTML = esc(raw) + '<br><br>' + icon('warning') + ' QR-код не распознан';
+            try { tg.HapticFeedback.notificationOccurred('error'); } catch(e) {}
         }
     }
 
@@ -1923,7 +1911,7 @@ function miniScanBottle(seed) {
     async function renderHistory() {
         const l = document.getElementById('history-list');
         const d = await apiFetch('/history?user_id=' + getUID());
-        if (!d || !d.length) { l.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('drop') + '</div><div class="empty-t">Пока пусто</div><div class="empty-d">Сканируй QR-код с бутылки</div></div>'; return; }
+        if (!d || !d.length) { l.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('drop') + '</div><div class="empty-t">Пока пусто</div><div class="empty-d">Здесь появятся ваши сканирования</div></div>'; return; }
         var accents = ['#2B7BE4','#1E90FF','#4169E1','#1877F2','#0066CC','#3B82F6','#0D6EFD','#6366F1','#7C3AED','#8B5CF6','#EC4899','#EF4444','#F59E0B','#10B981','#14B8A6','#06B6D4'];
         var waterColors = ['rgba(30,144,255,0.35)','rgba(65,105,225,0.3)','rgba(24,119,242,0.35)','rgba(99,102,241,0.3)','rgba(124,58,237,0.3)','rgba(139,92,246,0.3)','rgba(236,72,153,0.3)','rgba(16,185,129,0.3)'];
         l.innerHTML = d.map(function(s, i) {
@@ -2399,7 +2387,7 @@ async function loadTree() {
     }
 
     // За что начисляется опыт
-    var XP_RULE_ICONS = { scan: 'bottle', coupon_buy: 'cart', coupon_redeem: 'check', partner_scan: 'scanner' };
+    var XP_RULE_ICONS = { coupon_buy: 'cart', coupon_redeem: 'check', partner_scan: 'scanner' };
     function treeRulesHtml(rules) {
         if (!rules || !rules.length) return '';
         var items = rules.map(function (r) {
@@ -2437,7 +2425,7 @@ async function loadTree() {
         var head = '<div class="tree-panel-head">' + icon('history') + ' История опыта</div>';
         if (!history || !history.length) {
             return '<div class="tree-panel">' + head
-                + '<div class="tree-panel-empty">Опыт ещё не начислялся — отсканируй первую бутылку.</div></div>';
+                + '<div class="tree-panel-empty">Опыт ещё не начислялся — копи его покупками и активацией купонов.</div></div>';
         }
         var items = history.map(function (h) {
             var ico = h.icon || XP_REASON_ICONS[h.reason] || '⚡';

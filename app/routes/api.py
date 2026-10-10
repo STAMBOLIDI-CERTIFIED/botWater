@@ -212,11 +212,8 @@ async def api_tree(user_id: int = 0):
 
 async def _tree_xp_rules() -> list[dict]:
     """Источники опыта для блока «За что начисляется опыт»."""
-    scan_xp = await db.get_bot_setting_int("scan_xp", 10)
     buy_mult = await db.get_bot_setting_int("coupon_buy_xp_mult", 1)
     return [
-        {"key": "scan", "title": "Сканируй бутылки",
-         "desc": "QR-код на бутылке ИСТОКЪ", "value": f"+{scan_xp} XP"},
         {"key": "coupon_buy", "title": "Покупай купоны",
          "desc": "Опыт равен цене купона в баллах",
          "value": f"+{'цена купона' if buy_mult == 1 else str(buy_mult) + '× цена'} XP"},
@@ -348,12 +345,8 @@ async def api_scan(request: Request):
     if bottle.get("assigned_to"):
         return JSONResponse({"ok": False, "error": "already scanned"}, status_code=409)
 
+    # Сканирование бутылок отключено: не начисляем баллы и опыт.
     await db.assign_bottle(bottle_id, user["id"])
-    scan_balance = await db.get_bot_setting_int("scan_balance", 10)
-    scan_xp = await db.get_bot_setting_int("scan_xp", 10)
-    await db.add_balance(user_id, scan_balance, "scan", f"Сканирование бутылки {bottle_id}")
-    await db.add_tree_xp(user_id, scan_xp, reason="scan")
-    await db.create_notification(user_id, "scan", "Сканирование", f"+{scan_balance} баллов за бутылку {bottle_id}", "history")
 
     stats = await db.get_user_stats(user_id)
     tree = await db.get_tree_state(user_id)
