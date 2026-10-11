@@ -174,12 +174,12 @@ const ICONS = {
 // ═══════════════════════════════════════════
 
 var TL = [
-        { level: 1, name: 'Росток', icon: icon('sprout'), xp: '0–99', img: '/uploads/tree/stage-1.png' },
-        { level: 2, name: 'Саженец', icon: icon('sprout'), xp: '100–499', img: '/uploads/tree/stage-2.png' },
-        { level: 3, name: 'Молодое дерево', icon: icon('tree'), xp: '500–999', img: '/uploads/tree/stage-3.png' },
-        { level: 4, name: 'Крепкое дерево', icon: icon('tree'), xp: '1000–1999', img: '/uploads/tree/stage-4.png' },
-        { level: 5, name: 'Могучее дерево', icon: icon('tree'), xp: '2000–4999', img: '/uploads/tree/stage-5.png' },
-        { level: 6, name: 'Древо жизни', icon: icon('star'), xp: '5000+', img: '/uploads/tree/stage-6.png' },
+        { level: 1, name: 'Росток', icon: icon('sprout'), xp: '0–99', img: '/uploads/tree/stage-1.png?v=202610111' },
+        { level: 2, name: 'Саженец', icon: icon('sprout'), xp: '100–499', img: '/uploads/tree/stage-2.png?v=202610111' },
+        { level: 3, name: 'Молодое дерево', icon: icon('tree'), xp: '500–999', img: '/uploads/tree/stage-3.png?v=202610111' },
+        { level: 4, name: 'Крепкое дерево', icon: icon('tree'), xp: '1000–1999', img: '/uploads/tree/stage-4.png?v=202610111' },
+        { level: 5, name: 'Могучее дерево', icon: icon('tree'), xp: '2000–4999', img: '/uploads/tree/stage-5.png?v=202610111' },
+        { level: 6, name: 'Древо жизни', icon: icon('star'), xp: '5000+', img: '/uploads/tree/stage-6.png?v=202610111' },
     ];
 
     // ═══════════════════════════════════════════
