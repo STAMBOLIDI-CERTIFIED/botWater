@@ -179,8 +179,16 @@
 .stage-card.current .stage-name { color: var(--text); }
 .stage-card.current .stage-thumb { background: #0F1418; border-color: rgba(var(--gold-rgb),0.5); box-shadow: inset 0 0 20px rgba(var(--gold-rgb),0.25); }
 
-.stage-card.locked { opacity: .5; }
+.stage-card.done, .stage-card.current { cursor: pointer; }
+.stage-card.done:active, .stage-card.current:active { transform: scale(0.97); }
+.stage-card.selected {
+    border-color: rgba(var(--gold-rgb),0.55);
+    box-shadow: 0 0 14px rgba(var(--gold-rgb),0.2);
+}
+.stage-card.locked { opacity: .5; cursor: default; }
 .stage-card.locked .stage-thumb img { filter: grayscale(0.7) brightness(0.75); }
+
+.tree-preview-hint { color: var(--gold); font-size: 11px; }
 
 /* ─── Подарок от любимого партнёра ───────────────────── */
 .tree-gift-card {

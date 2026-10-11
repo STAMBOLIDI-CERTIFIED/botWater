@@ -2355,6 +2355,26 @@ async function loadTree() {
                     strip.scrollLeft = Math.max(0, off);
                 });
             }
+            // Превью стадий: тап по пройденной/текущей карточке переключает герой
+            var heroImg = c.querySelector('.tree-hero-img');
+            var heroBadge = c.querySelector('.tree-level-badge');
+            var heroName = c.querySelector('.tree-hero-name');
+            var heroSub = c.querySelector('.tree-hero-sub');
+            c.querySelectorAll('.stage-card').forEach(function (card) {
+                if (card.classList.contains('locked')) return;
+                card.addEventListener('click', function () {
+                    var slv = parseInt(card.getAttribute('data-level'), 10);
+                    var s = tl[slv - 1];
+                    if (!s || !heroImg) return;
+                    heroImg.src = s.img;
+                    heroName.textContent = s.name;
+                    heroBadge.textContent = 'Уровень ' + slv + (slv >= 6 ? ' ★' : '');
+                    heroSub.innerHTML = 'Стадия ' + slv + ' из ' + tl.length
+                        + (slv !== lv ? ' · <span class="tree-preview-hint">просмотр — тапни текущую, чтобы вернуться</span>' : '');
+                    c.querySelectorAll('.stage-card').forEach(function (x) { x.classList.remove('selected'); });
+                    card.classList.add('selected');
+                });
+            });
         } catch(e) {
             document.getElementById('tree-container').innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('tree') + '</div><div class="empty-t">Ошибка</div><div class="empty-d">' + e.message + '</div></div>';
         }
@@ -2365,7 +2385,7 @@ async function loadTree() {
         var cards = (stages || TL).map(function (t) {
             var state = t.level < lv ? 'done' : (t.level === lv ? 'current' : 'locked');
             var status = state === 'done' ? icon('check') : (state === 'current' ? icon('star') : icon('lock'));
-            return '<div class="stage-card ' + state + '">'
+            return '<div class="stage-card ' + state + '" data-level="' + t.level + '">'
                 + '<div class="stage-thumb"><img src="' + t.img + '" alt="' + esc(t.name) + '" loading="lazy" /><span class="stage-status">' + status + '</span></div>'
                 + '<div class="stage-lvl">' + t.level + '</div>'
                 + '<div class="stage-name">' + esc(t.name) + '</div>'
