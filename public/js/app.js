@@ -518,7 +518,8 @@ function countUp(el, target, duration) {
         } catch (e) {}
     }
 
-    // Simultaneous reveal: wait for both splash and data
+    // Splash removed — reveal menu as soon as data is ready
+    window._splashHidden = true;
     window._menuDataReady = false;
     window._pendingTopBalance = null;
     window.tryRevealMenu = function() {
