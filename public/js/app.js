@@ -476,9 +476,17 @@ function countUp(el, target, duration) {
                 img.decoding = 'async';
                 img.alt = '';
                 img.onload = function() {
+                    // прячем иконку-фолбэк после fade-in фото (иначе — пустой кадр)
+                    var done = false;
+                    var hideIcon = function() {
+                        if (done) return;
+                        done = true;
+                        var icn = media.querySelector('.icn');
+                        if (icn) icn.style.display = 'none';
+                    };
+                    img.addEventListener('transitionend', hideIcon, { once: true });
                     img.classList.add('img-loaded');
-                    var icn = media.querySelector('.icn');
-                    if (icn) icn.style.display = 'none';
+                    setTimeout(hideIcon, 600); // fallback: grid мог быть скрыт, transition не отработал
                 };
                 img.onerror = function() { img.remove(); };
                 img.src = url;
