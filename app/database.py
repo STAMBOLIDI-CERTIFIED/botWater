@@ -1,4 +1,5 @@
 import logging
+import random
 import re
 from datetime import date, datetime, timedelta, timezone
 
@@ -79,6 +80,7 @@ class Database:
         await self.ensure_broadcast_tables()
         await self.ensure_coupon_favorites()
         await self.ensure_tree_xp_log()
+        await self.ensure_tree_seed()
 
     async def close(self):
         if self.pool:
@@ -152,6 +154,18 @@ class Database:
             logger.info("tree_xp_log ready")
         except Exception:
             logger.exception("ensure_tree_xp_log failed")
+
+    async def ensure_tree_seed(self):
+        """NFT-стадия: колонка tree_seed в users (уникальный tint/номер дерева)."""
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS tree_seed BIGINT"
+                )
+            self._col_cache.pop("users", None)
+            logger.info("tree_seed ready")
+        except Exception:
+            logger.exception("ensure_tree_seed failed")
 
     # ─── Query builder (Supabase-REST-like → SQL) ────────
 
@@ -542,6 +556,38 @@ class Database:
             prev = thresholds.get(level - 1, 0) if level > 1 else 0
             progress = min(100, int((current_xp - prev) / (next_xp - prev) * 100)) if next_xp > prev else 100
         return {"xp": current_xp, "level": level, "next_level_xp": next_xp, "progress": progress}
+
+    async def get_tree_seed(self, telegram_id: int) -> int:
+        """Возвращает tree_seed пользователя, генерируя при первом обращении."""
+        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id,tree_seed")
+        if not user:
+            return 0
+        seed = user.get("tree_seed")
+        if not seed:
+            seed = random.randint(1, 2**31 - 1)
+            await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"tree_seed": seed})
+        return int(seed)
+
+    @staticmethod
+    def derive_tree_nft(seed: int) -> dict:
+        """Детерминированно выводит NFT-производные из seed.
+
+        hue — оттенок для CSS hue-rotate (уникальная расцветка);
+        rarity — редкость (common/rare/epic/legendary) по взвешенным корзинам;
+        serial — серийный номер вида #A7F3.
+        """
+        hue = seed % 360
+        roll = (seed >> 10) % 100
+        if roll < 3:
+            rarity = "legendary"
+        elif roll < 15:
+            rarity = "epic"
+        elif roll < 40:
+            rarity = "rare"
+        else:
+            rarity = "common"
+        serial = f"#{seed % 0xFFFF:04X}"
+        return {"hue": hue, "rarity": rarity, "serial": serial}
 
     # ─── Подарок от любимого партнёра ──────────────────
     #

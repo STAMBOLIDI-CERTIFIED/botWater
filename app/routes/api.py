@@ -207,6 +207,12 @@ async def api_tree(user_id: int = 0):
     xp = state.get("xp") or 0
     nxt = state.get("next_level_xp") or 0
     state["to_next"] = max(0, nxt - xp) if (state.get("level") or 1) < 6 else 0
+    # NFT-уникальность дерева: tint + редкость + серийник из tree_seed
+    if user:
+        seed = await db.get_tree_seed(user_id)
+        state["nft"] = db.derive_tree_nft(seed) if seed else None
+    else:
+        state["nft"] = None
     return state
 
 

@@ -63,6 +63,29 @@
 .tree-hero-name { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; }
 .tree-hero-sub { font-size: 12px; color: var(--text-dim); margin-top: 3px; }
 
+/* ─── NFT: серийник + редкость ─── */
+.tree-nft { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; }
+.tree-nft-serial {
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    font-family: var(--mono, ui-monospace, monospace);
+    color: var(--text-dim); background: rgba(255,255,255,0.04);
+    border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
+    padding: 3px 10px;
+}
+.tree-nft-rarity {
+    font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 3px 10px; border-radius: var(--radius-sm);
+}
+.tree-nft-rarity.rarity-common { color: var(--text-dim); background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); }
+.tree-nft-rarity.rarity-rare { color: #5b9fd4; background: rgba(91,159,212,0.12); border: 1px solid rgba(91,159,212,0.25); }
+.tree-nft-rarity.rarity-epic { color: #a06ee0; background: rgba(160,110,224,0.12); border: 1px solid rgba(160,110,224,0.25); }
+.tree-nft-rarity.rarity-legendary { color: var(--gold); background: rgba(var(--gold-rgb),0.12); border: 1px solid rgba(var(--gold-rgb),0.3); }
+
+/* Рамка сцены по редкости */
+.tree-hero-scene.rarity-rare { border-color: rgba(91,159,212,0.3); }
+.tree-hero-scene.rarity-epic { border-color: rgba(160,110,224,0.3); }
+.tree-hero-scene.rarity-legendary { border-color: rgba(var(--gold-rgb),0.35); box-shadow: 0 20px 45px rgba(0,0,0,0.45), 0 0 30px rgba(var(--gold-rgb),0.15), inset 0 0 60px rgba(0,0,0,0.5); }
+
 /* ─── Прогресс опыта ─── */
 .xp-bar-wrap {
     margin-top: 16px;

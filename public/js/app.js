@@ -2307,20 +2307,27 @@ async function loadTree() {
             const rules = Array.isArray(d.rules) ? d.rules : [];
             const history = Array.isArray(d.history) ? d.history : [];
             const toNext = d.to_next||0;
+            const nft = d.nft || null;
             const idx = Math.min(Math.max(lv,1), TL.length);
             const cur = TL[idx-1] || TL[0];
             const nxt = TL[idx] || null;
             const sn = cur.name, mx = lv>=6;
+            const hue = nft && nft.hue ? nft.hue : 0;
+            const rarity = nft && nft.rarity ? nft.rarity : '';
+            const serial = nft && nft.serial ? nft.serial : '';
+            const rarityTitles = { common: 'Обычное', rare: 'Редкое', epic: 'Эпическое', legendary: 'Легендарное' };
+            const rarityTitle = rarityTitles[rarity] || '';
             c.innerHTML = `<div class="tree-hero">
-                <div class="tree-hero-scene">
+                <div class="tree-hero-scene${rarity ? ' rarity-' + rarity : ''}">
                     <div class="tree-hero-glow"></div>
-                    <img class="tree-hero-img" src="${cur.img}" alt="${sn}" />
-                    <div class="tree-hero-particles">${mx?'<i></i><i></i><i></i><i></i><i></i>':''}</div>
+                    <img class="tree-hero-img" src="${cur.img}" alt="${sn}"${hue ? ' style="filter:hue-rotate(' + hue + 'deg)"' : ''} />
+                    <div class="tree-hero-particles">${mx || rarity === 'legendary' ? '<i></i><i></i><i></i><i></i><i></i>' : ''}</div>
                 </div>
                 <div class="tree-hero-meta">
                     <span class="tree-level-badge">Уровень ${lv}${mx?' ★':''}</span>
                     <div class="tree-hero-name">${sn}</div>
                     <div class="tree-hero-sub">Стадия ${idx} из ${TL.length}</div>
+                    ${serial ? `<div class="tree-nft"><span class="tree-nft-serial">${serial}</span>${rarityTitle ? `<span class="tree-nft-rarity rarity-${rarity}">${rarityTitle}</span>` : ''}</div>` : ''}
                 </div>
                 ${treeGoalHtml(xp, nx, pr, toNext, mx, nxt)}
             </div>
