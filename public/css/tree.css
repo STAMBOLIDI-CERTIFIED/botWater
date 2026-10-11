@@ -38,7 +38,6 @@
     width: auto; height: auto;
     object-fit: contain;
     border-radius: 14px;
-    animation: treeFloat 5s ease-in-out infinite;
 }
 .tree-hero-particles { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .tree-hero-particles i {
@@ -410,10 +409,6 @@
     color: var(--text-dim);
 }
 
-@keyframes treeFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
-}
 @keyframes heroGlowPulse {
     0%, 100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
     50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); }
