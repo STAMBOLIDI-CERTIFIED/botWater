@@ -96,7 +96,10 @@
 .tree-stages-strip {
     display: flex; gap: 10px;
     overflow-x: auto;
-    padding: 4px 16px 6px;
+    /* Боковые поля = (ширина окна − карта)/2: дают запас, чтобы первая и
+       последняя карточки могли встать по центру (scroll-snap-align: center),
+       иначе snap откатывает позицию к краю. */
+    padding: 4px calc((100% - 96px) / 2) 6px;
     scroll-snap-type: x mandatory;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
