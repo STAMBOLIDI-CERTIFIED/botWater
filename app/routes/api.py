@@ -208,9 +208,21 @@ async def api_tree(user_id: int = 0):
     nxt = state.get("next_level_xp") or 0
     state["to_next"] = max(0, nxt - xp) if (state.get("level") or 1) < 6 else 0
     # NFT-уникальность дерева: tint + редкость + серийник из tree_seed
+    # Админ-оверрайды (tree_rarity/tree_hue/tree_serial) перебивают авто-вывод
     if user:
         seed = await db.get_tree_seed(user_id)
-        state["nft"] = db.derive_tree_nft(seed) if seed else None
+        nft = db.derive_tree_nft(seed) if seed else None
+        if nft:
+            ov_rarity = (user.get("tree_rarity") or "").strip()
+            ov_hue = user.get("tree_hue")
+            ov_serial = (user.get("tree_serial") or "").strip()
+            if ov_rarity in ("common", "rare", "epic", "legendary"):
+                nft["rarity"] = ov_rarity
+            if isinstance(ov_hue, int) and 0 <= ov_hue <= 359:
+                nft["hue"] = ov_hue
+            if ov_serial:
+                nft["serial"] = ov_serial
+        state["nft"] = nft
     else:
         state["nft"] = None
     return state

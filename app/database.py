@@ -156,11 +156,20 @@ class Database:
             logger.exception("ensure_tree_xp_log failed")
 
     async def ensure_tree_seed(self):
-        """NFT-стадия: колонка tree_seed в users (уникальный tint/номер дерева)."""
+        """NFT-стадия: колонки tree_seed + админ-оверрайды в users."""
         try:
             async with self.pool.acquire() as conn:
                 await conn.execute(
                     "ALTER TABLE users ADD COLUMN IF NOT EXISTS tree_seed BIGINT"
+                )
+                await conn.execute(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS tree_rarity TEXT"
+                )
+                await conn.execute(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS tree_hue INTEGER"
+                )
+                await conn.execute(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS tree_serial TEXT"
                 )
             self._col_cache.pop("users", None)
             logger.info("tree_seed ready")

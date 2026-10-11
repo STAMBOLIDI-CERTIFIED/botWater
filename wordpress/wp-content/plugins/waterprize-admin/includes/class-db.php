@@ -190,6 +190,56 @@ class WaterPrize_DB {
         return $this->execute('UPDATE users SET tree_xp = ?, tree_level = ? WHERE telegram_id = ?', [$new_xp, $new_level, (int)$telegram_id]);
     }
 
+    /** Пользователь с полями дерева (seed + NFT-оверрайды) для раздела «Дерево». */
+    public function get_tree_user($telegram_id) {
+        $rows = $this->query(
+            'SELECT id, telegram_id, name, tree_xp, tree_level, tree_seed, tree_rarity, tree_hue, tree_serial
+             FROM users WHERE telegram_id = ?', [(int)$telegram_id]
+        );
+        return $rows[0] ?? null;
+    }
+
+    /** Поиск пользователей для раздела «Дерево». */
+    public function search_tree_users($search = '', $limit = 20) {
+        $search = trim((string)$search);
+        if ($search === '') {
+            return $this->query(
+                'SELECT id, telegram_id, name, tree_xp, tree_level, tree_seed, tree_rarity, tree_hue, tree_serial
+                 FROM users ORDER BY tree_xp DESC NULLS LAST, id DESC LIMIT ?', [(int)$limit]
+            );
+        }
+        $like = '%' . $search . '%';
+        return $this->query(
+            'SELECT id, telegram_id, name, tree_xp, tree_level, tree_seed, tree_rarity, tree_hue, tree_serial
+             FROM users
+             WHERE CAST(telegram_id AS TEXT) ILIKE ? OR name ILIKE ?
+             ORDER BY tree_xp DESC NULLS LAST, id DESC LIMIT ?',
+            [$like, $like, (int)$limit]
+        );
+    }
+
+    /** Сохранение NFT-оверрайдов дерева (null/пусто = сброс к авто-выводу). */
+    public function update_tree_nft($telegram_id, $rarity, $hue, $serial) {
+        $user = $this->get_user($telegram_id);
+        if (!$user) return false;
+        $rarity = in_array($rarity, ['common', 'rare', 'epic', 'legendary'], true) ? $rarity : null;
+        $hue = ($hue === null || $hue === '') ? null : max(0, min(359, (int)$hue));
+        $serial = trim((string)$serial);
+        $serial = $serial !== '' ? mb_substr($serial, 0, 32) : null;
+        return $this->execute(
+            'UPDATE users SET tree_rarity = ?, tree_hue = ?, tree_serial = ? WHERE telegram_id = ?',
+            [$rarity, $hue, $serial, (int)$telegram_id]
+        );
+    }
+
+    /** Генерация/перезапись tree_seed (чтобы сбросить и получить новый авто-NFT). */
+    public function regenerate_tree_seed($telegram_id) {
+        $user = $this->get_user($telegram_id);
+        if (!$user) return false;
+        $seed = random_int(1, 2147483647);
+        return $this->execute('UPDATE users SET tree_seed = ? WHERE telegram_id = ?', [$seed, (int)$telegram_id]);
+    }
+
     /**
      * Уровень дерева по общему опыту. Пороги берутся из настроек бота,
      * дефолты совпадают с backend (app/database.py::_calc_level).

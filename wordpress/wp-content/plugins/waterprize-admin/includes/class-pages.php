@@ -359,6 +359,42 @@ class WaterPrize_Pages {
                 }
                 exit;
 
+            case 'save_tree_nft':
+                $tg = (int)($_POST['tree_tg'] ?? 0);
+                if (!$tg) {
+                    wp_redirect(admin_url('admin.php?page=wpz-tree&err=1&msg=' . urlencode('Укажите Telegram ID')));
+                    exit;
+                }
+                $user = $db->get_tree_user($tg);
+                if (!$user) {
+                    wp_redirect(admin_url('admin.php?page=wpz-tree&err=1&msg=' . urlencode('Пользователь не найден')));
+                    exit;
+                }
+                $rarity = sanitize_text_field($_POST['tree_rarity'] ?? '');
+                $hue_raw = trim((string)($_POST['tree_hue'] ?? ''));
+                $hue = $hue_raw === '' ? null : (int)$hue_raw;
+                $serial = sanitize_text_field($_POST['tree_serial'] ?? '');
+                $ok = $db->update_tree_nft($tg, $rarity, $hue, $serial);
+                $uname = $user['name'] ?: $tg;
+                wp_redirect(admin_url('admin.php?page=wpz-tree&user=' . $tg . '&msg=' . urlencode($ok ? "NFT-настройки дерева {$uname} сохранены" : 'Ошибка сохранения')));
+                exit;
+
+            case 'regen_tree_seed':
+                $tg = (int)($_POST['tree_tg'] ?? 0);
+                if (!$tg) {
+                    wp_redirect(admin_url('admin.php?page=wpz-tree&err=1&msg=' . urlencode('Укажите Telegram ID')));
+                    exit;
+                }
+                $user = $db->get_tree_user($tg);
+                if (!$user) {
+                    wp_redirect(admin_url('admin.php?page=wpz-tree&err=1&msg=' . urlencode('Пользователь не найден')));
+                    exit;
+                }
+                $ok = $db->regenerate_tree_seed($tg);
+                $uname = $user['name'] ?: $tg;
+                wp_redirect(admin_url('admin.php?page=wpz-tree&user=' . $tg . '&msg=' . urlencode($ok ? "Seed дерева {$uname} перегенерирован" : 'Ошибка')));
+                exit;
+
             case 'ban_user':
                 $tg = (int)($_POST['telegram_id'] ?? 0);
                 $reason = sanitize_text_field($_POST['ban_reason'] ?? '');
@@ -1059,6 +1095,18 @@ class WaterPrize_Pages {
     }
 
     // ─── Подарки от любимого партнёра ─────────────────
+    // ─── Дерево (NFT) ──────────────────────────────────
+    public static function tree() {
+        $db = self::db();
+        $search = sanitize_text_field($_GET['s'] ?? '');
+        $selected = null;
+        if (!empty($_GET['user'])) {
+            $selected = $db->get_tree_user((int)$_GET['user']);
+        }
+        $users = $db->search_tree_users($search, 20);
+        include __DIR__ . '/../templates/tree.php';
+    }
+
     public static function gifts() {
         $db = self::db();
         $partner_id = (int)($_GET['g_partner'] ?? 0);
