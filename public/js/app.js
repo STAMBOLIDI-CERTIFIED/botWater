@@ -346,11 +346,7 @@ function countUp(el, target, duration) {
 
     async function loadUserData() {
         var uid = getUID();
-        if (!uid) {
-            window._menuDataReady = true;
-            if (window.tryRevealMenu) window.tryRevealMenu();
-            return;
-        }
+        if (!uid) return;
 
         var d = null;
         try {
@@ -434,8 +430,6 @@ function countUp(el, target, duration) {
             })());
             await Promise.all(extras);
         } catch(e) {}
-        window._menuDataReady = true;
-        if (window.tryRevealMenu) window.tryRevealMenu();
     }
     async function loadMenuTree() {
         var box = document.getElementById('menu-tree');
@@ -476,15 +470,19 @@ function countUp(el, target, duration) {
                 if (!card) return;
                 var media = card.querySelector('.menu-card-media');
                 if (!media) return;
-                var img = new Image();
+                var img = document.createElement('img');
                 img.className = 'menu-card-photo';
+                img.loading = 'lazy';
+                img.decoding = 'async';
                 img.alt = '';
                 img.onload = function() {
-                    media.insertBefore(img, media.firstChild);
+                    img.classList.add('img-loaded');
                     var icn = media.querySelector('.icn');
                     if (icn) icn.style.display = 'none';
                 };
+                img.onerror = function() { img.remove(); };
                 img.src = url;
+                media.insertBefore(img, media.firstChild);
             });
         } catch (e) {}
     }
@@ -529,9 +527,43 @@ function countUp(el, target, duration) {
             if (typeof maybeShowDailyBonus === 'function') maybeShowDailyBonus();
         }, 1100);
     };
-    loadUserData();
-    loadMenuTree();
-    loadHomeTiles();
+
+    function showMenuSkeleton() {
+        var page = document.getElementById('page-menu');
+        if (page) page.classList.add('menu-loading');
+        var s = document.getElementById('menu-skeleton');
+        if (s) s.classList.add('show');
+    }
+    function hideMenuSkeleton() {
+        var s = document.getElementById('menu-skeleton');
+        if (s) s.classList.remove('show');
+        var page = document.getElementById('page-menu');
+        if (page) page.classList.remove('menu-loading');
+    }
+
+    // Стартовая загрузка главного экрана: всё параллельно, затем один reveal
+    async function loadMenuInitial(opts) {
+        opts = opts || {};
+        var uid = getUID();
+        if (!uid) {
+            hideMenuSkeleton();
+            window._menuDataReady = true;
+            tryRevealMenu();
+            return;
+        }
+        if (!opts.silent) showMenuSkeleton();
+        try {
+            await Promise.all([
+                loadUserData(),
+                loadMenuTree(),
+                loadHomeTiles()
+            ]);
+        } catch(e) {}
+        hideMenuSkeleton();
+        window._menuDataReady = true;
+        tryRevealMenu();
+    }
+    loadMenuInitial();
 
     // ═══════════════════════════════════════════
 // NOTIFICATIONS
@@ -623,7 +655,7 @@ function stopScanner() {
             }
         }
         document.body.classList.toggle('chat-mode', page === 'support');
-        if (page === 'menu') { loadUserData(); loadMenuTree(); loadHomeTiles(); }
+        if (page === 'menu') loadMenuInitial({ silent: true });
         if (page === 'scanner') {
             var sr = document.getElementById('scan-result');
             if (sr) sr.classList.remove('show');

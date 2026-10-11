@@ -379,6 +379,52 @@
     overflow: hidden;
 }
 
+/* ─── Скелетон главного экрана (как в магазине) ─── */
+
+/* Пока грузим данные — прячем реальный контент, чтобы не прыгал */
+#page-menu.menu-loading .top-bar,
+#page-menu.menu-loading .menu-tree,
+#page-menu.menu-loading .menu-grid {
+    display: none !important;
+}
+
+.menu-skeleton {
+    display: none;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.menu-skeleton.show {
+    display: flex;
+    animation: fadeIn .3s var(--ease-out);
+}
+
+.sk-menu-tree {
+    height: 86px;
+    border-radius: 20px;
+}
+
+.sk-menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.sk-menu-card {
+    height: 176px;
+    border-radius: 18px;
+}
+
+/* Плавное появление фото-подложек карточек (ленивая загрузка) */
+.menu-card-media img.menu-card-photo {
+    opacity: 0;
+    transition: opacity .5s var(--ease-out);
+}
+.menu-card-media img.menu-card-photo.img-loaded {
+    opacity: 1;
+}
+
 .activity-card {
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
