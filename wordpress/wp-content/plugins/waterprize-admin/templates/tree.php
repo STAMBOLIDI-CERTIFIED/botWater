@@ -43,10 +43,116 @@ function wpz_tree_effective_nft($user) {
     return ['hue' => $hue, 'rarity' => $rarity, 'serial' => $serial, 'auto' => $auto, 'has_override' => $has_override];
 }
 $GLOBALS['wpz_rarity_meta'] = $rarity_meta;
+$tab = $tab ?? 'nft';
 ?>
 <div class="wrap">
     <?php WaterPrize_Pages::flash_message(); ?>
-    <h1>🌳 Дерево — NFT-настройки <span class="wpz-count"><?php echo esc_html(count($users)); ?></span></h1>
+    <h1>🌳 Дерево</h1>
+
+    <!-- ═══ Вкладки ═══ -->
+    <nav class="nav-tab-wrapper" style="margin-bottom:16px;">
+        <a href="<?php echo esc_url(admin_url('admin.php?page=wpz-tree&tab=nft' . (!empty($search) ? '&s=' . rawurlencode($search) : ''))); ?>"
+           class="nav-tab <?php echo $tab === 'nft' ? 'nav-tab-active' : ''; ?>">🎨 NFT-настройки</a>
+        <a href="<?php echo esc_url(admin_url('admin.php?page=wpz-tree&tab=images')); ?>"
+           class="nav-tab <?php echo $tab === 'images' ? 'nav-tab-active' : ''; ?>">🖼 Изображения стадий</a>
+    </nav>
+
+    <?php if ($tab === 'images'): ?>
+    <!-- ══════════ Вкладка: Изображения стадий ══════════ -->
+    <div class="wpz-card">
+        <h2 style="margin-top:0;">Изображения деревьев по стадиям</h2>
+        <p class="description">
+            Замените картинки для 6 базовых стадий. Загрузите файл или вставьте URL.
+            Пустое поле = дефолтное изображение <code>/uploads/tree/stage-N.png</code>.
+            Изменения применяются сразу после сохранения (кэш статики обновится автоматически).
+        </p>
+        <form method="post">
+            <?php wp_nonce_field('wpz_action'); ?>
+            <input type="hidden" name="action" value="save_tree_stage_imgs">
+            <table class="form-table">
+                <?php for ($lv = 1; $lv <= 6; $lv++):
+                    $cur = $stage_imgs[$lv];
+                    $shown = $cur ?: $stage_defaults[$lv];
+                ?>
+                <tr>
+                    <th style="width:180px;">
+                        <label>Стадия <?php echo $lv; ?> · <?php echo esc_html($level_names[$lv]); ?></label>
+                        <div style="font-size:11px;color:#999;margin-top:2px;">0–99 / 100–499 / 500–999 / 1000–1999 / 2000–4999 / 5000+ XP</div>
+                    </th>
+                    <td>
+                        <div style="display:flex;gap:12px;align-items:flex-start;">
+                            <div id="stage-preview-<?php echo $lv; ?>"
+                                 style="width:110px;height:110px;border-radius:12px;border:2px dashed #c3c4c7;display:flex;align-items:center;justify-content:center;background:#0F1418;overflow:hidden;flex-shrink:0;<?php echo $cur ? 'border-style:solid;border-color:#3d9e6a;' : ''; ?>">
+                                <img src="<?php echo esc_url($shown); ?>" alt="stage <?php echo $lv; ?>"
+                                     style="max-width:100%;max-height:100%;object-fit:contain;">
+                            </div>
+                            <div style="flex:1;">
+                                <input type="text" id="tree_stage_img_<?php echo $lv; ?>" name="tree_stage_img_<?php echo $lv; ?>"
+                                       value="<?php echo esc_attr($cur); ?>" placeholder="<?php echo esc_url($stage_defaults[$lv]); ?>"
+                                       style="width:100%;">
+                                <div style="margin-top:6px;display:flex;gap:6px;">
+                                    <button type="button" class="button wpz-stage-upload" data-lv="<?php echo $lv; ?>">📤 Загрузить</button>
+                                    <?php if ($cur): ?>
+                                        <button type="button" class="button wpz-stage-remove" data-lv="<?php echo $lv; ?>">✖ Сбросить</button>
+                                    <?php endif; ?>
+                                    <a href="<?php echo esc_url($shown); ?>" target="_blank" class="button">Открыть ↗</a>
+                                </div>
+                                <p class="description" style="margin-top:4px;">
+                                    <?php echo $cur ? '⚙️ Кастомное изображение' : 'Дефолтное изображение'; ?>
+                                </p>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                <?php endfor; ?>
+            </table>
+            <?php submit_button('Сохранить изображения стадий'); ?>
+        </form>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var frames = {};
+        document.querySelectorAll('.wpz-stage-upload').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var lv = btn.getAttribute('data-lv');
+                if (frames[lv]) { frames[lv].open(); return; }
+                frames[lv] = wp.media({
+                    title: 'Выберите изображение стадии ' + lv,
+                    button: { text: 'Использовать' },
+                    multiple: false
+                });
+                frames[lv].on('select', function () {
+                    var att = frames[lv].state().get('selection').first().toJSON();
+                    var input = document.getElementById('tree_stage_img_' + lv);
+                    var prev = document.getElementById('stage-preview-' + lv);
+                    input.value = att.url;
+                    prev.innerHTML = '<img src="' + att.url + '" alt="">';
+                    prev.style.borderStyle = 'solid';
+                    prev.style.borderColor = '#3d9e6a';
+                });
+                frames[lv].open();
+            });
+        });
+        document.querySelectorAll('.wpz-stage-remove').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                var lv = btn.getAttribute('data-lv');
+                var input = document.getElementById('tree_stage_img_' + lv);
+                var prev = document.getElementById('stage-preview-' + lv);
+                input.value = '';
+                var def = input.getAttribute('placeholder');
+                prev.innerHTML = '<img src="' + def + '" alt="">';
+                prev.style.borderStyle = 'dashed';
+                prev.style.borderColor = '#c3c4c7';
+            });
+        });
+    });
+    </script>
+
+    <?php else: ?>
+    <!-- ══════════ Вкладка: NFT-настройки ══════════ -->
 
     <!-- ═══ Поиск ═══ -->
     <div class="wpz-card" style="margin-bottom:16px;">
@@ -240,3 +346,6 @@ $GLOBALS['wpz_rarity_meta'] = $rarity_meta;
     input.addEventListener('input', function () { show(input.value); });
 })();
 </script>
+
+    <?php endif; // tab === 'images' ?>
+</div>

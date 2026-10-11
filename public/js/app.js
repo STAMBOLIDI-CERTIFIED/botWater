@@ -2308,9 +2308,19 @@ async function loadTree() {
             const history = Array.isArray(d.history) ? d.history : [];
             const toNext = d.to_next||0;
             const nft = d.nft || null;
-            const idx = Math.min(Math.max(lv,1), TL.length);
-            const cur = TL[idx-1] || TL[0];
-            const nxt = TL[idx] || null;
+            // Картинки/названия стадий из настроек (tree_stage_img_1..6), иначе дефолт TL
+            var tl = TL;
+            if (Array.isArray(d.stages) && d.stages.length) {
+                tl = TL.map(function (t, i) {
+                    var s = d.stages[i];
+                    if (!s) return t;
+                    return { level: t.level, name: s.name || t.name, icon: t.icon, xp: t.xp || t.xp,
+                             img: (s.img && s.img.trim()) ? s.img : t.img };
+                });
+            }
+            const idx = Math.min(Math.max(lv,1), tl.length);
+            const cur = tl[idx-1] || tl[0];
+            const nxt = tl[idx] || null;
             const sn = cur.name, mx = lv>=6;
             const hue = nft && nft.hue ? nft.hue : 0;
             const rarity = nft && nft.rarity ? nft.rarity : '';
@@ -2326,13 +2336,13 @@ async function loadTree() {
                 <div class="tree-hero-meta">
                     <span class="tree-level-badge">Уровень ${lv}${mx?' ★':''}</span>
                     <div class="tree-hero-name">${sn}</div>
-                    <div class="tree-hero-sub">Стадия ${idx} из ${TL.length}</div>
+                    <div class="tree-hero-sub">Стадия ${idx} из ${tl.length}</div>
                     ${serial ? `<div class="tree-nft"><span class="tree-nft-serial">${serial}</span>${rarityTitle ? `<span class="tree-nft-rarity rarity-${rarity}">${rarityTitle}</span>` : ''}</div>` : ''}
                 </div>
                 ${treeGoalHtml(xp, nx, pr, toNext, mx, nxt)}
             </div>
         ${treeGiftHtml(gift)}
-        ${treeStagesHtml(lv)}
+        ${treeStagesHtml(lv, tl)}
         ${treeRulesHtml(rules)}
         ${treePartnersHtml(partners)}
         ${treeHistoryHtml(history)}`;
@@ -2351,8 +2361,8 @@ async function loadTree() {
     }
 
     // Лента стадий роста дерева (пройдено / текущая / заблокировано)
-    function treeStagesHtml(lv) {
-        var cards = TL.map(function (t) {
+    function treeStagesHtml(lv, stages) {
+        var cards = (stages || TL).map(function (t) {
             var state = t.level < lv ? 'done' : (t.level === lv ? 'current' : 'locked');
             var status = state === 'done' ? icon('check') : (state === 'current' ? icon('star') : icon('lock'));
             return '<div class="stage-card ' + state + '">'

@@ -395,6 +395,16 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-tree&user=' . $tg . '&msg=' . urlencode($ok ? "Seed дерева {$uname} перегенерирован" : 'Ошибка')));
                 exit;
 
+            case 'save_tree_stage_imgs':
+                $saved = 0;
+                for ($lv = 1; $lv <= 6; $lv++) {
+                    $url = self::normalize_media_url($_POST['tree_stage_img_' . $lv] ?? '');
+                    $db->set_setting('tree_stage_img_' . $lv, $url);
+                    $saved++;
+                }
+                wp_redirect(admin_url('admin.php?page=wpz-tree&tab=images&msg=' . urlencode("Изображения стадий сохранены ({$saved}/6)")));
+                exit;
+
             case 'ban_user':
                 $tg = (int)($_POST['telegram_id'] ?? 0);
                 $reason = sanitize_text_field($_POST['ban_reason'] ?? '');
@@ -1098,12 +1108,20 @@ class WaterPrize_Pages {
     // ─── Дерево (NFT) ──────────────────────────────────
     public static function tree() {
         $db = self::db();
+        $tab = sanitize_text_field($_GET['tab'] ?? 'nft');
         $search = sanitize_text_field($_GET['s'] ?? '');
         $selected = null;
         if (!empty($_GET['user'])) {
             $selected = $db->get_tree_user((int)$_GET['user']);
         }
         $users = $db->search_tree_users($search, 20);
+        // Картинки стадий (tree_stage_img_1..6), пусто = дефолт
+        $stage_imgs = [];
+        $stage_defaults = [];
+        for ($lv = 1; $lv <= 6; $lv++) {
+            $stage_imgs[$lv] = $db->get_setting('tree_stage_img_' . $lv) ?: '';
+            $stage_defaults[$lv] = content_url('uploads/tree/stage-' . $lv . '.png');
+        }
         include __DIR__ . '/../templates/tree.php';
     }
 

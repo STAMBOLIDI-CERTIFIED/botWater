@@ -74,6 +74,9 @@ class WaterPrize_Admin {
         if (strpos($hook, 'wpz-broadcasts') !== false) {
             wp_enqueue_media();
         }
+        if (strpos($hook, 'wpz-tree') !== false) {
+            wp_enqueue_media();
+        }
     }
 
     // Pages — delegates to WaterPrize_Pages

@@ -203,6 +203,16 @@ async def api_tree(user_id: int = 0):
         state["gift"] = {"available": False, "reason": "user_not_found"}
         state["history"] = []
     state["rules"] = await _tree_xp_rules()
+    # Картинки стадий: настройки tree_stage_img_1..6 (пусто = дефолт)
+    stages_meta = [
+        (1, "Росток", "0–99"), (2, "Саженец", "100–499"), (3, "Молодое дерево", "500–999"),
+        (4, "Крепкое дерево", "1000–1999"), (5, "Могучее дерево", "2000–4999"), (6, "Древо жизни", "5000+"),
+    ]
+    stages = []
+    for lv, nm, xp_rng in stages_meta:
+        img = (await db.get_bot_setting(f"tree_stage_img_{lv}", "")).strip()
+        stages.append({"level": lv, "name": nm, "xp": xp_rng, "img": img})
+    state["stages"] = stages
     # Цель: сколько опыта осталось до следующей стадии
     xp = state.get("xp") or 0
     nxt = state.get("next_level_xp") or 0
