@@ -514,6 +514,11 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('Обложки плиток главной обновлены')));
                 exit;
 
+            case 'save_yandex_maps_key':
+                $db->set_setting('yandex_maps_api_key', sanitize_text_field($_POST['yandex_maps_api_key'] ?? ''));
+                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('API-ключ Яндекс.Карт сохранён')));
+                exit;
+
             case 'save_daily_bonus':
                 $points = (int)($_POST['daily_bonus_points'] ?? 0);
                 if ($points < 0) {
@@ -649,7 +654,8 @@ class WaterPrize_Pages {
                     esc_url_raw($_POST['telegram'] ?? ''),
                     sanitize_textarea_field($_POST['info'] ?? ''),
                     (int)($_POST['gift_threshold_xp'] ?? 0),
-                    (int)($_POST['gift_limit'] ?? 0)
+                    (int)($_POST['gift_limit'] ?? 0),
+                    sanitize_text_field($_POST['address'] ?? '')
                 );
                 wp_redirect(admin_url('admin.php?page=wpz-partners&msg=' . urlencode('Партнёр добавлен')));
                 exit;
@@ -671,7 +677,8 @@ class WaterPrize_Pages {
                     esc_url_raw($_POST['telegram'] ?? ''),
                     sanitize_textarea_field($_POST['info'] ?? ''),
                     (int)($_POST['gift_threshold_xp'] ?? 0),
-                    (int)($_POST['gift_limit'] ?? 0)
+                    (int)($_POST['gift_limit'] ?? 0),
+                    sanitize_text_field($_POST['address'] ?? '')
                 );
                 wp_redirect(admin_url('admin.php?page=wpz-partners&msg=' . urlencode('Партнёр обновлён')));
                 exit;

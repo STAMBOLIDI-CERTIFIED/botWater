@@ -20,6 +20,7 @@ $daily_bonus_points = $db->get_setting('daily_bonus_points');
 if ($daily_bonus_points === null || $daily_bonus_points === false || $daily_bonus_points === '') {
     $daily_bonus_points = '50';
 }
+$yandex_maps_api_key = $db->get_setting('yandex_maps_api_key') ?: '';
 ?>
 <div class="wrap">
     <?php WaterPrize_Pages::flash_message(); ?>
@@ -130,6 +131,25 @@ if ($daily_bonus_points === null || $daily_bonus_points === false || $daily_bonu
                 Изменение применяется в течение минуты (кэш настроек).</p>
             <div style="margin-top:12px;">
                 <button type="submit" name="action" value="save_daily_bonus" class="button button-primary">💾 Сохранить бонус</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ═══ Yandex Maps API key ═══ -->
+    <div class="wpz-card">
+        <h2>🗺️ Яндекс.Карты — API-ключ</h2>
+        <p style="color:#646970;font-size:13px;margin:0 0 16px;">Ключ используется для карты расположения партнёра в карточке купона.
+            Получить: <a href="https://developer.tech.yandex.ru/services/" target="_blank" rel="noopener">developer.tech.yandex.ru</a> → «Ключ API» → тип «Карты».
+            Ключ работает по привязке к домену — добавьте домен мини-приложения в список разрешённых.</p>
+        <form method="post">
+            <?php wp_nonce_field('wpz_action'); ?>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">API-ключ</label>
+            <input type="text" name="yandex_maps_api_key" class="regular-text" style="width:100%;max-width:480px;"
+                   value="<?php echo esc_attr($yandex_maps_api_key); ?>"
+                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            <p class="description">Ключ хранится в базе бота и отдаётся приложению через /api/settings. Пусто — карта партнёра не отображается.</p>
+            <div style="margin-top:12px;">
+                <button type="submit" name="action" value="save_yandex_maps_key" class="button button-primary">💾 Сохранить ключ</button>
             </div>
         </form>
     </div>

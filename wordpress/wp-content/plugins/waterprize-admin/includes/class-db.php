@@ -605,18 +605,18 @@ class WaterPrize_DB {
         return $rows[0] ?? null;
     }
 
-    public function add_category($title, $subtitle, $description, $icon, $color, $sort_order, $is_active = true, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '', $gift_threshold_xp = 0, $gift_limit = 0) {
+    public function add_category($title, $subtitle, $description, $icon, $color, $sort_order, $is_active = true, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '', $gift_threshold_xp = 0, $gift_limit = 0, $address = '') {
         $qr_code = 'partner_' . time() . '_' . bin2hex(random_bytes(4));
         return $this->insert(
-            'INSERT INTO shop_categories (title, subtitle, description, icon, image_url, logo_url, color, sort_order, is_active, qr_code, scan_points, website, telegram, info, gift_threshold_xp, gift_limit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, $qr_code, (int)$scan_points, $website, $telegram, $info, (int)$gift_threshold_xp, (int)$gift_limit]
+            'INSERT INTO shop_categories (title, subtitle, description, icon, image_url, logo_url, color, sort_order, is_active, qr_code, scan_points, website, telegram, info, gift_threshold_xp, gift_limit, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, $qr_code, (int)$scan_points, $website, $telegram, $info, (int)$gift_threshold_xp, (int)$gift_limit, $address]
         );
     }
 
-    public function update_category($id, $title, $subtitle, $description, $icon, $color, $sort_order, $is_active, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '', $gift_threshold_xp = 0, $gift_limit = 0) {
+    public function update_category($id, $title, $subtitle, $description, $icon, $color, $sort_order, $is_active, $scan_points = 10, $image_url = '', $logo_url = '', $website = '', $telegram = '', $info = '', $gift_threshold_xp = 0, $gift_limit = 0, $address = '') {
         return $this->execute(
-            'UPDATE shop_categories SET title=?, subtitle=?, description=?, icon=?, image_url=?, logo_url=?, color=?, sort_order=?, is_active=?, scan_points=?, website=?, telegram=?, info=?, gift_threshold_xp=?, gift_limit=? WHERE id=?',
-            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, (int)$scan_points, $website, $telegram, $info, (int)$gift_threshold_xp, (int)$gift_limit, (int)$id]
+            'UPDATE shop_categories SET title=?, subtitle=?, description=?, icon=?, image_url=?, logo_url=?, color=?, sort_order=?, is_active=?, scan_points=?, website=?, telegram=?, info=?, gift_threshold_xp=?, gift_limit=?, address=? WHERE id=?',
+            [$title, $subtitle, $description, $icon, $image_url, $logo_url, $color, (int)$sort_order, $is_active, (int)$scan_points, $website, $telegram, $info, (int)$gift_threshold_xp, (int)$gift_limit, $address, (int)$id]
         );
     }
 

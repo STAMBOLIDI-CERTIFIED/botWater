@@ -1191,23 +1191,38 @@ function openPrizeModal(p, bal) {
         }
 
         document.getElementById('prize-modal-name').textContent = p.name || 'Купон';
-        var metaEl = document.getElementById('prize-modal-meta');
-        if (metaEl) metaEl.textContent = p._partner_name || '';
 
-        var pill = document.getElementById('prize-modal-badge');
-        pill.className = 'cd-pill ' + (ok ? 'cd-pill-ok' : 'cd-pill-warn');
-        pill.innerHTML = ok
-            ? icon('check') + ' Обмен за ' + price + ' баллов'
-            : icon('warning') + ' Не хватает ' + missing + ' баллов';
+        // партнёр — кликабельная кнопка: открывает раздел этого партнёра
+        var partnerBtn = document.getElementById('prize-modal-partner');
+        var partnerName = p._partner_name || '';
+        if (partnerBtn) {
+            if (partnerName && p._partner_id) {
+                partnerBtn.style.display = '';
+                document.getElementById('prize-modal-partner-name').textContent = partnerName;
+                partnerBtn.onclick = function() {
+                    closePrizeModal();
+                    openPartnerCategory(p._partner_id);
+                };
+            } else {
+                partnerBtn.style.display = 'none';
+            }
+        }
+
+        // факты 2×2
+        var accessEl = document.getElementById('prize-modal-fact-access');
+        accessEl.textContent = ok ? 'Обмен доступен' : 'Не хватает ' + missing + ' баллов';
+        accessEl.className = 'cd-fact-value ' + (ok ? 'cd-fact-ok' : 'cd-fact-warn');
+        document.getElementById('prize-modal-fact-price').textContent = price + ' баллов';
+        document.getElementById('prize-modal-fact-balance').textContent = bal + ' баллов';
+        document.getElementById('prize-modal-fact-issue').textContent = 'Мгновенно, в раздел «Мои купоны»';
 
         document.getElementById('prize-modal-desc').textContent = p.description || 'Описание отсутствует';
 
-        document.getElementById('prize-modal-price').textContent = price + ' баллов';
-        var subEl = document.getElementById('prize-modal-sub');
-        if (subEl) subEl.textContent = '/ баланс ' + bal + ' баллов';
-
         document.getElementById('prize-modal-fine').textContent =
             'Обмен мгновенный — баллы спишутся с баланса, а купон появится в разделе «Мои купоны».';
+
+        // карта расположения партнёра (адрес из админки)
+        renderPrizeMap(p._partner_address || '');
 
         var actionEl = document.getElementById('prize-modal-action');
         if (ok) {
@@ -1220,10 +1235,96 @@ function openPrizeModal(p, bal) {
         document.body.style.overflow = 'hidden';
     }
 
+// ─── Яндекс.Карты: карта расположения партнёра ───
+    var _ymapsPromise = null;
+    var _ymapsKey = null;   // null = ещё не тянули из /settings, '' = ключа нет
+    var _prizeMap = null;
+
+    function loadYandexMaps(key) {
+        if (window.ymaps3) return window.ymaps3.ready || Promise.resolve();
+        if (_ymapsPromise) return _ymapsPromise;
+        _ymapsPromise = new Promise(function(resolve, reject) {
+            var s = document.createElement('script');
+            s.src = 'https://api-maps.yandex.ru/v3/?apikey=' + encodeURIComponent(key) + '&lang=ru_RU';
+            s.onload = function() {
+                if (window.ymaps3 && window.ymaps3.ready) window.ymaps3.ready.then(resolve, reject);
+                else resolve();
+            };
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+        return _ymapsPromise;
+    }
+
+    function mapFallbackHtml(address) {
+        return '<a class="cd-map-fallback" href="https://yandex.ru/maps/?text=' + encodeURIComponent(address)
+            + '" target="_blank" rel="noopener">' + icon('target') + ' Открыть в Яндекс.Картах</a>';
+    }
+
+    function destroyPrizeMap() {
+        if (_prizeMap) {
+            try { _prizeMap.destroy(); } catch (e) {}
+            _prizeMap = null;
+        }
+    }
+
+    function renderPrizeMap(address) {
+        var placeEl = document.getElementById('prize-modal-place');
+        var addrEl = document.getElementById('prize-modal-address');
+        var mapEl = document.getElementById('prize-modal-map');
+        destroyPrizeMap();
+        if (!address) {
+            if (placeEl) placeEl.style.display = 'none';
+            if (mapEl) mapEl.innerHTML = '';
+            return;
+        }
+        if (placeEl) placeEl.style.display = '';
+        if (addrEl) addrEl.textContent = address;
+        if (mapEl) {
+            mapEl.innerHTML = '<div class="cd-map-loading">' + icon('target') + '</div>';
+            mountPartnerMap(address, mapEl, function(map) { _prizeMap = map; });
+        }
+    }
+
+    async function mountPartnerMap(address, mapEl, onReady) {
+        try {
+            if (_ymapsKey == null) {
+                var d = await apiFetch('/settings');
+                _ymapsKey = (d && d.yandex_maps_api_key) || '';
+            }
+            if (!_ymapsKey) {
+                mapEl.innerHTML = mapFallbackHtml(address);
+                return;
+            }
+            var g = await apiFetch('/geocode?address=' + encodeURIComponent(address));
+            if (!g || !g.ok || !g.coords) {
+                mapEl.innerHTML = mapFallbackHtml(address);
+                return;
+            }
+            await loadYandexMaps(_ymapsKey);
+            mapEl.innerHTML = '';
+            var theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+            var coords = g.coords;
+            var map = new ymaps3.YMap(mapEl, {
+                location: { center: coords, zoom: 16 },
+                behaviors: ['drag', 'wheel', 'dblClick', 'mouseTilt', 'mouseRotate']
+            });
+            map.addChild(new ymaps3.YMapDefaultSchemeLayer({ theme: theme }));
+            map.addChild(new ymaps3.YMapDefaultFeaturesLayer({ zIndex: 1800 }));
+            var pin = document.createElement('div');
+            pin.className = 'cd-map-pin';
+            map.addChild(new ymaps3.YMapMarker({ coordinates: coords }, pin));
+            if (onReady) onReady(map);
+        } catch (e) {
+            mapEl.innerHTML = mapFallbackHtml(address);
+        }
+    }
+
 function closePrizeModal() {
         var modal = document.getElementById('prize-modal');
         modal.classList.remove('active');
         document.body.style.overflow = '';
+        destroyPrizeMap();
     }
 
     // ═══════════════════════════════════════════
@@ -1358,6 +1459,7 @@ function closePrizeModal() {
                     item._partner_name = c.title;
                     item._partner_color = c.color || '#0EA5E9';
                     item._partner_img = c.logo_url || c.image_url || '';
+                    item._partner_address = c.address || '';
                     allItems.push(item);
                 });
                 partnersWithItems.push(c);
@@ -1503,7 +1605,7 @@ function closePrizeModal() {
         if (!data || !data.category) { h.innerHTML = '<div class="empty-state"><div class="empty-ico">' + icon('question') + '</div><div class="empty-t">Категория не найдена</div></div>'; return; }
         const cat = data.category;
         const items = data.items || [];
-        items.forEach(function(it) { it._partner_img = cat.logo_url || cat.image_url || ''; it._partner_name = it._partner_name || cat.title; });
+        items.forEach(function(it) { it._partner_img = cat.logo_url || cat.image_url || ''; it._partner_name = it._partner_name || cat.title; it._partner_id = cat.id; it._partner_address = cat.address || ''; });
         const bal = uData ? uData.balance : 0;
         const isCharity = cat.title === 'Благотворительность';
         var accent = cat.color || 'var(--gold)';
@@ -1583,7 +1685,7 @@ function closePrizeModal() {
 
         var cat = data.category;
         var items = data.items || [];
-        items.forEach(function(it) { it._partner_img = cat.logo_url || cat.image_url || ''; it._partner_name = it._partner_name || cat.title; });
+        items.forEach(function(it) { it._partner_img = cat.logo_url || cat.image_url || ''; it._partner_name = it._partner_name || cat.title; it._partner_id = cat.id; it._partner_address = cat.address || ''; });
         var bal = res[1] ? res[1].balance : 0;
 
         var logoSrc = cat.logo_url || cat.image_url || '';
@@ -1612,12 +1714,20 @@ function closePrizeModal() {
         if (cat.info) {
             headerHtml += '<div class="partner-detail-info">' + esc(cat.info).replace(/\n/g, '<br>') + '</div>';
         }
+        if (cat.address) {
+            headerHtml += '<div class="cd-card partner-place-card">'
+                + '<div class="cd-card-title">Где найти</div>'
+                + '<div class="cd-address">' + esc(cat.address) + '</div>'
+                + '<div id="partner-detail-map" class="cd-map"></div>'
+                + '</div>';
+        }
 
         headerHtml += '</div>';
 
         if (!items.length) {
             headerHtml += '<div class="empty-state"><div class="empty-ico" style="font-size:36px">' + esc(cat.icon) + '</div><div class="empty-t">Товаров пока нет</div><div class="empty-d">Скоро здесь появятся товары</div></div>';
             detailEl.innerHTML = headerHtml;
+            mountPartnerDetailMap(cat);
             return;
         }
 
@@ -1656,6 +1766,15 @@ function closePrizeModal() {
             + '</div>';
 
         detailEl.innerHTML = headerHtml + couponsHtml + itemsHtml;
+        mountPartnerDetailMap(cat);
+    }
+
+    function mountPartnerDetailMap(cat) {
+        if (!cat.address) return;
+        var pdm = document.getElementById('partner-detail-map');
+        if (!pdm) return;
+        pdm.innerHTML = '<div class="cd-map-loading">' + icon('target') + '</div>';
+        mountPartnerMap(cat.address, pdm);
     }
 
     async function processPartnerScan(qrCode) {

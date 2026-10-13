@@ -386,6 +386,7 @@ async def api_scan(request: Request):
 @router.get("/settings")
 async def api_settings():
     splash_logo_url = await db.get_setting("splash_logo_url")
+    yandex_maps_api_key = await db.get_setting("yandex_maps_api_key")
     tiles = {}
     for key, name in (
         ("tile_shop_image", "shop"),
@@ -396,7 +397,54 @@ async def api_settings():
         val = await db.get_setting(key)
         if val:
             tiles[name] = val
-    return {"splash_logo_url": splash_logo_url or "", "tiles": tiles}
+    return {
+        "splash_logo_url": splash_logo_url or "",
+        "yandex_maps_api_key": yandex_maps_api_key or "",
+        "tiles": tiles,
+    }
+
+
+# Геокодинг текстового адреса партнёра (Яндекс.Геокодер) — для карты в карточке купона.
+# Результат кэшируем: адреса статичны, а у бесплатного ключа лимит запросов.
+_GEOCODE_TTL = 7 * 86400.0
+_geocode_cache: dict[str, tuple[float, list | None]] = {}
+
+
+@router.get("/geocode")
+async def api_geocode(address: str = ""):
+    address = (address or "").strip()
+    if not address:
+        return {"ok": False, "coords": None}
+    key = await db.get_setting("yandex_maps_api_key")
+    if not key:
+        return {"ok": False, "coords": None, "reason": "no_key"}
+    now = time.time()
+    hit = _geocode_cache.get(address.lower())
+    if hit and now - hit[0] < _GEOCODE_TTL:
+        return {"ok": hit[1] is not None, "coords": hit[1]}
+    coords = None
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=8) as client:
+            r = await client.get(
+                "https://geocode-maps.yandex.ru/v1/",
+                params={
+                    "apikey": key,
+                    "geocode": address,
+                    "format": "json",
+                    "lang": "ru_RU",
+                    "results": 1,
+                },
+            )
+        pos = r.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"][
+            "metaDataProperty"
+        ]["GeocoderMetaData"]["Point"]["pos"]  # "lon lat"
+        lon, lat = map(float, pos.split())
+        coords = [lon, lat]  # формат Яндекс.Карт [долгота, широта]
+    except Exception:
+        coords = None
+    _geocode_cache[address.lower()] = (now, coords)
+    return {"ok": coords is not None, "coords": coords}
 
 
 @router.get("/daily-bonus/status")

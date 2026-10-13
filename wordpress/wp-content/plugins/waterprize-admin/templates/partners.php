@@ -59,6 +59,9 @@ $tab = $tab ?? 'list';
                     <?php if (!empty($edit_category['telegram'])): ?>
                         <tr><th>Telegram</th><td><a href="<?php echo esc_url($edit_category['telegram']); ?>" target="_blank"><?php echo esc_html($edit_category['telegram']); ?></a></td></tr>
                     <?php endif; ?>
+                    <?php if (!empty($edit_category['address'])): ?>
+                        <tr><th>Физический адрес</th><td><?php echo esc_html($edit_category['address']); ?></td></tr>
+                    <?php endif; ?>
                     <?php if (!empty($edit_category['info'])): ?>
                         <tr><th>Доп. информация</th><td><?php echo nl2br(esc_html($edit_category['info'])); ?></td></tr>
                     <?php endif; ?>
@@ -283,9 +286,18 @@ $tab = $tab ?? 'list';
                                placeholder="https://t.me/channel"></td>
                 </tr>
                 <tr>
+                    <th><label for="address">Физический адрес</label></th>
+                    <td>
+                        <input type="text" id="address" name="address" class="regular-text"
+                               value="<?php echo esc_attr($edit_category['address'] ?? ''); ?>"
+                               placeholder="ул. Ленина, 1, ТЦ «Пример»">
+                        <span class="description">Для карты в карточке купона. Пусто — карта не отображается.</span>
+                    </td>
+                </tr>
+                <tr>
                     <th><label for="info">Доп. информация</label></th>
                     <td><textarea id="info" name="info" class="large-text" rows="4"
-                                  placeholder="Адрес, режим работы, телефон и т.д."><?php echo esc_textarea($edit_category['info'] ?? ''); ?></textarea></td>
+                                  placeholder="Режим работы, телефон и т.д."><?php echo esc_textarea($edit_category['info'] ?? ''); ?></textarea></td>
                 </tr>
             </table>
 

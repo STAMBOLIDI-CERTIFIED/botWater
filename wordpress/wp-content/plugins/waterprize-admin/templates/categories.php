@@ -181,7 +181,16 @@
                 <tr>
                     <th><label for="info">Доп. информация</label></th>
                     <td><textarea id="info" name="info" class="large-text" rows="4"
-                                  placeholder="Адрес, режим работы, телефон и т.д."><?php echo esc_textarea($edit_category['info'] ?? ''); ?></textarea></td>
+                                  placeholder="Режим работы, телефон и т.д."><?php echo esc_textarea($edit_category['info'] ?? ''); ?></textarea></td>
+                </tr>
+                <tr>
+                    <th><label for="address">Физический адрес</label></th>
+                    <td>
+                        <input type="text" id="address" name="address" class="regular-text"
+                               value="<?php echo esc_attr($edit_category['address'] ?? ''); ?>"
+                               placeholder="ул. Ленина, 1, ТЦ «Пример»">
+                        <span class="description">Для карты в карточке купона. Пусто — карта не отображается.</span>
+                    </td>
                 </tr>
             </table>
 

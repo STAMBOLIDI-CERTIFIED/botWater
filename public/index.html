@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>try{if(localStorage.getItem('wpz_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
-    <link rel="stylesheet" href="/css/app.css?v=202610118">
+    <link rel="stylesheet" href="/css/app.css?v=202610119">
 </head>
 <body>
 
@@ -490,15 +490,39 @@
             <div class="cd-body">
                 <div class="cd-title-row">
                     <div id="prize-modal-name" class="cd-title"></div>
-                    <span id="prize-modal-meta" class="cd-meta"></span>
                 </div>
-                <div id="prize-modal-badge" class="cd-pill"></div>
-                <div id="prize-modal-desc" class="cd-desc"></div>
-                <div class="cd-price-row">
-                    <div class="cd-price-wrap">
-                        <span id="prize-modal-price" class="cd-price"></span>
-                        <span id="prize-modal-sub" class="cd-price-sub"></span>
+                <button id="prize-modal-partner" class="cd-partner-link" type="button">
+                    <span id="prize-modal-partner-name"></span>
+                    <span class="cd-partner-arrow">→</span>
+                </button>
+                <div class="cd-card">
+                    <div class="cd-facts">
+                        <div class="cd-fact">
+                            <div class="cd-fact-label">Доступ</div>
+                            <div id="prize-modal-fact-access" class="cd-fact-value"></div>
+                        </div>
+                        <div class="cd-fact">
+                            <div class="cd-fact-label">От вас</div>
+                            <div id="prize-modal-fact-price" class="cd-fact-value"></div>
+                        </div>
+                        <div class="cd-fact">
+                            <div class="cd-fact-label">Ваш баланс</div>
+                            <div id="prize-modal-fact-balance" class="cd-fact-value"></div>
+                        </div>
+                        <div class="cd-fact">
+                            <div class="cd-fact-label">Выдача</div>
+                            <div id="prize-modal-fact-issue" class="cd-fact-value"></div>
+                        </div>
                     </div>
+                </div>
+                <div class="cd-card">
+                    <div class="cd-card-title">О купоне</div>
+                    <div id="prize-modal-desc" class="cd-desc"></div>
+                </div>
+                <div class="cd-card" id="prize-modal-place" style="display:none">
+                    <div class="cd-card-title">Где найти</div>
+                    <div id="prize-modal-address" class="cd-address"></div>
+                    <div id="prize-modal-map" class="cd-map"></div>
                 </div>
                 <div id="prize-modal-fine" class="cd-fine"></div>
             </div>
@@ -524,5 +548,5 @@
     </div>
 </div>
 
-<script src="/js/app.js?v=202610118" defer></script>
+<script src="/js/app.js?v=202610119" defer></script>
 </body>
