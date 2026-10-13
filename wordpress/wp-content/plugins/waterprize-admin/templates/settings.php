@@ -21,6 +21,7 @@ if ($daily_bonus_points === null || $daily_bonus_points === false || $daily_bonu
     $daily_bonus_points = '50';
 }
 $yandex_maps_api_key = $db->get_setting('yandex_maps_api_key') ?: '';
+$app_version = $db->get_setting('app_version') ?: '';
 ?>
 <div class="wrap">
     <?php WaterPrize_Pages::flash_message(); ?>
@@ -150,6 +151,24 @@ $yandex_maps_api_key = $db->get_setting('yandex_maps_api_key') ?: '';
             <p class="description">Ключ хранится в базе бота и отдаётся приложению через /api/settings. Пусто — карта партнёра не отображается.</p>
             <div style="margin-top:12px;">
                 <button type="submit" name="action" value="save_yandex_maps_key" class="button button-primary">💾 Сохранить ключ</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ═══ App version ═══ -->
+    <div class="wpz-card">
+        <h2>📱 Версия приложения</h2>
+        <p style="color:#646970;font-size:13px;margin:0 0 16px;">Отображается в подвале главной страницы мини-приложения.
+            Например: <code>1.4.2</code> или <code>2026.10.13</code>.</p>
+        <form method="post">
+            <?php wp_nonce_field('wpz_action'); ?>
+            <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">Версия</label>
+            <input type="text" name="app_version" class="regular-text" style="width:180px;"
+                   value="<?php echo esc_attr($app_version); ?>"
+                   placeholder="1.0.0">
+            <p class="description">Пусто — подвал с версией не показывается. Обновляется в течение минуты (кэш настроек).</p>
+            <div style="margin-top:12px;">
+                <button type="submit" name="action" value="save_app_version" class="button button-primary">💾 Сохранить версию</button>
             </div>
         </form>
     </div>

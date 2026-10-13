@@ -457,6 +457,19 @@ function countUp(el, target, duration) {
         try {
             var d = await apiFetch('/settings');
             var tiles = (d && d.tiles) || {};
+
+            // версия приложения в подвале главной
+            var ver = (d && d.app_version) || '';
+            var footer = document.getElementById('menu-footer');
+            if (footer) {
+                if (ver) {
+                    document.getElementById('menu-app-version').textContent = 'Версия ' + ver;
+                    footer.style.display = '';
+                } else {
+                    footer.style.display = 'none';
+                }
+            }
+
             var map = {
                 'card-shop-home': tiles.shop,
                 'card-my-coupons': tiles.coupons,

@@ -519,6 +519,11 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('API-ключ Яндекс.Карт сохранён')));
                 exit;
 
+            case 'save_app_version':
+                $db->set_setting('app_version', sanitize_text_field($_POST['app_version'] ?? ''));
+                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('Версия приложения обновлена')));
+                exit;
+
             case 'save_daily_bonus':
                 $points = (int)($_POST['daily_bonus_points'] ?? 0);
                 if ($points < 0) {
