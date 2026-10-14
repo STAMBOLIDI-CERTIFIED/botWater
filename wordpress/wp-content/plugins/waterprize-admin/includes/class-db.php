@@ -262,7 +262,7 @@ class WaterPrize_DB {
      */
     public function sync_order_xp($order_id) {
         $order = $this->query_one(
-            'SELECT o.id, o.status, u.telegram_id FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ?',
+            'SELECT o.id, o.status, o.user_id, u.telegram_id FROM orders o JOIN users u ON u.id = o.user_id WHERE o.id = ?',
             [(int)$order_id]
         );
         if (!$order) return false;
@@ -299,6 +299,11 @@ class WaterPrize_DB {
                     [(int)$c['xp_granted'], (int)$c['id'], $cat]
                 );
             }
+            // История опыта: отмена возвратом — опыт списывается видимым движением
+            $this->execute(
+                'INSERT INTO tree_xp_log (user_id, xp, reason, partner_id, ref_id) VALUES (?, ?, ?, ?, ?)',
+                [(int)$order['user_id'], -(int)$c['xp_granted'], 'order_cancelled', $cat ?: null, (int)$c['id']]
+            );
         }
         foreach ($to_restore as $c) {
             $this->execute('UPDATE user_coupons SET xp_revoked = FALSE WHERE id = ?', [(int)$c['id']]);
@@ -309,6 +314,10 @@ class WaterPrize_DB {
                     [(int)$c['xp_granted'], (int)$c['id'], $cat]
                 );
             }
+            $this->execute(
+                'INSERT INTO tree_xp_log (user_id, xp, reason, partner_id, ref_id) VALUES (?, ?, ?, ?, ?)',
+                [(int)$order['user_id'], (int)$c['xp_granted'], 'order_restored', $cat ?: null, (int)$c['id']]
+            );
         }
 
         return $this->update_tree_xp($order['telegram_id'], $delta);
@@ -1233,6 +1242,7 @@ class WaterPrize_DB {
                 FROM shop_categories sc2
                 JOIN prizes pr ON pr.category_id = sc2.id
                 JOIN orders o ON o.prize_id = pr.id
+                 AND o.status IN ('approved', 'completed')
                 GROUP BY sc2.id
              ) pb ON pb.category_id = sc.id
              ORDER BY {$order} {$dir} NULLS LAST"
@@ -1305,6 +1315,7 @@ class WaterPrize_DB {
                     SELECT 1 FROM orders o
                     JOIN prizes pr ON pr.id = o.prize_id
                     WHERE pr.category_id = ps.category_id AND o.user_id = ps.user_id
+                      AND o.status IN ('approved', 'completed')
                 ) THEN ps.user_id END)::int as buyers_count
              FROM partner_scans ps
              WHERE {$where}
@@ -1402,12 +1413,12 @@ class WaterPrize_DB {
                 WHERE pl.type = 'source_commission'
                 GROUP BY u.telegram_id
              ) earned ON earned.telegram_id = pa.telegram_id
-             LEFT JOIN (
-                SELECT category_id, COUNT(*)::int AS cnt FROM (
-                    SELECT DISTINCT ON (user_id) user_id, category_id
-                    FROM partner_scans ORDER BY user_id, scanned_at ASC
-                ) fs GROUP BY category_id
-             ) ref ON ref.category_id = pa.category_id
+            LEFT JOIN (
+                SELECT source_partner_id AS category_id, COUNT(*)::int AS cnt
+                FROM users
+                WHERE source_partner_id IS NOT NULL
+                GROUP BY source_partner_id
+            ) ref ON ref.category_id = pa.category_id
              ORDER BY pa.id"
         );
     }
@@ -1442,17 +1453,11 @@ class WaterPrize_DB {
 
     public function get_partner_cabinet_referred($account_id, $limit = 100) {
         return $this->query(
-            "SELECT u.id, u.telegram_id, u.name, u.username, u.balance, fs.scanned_at
-             FROM partner_accounts pa
-             JOIN LATERAL (
-                SELECT DISTINCT ON (ps.user_id) ps.user_id, ps.scanned_at
-                FROM partner_scans ps
-                WHERE ps.category_id = pa.category_id
-                ORDER BY ps.user_id, ps.scanned_at ASC
-             ) fs ON TRUE
-             JOIN users u ON u.id = fs.user_id
-             WHERE pa.id = ?
-             ORDER BY fs.scanned_at DESC
+            "SELECT u.id, u.telegram_id, u.name, u.username, u.balance, u.source_bound_at AS scanned_at
+             FROM users u
+             JOIN partner_accounts pa
+               ON pa.id = ? AND pa.category_id = u.source_partner_id
+             ORDER BY u.source_bound_at DESC
              LIMIT " . (int)$limit,
             [(int)$account_id]
         );
@@ -1476,12 +1481,7 @@ class WaterPrize_DB {
              LEFT JOIN prizes p2 ON p2.id = o.prize_id
              LEFT JOIN shop_categories sc ON sc.id = COALESCE(p.category_id, p2.category_id)
              LEFT JOIN partner_accounts acc ON acc.id = uc.used_by_partner_id
-             LEFT JOIN LATERAL (
-                SELECT category_id FROM partner_scans ps
-                WHERE ps.user_id = uc.user_id
-                ORDER BY ps.scanned_at ASC LIMIT 1
-             ) fs ON TRUE
-             LEFT JOIN shop_categories src ON src.id = fs.category_id
+             LEFT JOIN shop_categories src ON src.id = u.source_partner_id
              WHERE uc.status = 'used' AND uc.used_at >= ? AND uc.used_at < ?
              ORDER BY uc.used_at DESC",
             [$from_ts, $to_ts]

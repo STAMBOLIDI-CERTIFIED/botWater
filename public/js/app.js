@@ -2126,8 +2126,6 @@ function esc(t) { const d = document.createElement('div'); d.textContent = t; re
                 showToast('Заказ #' + res.order_id + ' — ' + res.prize_name);
                 document.getElementById('top-balance').textContent = res.balance;
                 await loadUserData();
-                // also send to bot chat for history (fallback)
-                try{ tg.sendData('exchange:'+prizeId); }catch(e){}
                 setTimeout(function(){ openPage('my-coupons'); }, 800);
             } else {
                 var msg = (res && res.error) || 'Ошибка';
@@ -2533,6 +2531,23 @@ async function loadTree() {
             var heroBadge = c.querySelector('.tree-level-badge');
             var heroName = c.querySelector('.tree-hero-name');
             var heroSub = c.querySelector('.tree-hero-sub');
+            // Тряска дерева по тапу; если подарок готов — после тряски ведём к карточке
+            var scene = c.querySelector('.tree-hero-scene');
+            if (scene) {
+                scene.addEventListener('click', function () {
+                    scene.classList.remove('shaking');
+                    void scene.offsetWidth;
+                    scene.classList.add('shaking');
+                    try { tg.HapticFeedback.impactOccurred('medium'); } catch (e) {}
+                    setTimeout(function () { scene.classList.remove('shaking'); }, 750);
+                    if (gift && gift.available && gift.category_id) {
+                        var gc = c.querySelector('.tree-gift-card.available');
+                        if (gc) setTimeout(function () {
+                            gc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }, 350);
+                    }
+                });
+            }
             c.querySelectorAll('.stage-card').forEach(function (card) {
                 if (card.classList.contains('locked')) return;
                 card.addEventListener('click', function () {
@@ -2619,8 +2634,10 @@ async function loadTree() {
         coupon_buy: 'Покупка купона',
         coupon_redeem: 'Активация купона',
         partner_scan: 'Сканирование QR партнёра',
+        order_cancelled: 'Возврат заказа — опыт отменён',
+        order_restored: 'Возврат отменён — опыт возвращён',
     };
-    var XP_REASON_ICONS = { scan: '🍾', coupon_buy: '🛒', coupon_redeem: '✅', partner_scan: '📍' };
+    var XP_REASON_ICONS = { scan: '🍾', coupon_buy: '🛒', coupon_redeem: '✅', partner_scan: '📍', order_cancelled: '↩️', order_restored: '🔄' };
     function xpDateShort(iso) {
         try {
             var dt = new Date(iso);
@@ -2635,7 +2652,7 @@ async function loadTree() {
         var head = '<div class="tree-panel-head">' + icon('history') + ' История опыта</div>';
         if (!history || !history.length) {
             return '<div class="tree-panel">' + head
-                + '<div class="tree-panel-empty">Опыт ещё не начислялся — копи его покупками и активацией купонов.</div></div>';
+                + '<div class="tree-panel-empty">Опыт ещё не начислялся — он растёт, когда ты активируешь купоны у партнёров.</div></div>';
         }
         var items = history.map(function (h) {
             var ico = h.icon || XP_REASON_ICONS[h.reason] || '⚡';
@@ -2644,7 +2661,7 @@ async function loadTree() {
                 + '<div class="hist-ico">' + ico + '</div>'
                 + '<div class="hist-body"><div class="hist-title">' + esc(title) + '</div>'
                 + '<div class="hist-date">' + esc(xpDateShort(h.created_at)) + '</div></div>'
-                + '<span class="hist-xp">+' + (h.xp||0) + ' XP</span>'
+                + '<span class="hist-xp">' + ((h.xp || 0) > 0 ? '+' : '') + (h.xp || 0) + ' XP</span>'
                 + '</div>';
         }).join('');
         return '<div class="tree-panel">' + head + items + '</div>';

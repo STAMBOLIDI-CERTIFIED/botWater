@@ -242,15 +242,9 @@ async def api_tree(user_id: int = 0):
 
 async def _tree_xp_rules() -> list[dict]:
     """Источники опыта для блока «За что начисляется опыт»."""
-    buy_mult = await db.get_bot_setting_int("coupon_buy_xp_mult", 1)
     return [
-        {"key": "coupon_buy", "title": "Покупай купоны",
-         "desc": "Опыт равен цене купона в баллах",
-         "value": f"+{'цена купона' if buy_mult == 1 else str(buy_mult) + '× цена'} XP"},
         {"key": "coupon_redeem", "title": "Трать купоны",
          "desc": "Активируй купон у партнёра", "value": "+цена купона XP"},
-        {"key": "partner_scan", "title": "Сканируй QR партнёров",
-         "desc": "QR на точках любимых партнёров", "value": "+баллы партнёра"},
     ]
 
 
@@ -573,19 +567,10 @@ async def api_exchange(request: Request):
         await db.add_balance(user_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user["id"], prize_id)
         await db.record_journey(user["id"], "coupon_buy", partner_id=prize.get("category_id"), related_id=order_id, points_used=prize["price_points"])
-        # Опыт за покупку купона = цена приза (можно убавить множителем coupon_buy_xp_mult)
-        buy_mult = await db.get_bot_setting_int("coupon_buy_xp_mult", 1)
-        buy_xp = max(0, int(prize["price_points"] or 0)) * max(0, buy_mult)
-        tree = None
-        if buy_xp > 0:
-            tree = await db.add_tree_xp(user_id, buy_xp, reason="coupon_buy",
-                                        partner_id=prize.get("category_id"), ref_id=order_id)
+        # Опыт начисляется только за ИСПОЛЬЗОВАННЫЙ купон (см. grant_coupon_xp)
         await db.create_notification(user_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
         resp = {"ok": True, "order_id": order_id, "prize_name": prize["name"],
                 "balance": (user.get("balance") or 0) - prize["price_points"]}
-        if buy_xp > 0:
-            resp["xp_earned"] = buy_xp
-            resp["level_up"] = bool(tree and tree.get("level_changed"))
         return resp
     except Exception as e:
         import logging

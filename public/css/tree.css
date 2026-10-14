@@ -22,6 +22,19 @@
     background: #0F1418;
     border: 1px solid rgba(255,255,255,0.06);
     box-shadow: 0 20px 45px rgba(0,0,0,0.45), inset 0 0 60px rgba(0,0,0,0.5);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+/* ─── Тряска дерева по тапу ─── */
+.tree-hero-scene.shaking { animation: treeShake .7s ease-in-out; }
+@keyframes treeShake {
+    0%, 100% { transform: rotate(0) translateX(0); }
+    10% { transform: rotate(-3deg) translateX(-6px); }
+    25% { transform: rotate(3deg) translateX(6px); }
+    40% { transform: rotate(-3deg) translateX(-5px); }
+    55% { transform: rotate(2deg) translateX(4px); }
+    70% { transform: rotate(-2deg) translateX(-3px); }
+    85% { transform: rotate(1deg) translateX(2px); }
 }
 .tree-hero-glow {
     position: absolute; left: 50%; top: 54%;

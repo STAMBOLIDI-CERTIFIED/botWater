@@ -7,6 +7,10 @@ import asyncpg
 
 logger = logging.getLogger(__name__)
 
+
+class GiftAlreadyClaimed(Exception):
+    """Конкурентная выдача подарка: уже забран другим запросом."""
+
 _FILTER_RE = re.compile(r"^([a-z_0-9]+)=(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^&]+)$")
 _DOT_FILTER_RE = re.compile(r"^([a-z_0-9]+)\.(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^,(]+)$")
 
@@ -805,25 +809,58 @@ class Database:
             return {"ok": False, "error": "gift_not_configured"}
 
         ttl_days = await self.get_bot_setting_int("gift_ttl_days", 30)
-        expires_at = (datetime.now(timezone.utc) + timedelta(days=ttl_days)).isoformat() if ttl_days > 0 else None
+        expires_dt = (datetime.now(timezone.utc) + timedelta(days=ttl_days)) if ttl_days > 0 else None
 
         import secrets
         qr_code = f"gift_{secrets.token_hex(6)}"
-        rows = await self._fetch("user_coupons", method="POST", json_data={
-            "user_id": user_pk, "prize_id": prize_id, "qr_code": qr_code,
-            "is_gift": True, "xp_granted": 0, "expires_at": expires_at,
-        })
-        coupon = rows[0] if rows else {}
-        if not coupon.get("id"):
+        category_id = gift.get("category_id")
+
+        # Атомарная выдача: уникальный индекс uq_user_gifts_user_category
+        # (миграция 022) + транзакция исключают двойной купон при двойном тапе.
+        try:
+            async with self.pool.acquire() as conn:
+                async with conn.transaction():
+                    crow = await conn.fetchrow(
+                        """
+                        INSERT INTO user_coupons
+                            (user_id, prize_id, qr_code, status, is_gift, xp_granted, expires_at)
+                        VALUES ($1, $2, $3, 'active', TRUE, 0, $4)
+                        RETURNING id
+                        """,
+                        user_pk, prize_id, qr_code, expires_dt,
+                    )
+                    grow = await conn.fetchrow(
+                        """
+                        INSERT INTO user_gifts
+                            (user_id, category_id, prize_id, threshold_xp,
+                             partner_xp, status, expires_at)
+                        VALUES ($1, $2, $3, $4, $5, 'claimed', $6)
+                        ON CONFLICT (user_id, category_id) WHERE status <> 'revoked'
+                        DO NOTHING
+                        RETURNING id
+                        """,
+                        user_pk, category_id, prize_id,
+                        int(gift.get("threshold") or 0), int(gift.get("xp") or 0),
+                        expires_dt,
+                    )
+                    if not grow:
+                        raise GiftAlreadyClaimed()
+                    await conn.execute(
+                        "UPDATE user_gifts SET coupon_id = $1 WHERE id = $2",
+                        crow["id"], grow["id"],
+                    )
+        except GiftAlreadyClaimed:
+            return {"ok": False, "error": "already_claimed"}
+        except Exception:
+            logger.exception("claim_partner_gift failed for user_id=%s", user_pk)
             return {"ok": False, "error": "internal_error"}
 
-        gift_rows = await self._fetch("user_gifts", method="POST", json_data={
-            "user_id": user_pk, "category_id": gift.get("category_id"),
-            "prize_id": prize_id, "coupon_id": coupon["id"],
-            "threshold_xp": gift.get("threshold"), "partner_xp": gift.get("xp"),
-            "status": "claimed", "expires_at": expires_at,
-        })
-        created = gift_rows[0] if gift_rows else {}
+        coupon = {
+            "id": crow["id"], "user_id": user_pk, "prize_id": prize_id,
+            "qr_code": qr_code, "status": "active", "is_gift": True,
+            "xp_granted": 0,
+            "expires_at": expires_dt.isoformat() if expires_dt else None,
+        }
 
         partner_name = gift.get("title") or "партнёр"
         user = await self._fetch_one("users", f"id=eq.{user_pk}&select=telegram_id")
@@ -832,7 +869,7 @@ class Database:
                 user["telegram_id"], "gift", "Подарок от партнёра",
                 f"Партнёр «{partner_name}» подготовил вам подарок: {prize['name']}", "tree")
 
-        coupon["gift_id"] = created.get("id")
+        coupon["gift_id"] = grow["id"]
         coupon["status"] = "active"
         coupon["prize_name"] = prize.get("name")
         prize_image = prize.get("image_url") or ""
@@ -1078,12 +1115,12 @@ class Database:
             "category_id": category.get("id"),
             "points_earned": scan_points,
         })
+        await self._update_source_partner(user["id"], category.get("id"))
 
         await self.record_journey(user["id"], "partner_scan", partner_id=category.get("id"))
 
         await self.add_balance(telegram_id, scan_points, "partner_scan", f"Сканирование QR партнёра «{partner_name}»")
-        await self.add_tree_xp(telegram_id, scan_points, reason="partner_scan",
-                               partner_id=category.get("id"))
+        # Опыт за скан не начисляется — дерево растёт только от использованных купонов
         await self.create_notification(
             telegram_id, "scan", "Партнёр",
             f"+{scan_points} баллов за сканирование QR «{partner_name}»", "history"
@@ -1160,7 +1197,7 @@ class Database:
             result["reason"] = "zero"
             return result
 
-        first_scan = await self.get_first_partner_for_user(user_id)
+        first_scan = await self.get_source_partner(user_id)
         source = first_scan.get("partner_id") if first_scan else None
         result["source_category_id"] = source
         if not source:
@@ -1226,7 +1263,7 @@ class Database:
         # Опыт = цена использованного купона (идемпотентно, повторно не начислится)
         await self.grant_order_xp(order_id, user["id"], prize["price_points"] if prize else 0, partner_id)
 
-        first_scan = await self.get_first_partner_for_user(user["id"])
+        first_scan = await self.get_source_partner(user["id"])
         reward = commission["commission"] if commission["paid"] else 0
         await self.record_journey(
             user["id"], "coupon_redeem", partner_id=partner_id,
@@ -1339,6 +1376,14 @@ class Database:
 
     async def get_user_coupons(self, user_id: int) -> list[dict]:
         async with self.pool.acquire() as conn:
+            # Лениво помечаем протухшие: UI не должен обещать купон,
+            # который партнёр уже не сможет активировать.
+            await conn.execute(
+                "UPDATE user_coupons SET status = 'expired' "
+                "WHERE user_id = $1 AND status = 'active' "
+                "AND expires_at IS NOT NULL AND expires_at < NOW()",
+                user_id,
+            )
             rows = await conn.fetch(
                 "SELECT uc.*, p.name AS prize_name, p.price_points AS prize_price, "
                 "COALESCE(NULLIF(p.image_url, ''), NULLIF(sc.logo_url, ''), NULLIF(sc.image_url, ''), '') AS prize_image, "
@@ -1384,6 +1429,8 @@ class Database:
         coupon = await self.get_user_coupon_by_qr(qr_code)
         if not coupon:
             return {"ok": False, "error": "coupon_not_found"}
+        if coupon["status"] == "expired":
+            return {"ok": False, "error": "coupon_expired"}
         if coupon["status"] != "active":
             return {"ok": False, "error": "coupon_already_used"}
 
@@ -1493,18 +1540,18 @@ class Database:
         - earned_as_source — комиссия источника, реально начисленная баллами;
         - source_coupons_used / used_nominal — купоны, погашенные пользователями,
           которых он привёл (для расчёта его дохода как источника);
-        - referred_users — пользователи, для которых он первый партнёр.
+        - referred_users — пользователи, для которых он текущий источник.
 
-        Источник определяется по partner_scans (та же таблица, что и в
-        pay_source_commission), чтобы начисления и статистика совпадали.
+        Источник читается из users.source_partner_id (миграция 022, та же
+        привязка, что в pay_source_commission), чтобы начисления и
+        статистика совпадали.
         """
         category_id = account.get("category_id")
         account_id = account.get("id")
         telegram_id = account.get("telegram_id")
-        first_scan = (
-            "SELECT DISTINCT ON (user_id) user_id, category_id "
-            "FROM partner_scans "
-            "ORDER BY user_id, scanned_at ASC"
+        source_users = (
+            "SELECT id AS user_id, source_partner_id AS category_id "
+            "FROM users WHERE source_partner_id IS NOT NULL"
         )
         async with self.pool.acquire() as conn:
             received = await conn.fetchval(
@@ -1533,19 +1580,19 @@ class Database:
                 account_id,
             ) or 0
             referred = await conn.fetchval(
-                f"SELECT COUNT(*) FROM ({first_scan}) fs WHERE fs.category_id = $1",
+                f"SELECT COUNT(*) FROM ({source_users}) su WHERE su.category_id = $1",
                 category_id,
             ) or 0
             src = await conn.fetchrow(
                 f"SELECT COUNT(*)::int AS cnt, "
                 f"COALESCE(SUM(COALESCE(p.price_points, p2.price_points)), 0)::int AS nominal "
-                f"FROM ({first_scan}) fs "
+                f"FROM ({source_users}) su "
                 f"JOIN user_coupons uc "
-                f"  ON uc.user_id = fs.user_id AND uc.status = 'used' "
+                f"  ON uc.user_id = su.user_id AND uc.status = 'used' "
                 f"LEFT JOIN prizes p ON p.id = uc.prize_id "
                 f"LEFT JOIN orders o ON o.id = uc.order_id "
                 f"LEFT JOIN prizes p2 ON p2.id = o.prize_id "
-                f"WHERE fs.category_id = $1",
+                f"WHERE su.category_id = $1",
                 category_id,
             )
             earned = await conn.fetchval(
@@ -2242,20 +2289,60 @@ class Database:
         rows = await self._fetch("user_journey", method="POST", json_data=data)
         return rows[0]["id"] if rows else 0
 
-    async def get_first_partner_for_user(self, user_id: int) -> dict | None:
-        """Первый отсканированный QR пользователя — партнёр-источник.
+    async def _update_source_partner(self, user_id: int, category_id: int | None) -> None:
+        """Привязка партнёра-источника при скане QR.
 
-        Источник ищем в partner_scans (полная история сканов), а не в
-        journey: таблица journey заведена позже и не содержит ранних сканов.
+        Источник закреплён на source_lock_months (мес.) с даты привязки.
+        Первый скан всегда привязывает; после окончания срока следующий
+        отсканированный QR становится новым источником (до этого момента
+        комиссии продолжает получать прежний источник).
         """
-        row = await self._fetch_one("partner_scans",
+        if not category_id:
+            return
+        lock_months = max(1, await self.get_bot_setting_int("source_lock_months", 12))
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    """
+                    UPDATE users
+                    SET source_partner_id = $2, source_bound_at = NOW()
+                    WHERE id = $1
+                      AND (source_partner_id IS NULL
+                           OR source_bound_at IS NULL
+                           OR source_bound_at < NOW() - make_interval(months => $3))
+                    """,
+                    user_id, category_id, lock_months,
+                )
+        except Exception:
+            # миграция 022 ещё не применена — скан не должен падать
+            logger.warning("update_source_partner failed for user_id=%s", user_id, exc_info=True)
+
+    async def get_source_partner(self, user_id: int) -> dict | None:
+        """Текущий партнёр-источник пользователя (users.source_partner_id).
+
+        Источник = первый скан, закреплённый на source_lock_months (мес.);
+        после окончания срока перепривязывается следующим отсканированным QR.
+        """
+        row = None
+        try:
+            row = await self._fetch_one(
+                "users", f"id=eq.{user_id}&select=source_partner_id,source_bound_at")
+        except Exception:
+            row = None
+        if row and row.get("source_partner_id"):
+            return {
+                "partner_id": row.get("source_partner_id"),
+                "scanned_at": row.get("source_bound_at"),
+            }
+        # Fallback: миграция 022 ещё не применена — первый скан из истории
+        scan = await self._fetch_one("partner_scans",
             f"user_id=eq.{user_id}&order=scanned_at.asc")
-        if not row:
+        if not scan:
             return None
         return {
-            "partner_id": row.get("category_id"),
-            "qr_code": row.get("qr_code"),
-            "scanned_at": row.get("scanned_at"),
+            "partner_id": scan.get("category_id"),
+            "qr_code": scan.get("qr_code"),
+            "scanned_at": scan.get("scanned_at"),
         }
 
     async def get_user_journey(self, user_id: int) -> list[dict]:
