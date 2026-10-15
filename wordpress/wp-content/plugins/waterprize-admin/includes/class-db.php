@@ -24,7 +24,9 @@ class WaterPrize_DB {
         $user = get_option('wpz_db_user', 'bothost_db_8d8917dc2bab');
         $pass = get_option('wpz_db_pass', 'Bi75g85iDTRx8KjIsX2PUnzr6QahElWAy_vdrxCgoVM');
 
-        $dsn = "pgsql:host={$host};port={$port};dbname={$dbname};sslmode=disable";
+        // gssencmode=disable: на macOS php-fpm (fork) падает SIGSEGV в Kerberos/CFPreferences,
+        // когда libpq пытается использовать GSSAPI-аутентификацию
+        $dsn = "pgsql:host={$host};port={$port};dbname={$dbname};sslmode=disable;gssencmode=disable;connect_timeout=10";
         try {
             $this->conn = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -813,6 +815,13 @@ class WaterPrize_DB {
         return $this->execute(
             'UPDATE broadcasts SET status = ?, sent_count = ?, recipients = ?, error = ?, sent_at = NOW() WHERE id = ?',
             [$status, (int)$sent_count, (int)$recipients, $error, (int)$id]
+        );
+    }
+
+    public function update_broadcast_media_tg($id, $file_ids_json) {
+        return $this->execute(
+            'UPDATE broadcasts SET media_tg = ? WHERE id = ?',
+            [$file_ids_json, (int)$id]
         );
     }
 

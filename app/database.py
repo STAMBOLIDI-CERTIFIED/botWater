@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS broadcasts (
     error TEXT NOT NULL DEFAULT '',
     created_by TEXT NOT NULL DEFAULT '',
     media TEXT NOT NULL DEFAULT '[]',
+    media_tg TEXT NOT NULL DEFAULT '[]',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     sent_at TIMESTAMPTZ
 )
@@ -99,6 +100,10 @@ class Database:
                 await conn.execute(
                     "ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS"
                     " media TEXT NOT NULL DEFAULT '[]'"
+                )
+                await conn.execute(
+                    "ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS"
+                    " media_tg TEXT NOT NULL DEFAULT '[]'"
                 )
                 await conn.execute(_BOT_MESSAGES_DDL)
                 for ddl in _BOT_MESSAGES_INDEXES_DDL:
@@ -2086,6 +2091,16 @@ class Database:
             return default
 
     # ─── Bot messages / Broadcasts ───────────────────────
+
+    async def get_latest_broadcast(self) -> dict | None:
+        """Последняя успешно отправленная рассылка (для новых пользователей)."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM broadcasts"
+                " WHERE status IN ('sent', 'partial') AND sent_at IS NOT NULL"
+                " ORDER BY id DESC LIMIT 1"
+            )
+        return dict(row) if row else None
 
     async def add_bot_message(
         self,

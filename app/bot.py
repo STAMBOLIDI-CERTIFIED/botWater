@@ -59,6 +59,122 @@ async def send_message(chat_id: int, text: str, **kwargs):
             return None
 
 
+def _split_text(text: str, limit: int) -> list[str]:
+    """Разбивка текста на куски не длиннее limit (как split_text в WP-плагине)."""
+    text = (text or "").strip()
+    if not text:
+        return []
+    if len(text) <= limit:
+        return [text]
+    parts: list[str] = []
+    min_pos = int(limit * 0.6)
+    while len(text) > limit:
+        head = text[:limit]
+        pos = head.rfind("\n")
+        if pos < min_pos:
+            pos = head.rfind(" ")
+        if pos < min_pos:
+            pos = limit
+        parts.append(head[:pos].strip())
+        text = text[pos:].lstrip()
+    if text:
+        parts.append(text)
+    return parts
+
+
+async def _tg_send_plain(chat_id: int, method: str, payload: dict) -> int:
+    """Отправка без parse_mode (текст рассылки — как есть). Возвращает message_id или 0."""
+    payload = {"chat_id": chat_id, **payload}
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.post(_url(method), json=payload)
+            data = resp.json()
+            if data and data.get("ok"):
+                return int(data.get("result", {}).get("message_id") or 0)
+            logger.warning("%s not ok for chat=%s: %s", method, chat_id, data)
+        except Exception as e:
+            logger.error("%s failed: chat=%s %s", method, chat_id, e)
+    return 0
+
+
+async def send_latest_broadcast(db, chat_id: int) -> bool:
+    """Последняя рассылка — новому пользователю. Возвращает True, если отправлено."""
+    try:
+        b = await db.get_latest_broadcast()
+    except Exception:
+        logger.exception("get_latest_broadcast failed")
+        return False
+    if not b:
+        return False
+
+    title = (b.get("title") or "").strip()
+    body = b.get("body") or ""
+    text = f"{title}\n\n{body}" if title else body
+    broadcast_id = int(b["id"])
+
+    try:
+        file_ids = [f for f in json.loads(b.get("media_tg") or "[]") if f]
+    except Exception:
+        file_ids = []
+
+    sent_ids: list[int] = []
+    tail: list[str] = []
+
+    if file_ids:
+        # Подпись к фото — до 1024 символов, остальное — отдельными сообщениями
+        parts = _split_text(text, 1024)
+        caption = parts[0] if parts else ""
+        tail = parts[1:]
+        if len(file_ids) == 1:
+            mid = await _tg_send_plain(chat_id, "sendPhoto", {
+                "photo": file_ids[0],
+                **({"caption": caption} if caption else {}),
+            })
+            if mid:
+                sent_ids.append(mid)
+        else:
+            media = []
+            for i, fid in enumerate(file_ids[:10]):
+                item = {"type": "photo", "media": fid}
+                if i == 0 and caption:
+                    item["caption"] = caption
+                media.append(item)
+            async with httpx.AsyncClient() as client:
+                try:
+                    resp = await client.post(_url("sendMediaGroup"), json={
+                        "chat_id": chat_id, "media": media,
+                    })
+                    data = resp.json()
+                    if data and data.get("ok") and isinstance(data.get("result"), list):
+                        for m in data["result"]:
+                            mid = int(m.get("message_id") or 0)
+                            if mid:
+                                sent_ids.append(mid)
+                except Exception as e:
+                    logger.error("sendMediaGroup failed: chat=%s %s", chat_id, e)
+    else:
+        for part in _split_text(text, 4096):
+            mid = await _tg_send_plain(chat_id, "sendMessage", {"text": part})
+            if mid:
+                sent_ids.append(mid)
+
+    if not sent_ids:
+        return False
+
+    for part in tail:
+        mid = await _tg_send_plain(chat_id, "sendMessage", {"text": part})
+        if mid:
+            sent_ids.append(mid)
+
+    # Учёт с broadcast_id — сообщения не автоудаляются, «🗑️ Удалить» в админке уберёт и их
+    for mid in sent_ids:
+        try:
+            await db.add_bot_message(chat_id, mid, None, broadcast_id)
+        except Exception:
+            logger.exception("track broadcast message failed: chat=%s", chat_id)
+    return True
+
+
 async def _delete_tg_message(client: httpx.AsyncClient, chat_id: int, message_id: int) -> bool:
     """True → строку учёта можно удалять. Сетевая ошибка/таймаут и 5xx → False
     (повтор позже); любой другой ответ → True: сообщение удалено, не найдено,
@@ -363,11 +479,18 @@ async def handle_message(db, msg: dict):
         payload = ""
         if " " in text:
             payload = text.split(" ", 1)[1]
+        is_new = user is None
         if not user:
             user = await db.create_user(chat_id, tg_name, "menu", payload)
         elif user.get("step") not in ("start", None, "menu"):
             await db.update_user_step(chat_id, "menu")
         await handle_start(db, chat_id, user, payload)
+        if is_new:
+            # Новому пользователю — последняя рассылка (её не видели те, кто registered раньше)
+            try:
+                await send_latest_broadcast(db, chat_id)
+            except Exception:
+                logger.exception("send_latest_broadcast failed: chat=%s", chat_id)
         return
 
     step = user.get("step", "start")

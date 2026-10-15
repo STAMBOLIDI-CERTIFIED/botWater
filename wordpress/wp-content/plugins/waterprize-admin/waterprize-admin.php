@@ -100,6 +100,13 @@ add_action('admin_init', function () {
             update_option('wpz_migration_broadcast_media', true);
         }
     }
+    if (!get_option('wpz_migration_broadcast_media_tg')) {
+        $db = WaterPrize_DB::instance();
+        // Telegram file_id фото — чтобы бот мог выдать рассылку новым пользователям
+        if ($db->execute("ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS media_tg TEXT NOT NULL DEFAULT '[]'")) {
+            update_option('wpz_migration_broadcast_media_tg', true);
+        }
+    }
     if (!get_option('wpz_migration_media_files')) {
         $db = WaterPrize_DB::instance();
         $ok = $db->execute(

@@ -202,7 +202,7 @@ class WaterPrize_Pages {
     }
 
     /**
-     * Одно фото с подписью. Возвращает message_id или 0.
+     * Одно фото с подписью. Возвращает ['mid' => message_id, 'file_ids' => [tg file_id...]].
      */
     private static function tg_send_photo($token, $chat_id, $caption, array $file) {
         $fields = ['chat_id' => (int)$chat_id];
@@ -210,12 +210,15 @@ class WaterPrize_Pages {
             $fields['caption'] = $caption;
         }
         $data = self::tg_call($token, 'sendPhoto', $fields, ['photo' => $file]);
-        return (int)($data['result']['message_id'] ?? 0);
+        return [
+            'mid' => (int)($data['result']['message_id'] ?? 0),
+            'file_ids' => self::tg_photo_file_ids([$data['result'] ?? []]),
+        ];
     }
 
     /**
      * Группа фото (сетка 2–10). Подпись — к первому фото.
-     * Возвращает список message_id (отправляется одним сообщением).
+     * Возвращает ['mids' => [...], 'file_ids' => [...]].
      */
     private static function tg_send_media_group($token, $chat_id, $caption, array $files) {
         $media = [];
@@ -235,12 +238,27 @@ class WaterPrize_Pages {
             'media' => json_encode($media, JSON_UNESCAPED_UNICODE),
         ], $attach);
         if (empty($data['ok']) || !is_array($data['result'])) {
-            return [];
+            return ['mids' => [], 'file_ids' => []];
         }
         $ids = [];
         foreach ($data['result'] as $m) {
             $mid = (int)($m['message_id'] ?? 0);
             if ($mid) $ids[] = $mid;
+        }
+        return ['mids' => $ids, 'file_ids' => self::tg_photo_file_ids($data['result'])];
+    }
+
+    /**
+     * Telegram file_id фото из ответов sendPhoto/sendMediaGroup —
+     * самый крупный размер каждого фото (последний в массиве photo).
+     */
+    private static function tg_photo_file_ids(array $messages) {
+        $ids = [];
+        foreach ($messages as $m) {
+            $photos = $m['photo'] ?? [];
+            if (!is_array($photos) || !$photos) continue;
+            $last = end($photos);
+            if (!empty($last['file_id'])) $ids[] = $last['file_id'];
         }
         return $ids;
     }
@@ -750,9 +768,15 @@ class WaterPrize_Pages {
                     wp_redirect(admin_url('admin.php?page=wpz-broadcasts&err=1&msg=' . urlencode('Введите текст рассылки')));
                     exit;
                 }
-                $media_ids = json_decode(sanitize_text_field($_POST['broadcast_media'] ?? '[]'), true);
-                if (!is_array($media_ids)) $media_ids = [];
-                $media_ids = array_values(array_unique(array_filter(array_map('intval', $media_ids))));
+                // wp_unslash обязателен: WP экранирует $_POST (addslashes),
+                // без него json_decode получает \" и возвращает null
+                $media_raw = json_decode(wp_unslash($_POST['broadcast_media'] ?? '[]'), true);
+                if (!is_array($media_raw)) $media_raw = [];
+                // JS шлёт [{id, url}] — вытаскиваем id (поддержка и плоского [id])
+                $media_ids = array_map(function ($m) {
+                    return is_array($m) ? (int)($m['id'] ?? 0) : (int)$m;
+                }, $media_raw);
+                $media_ids = array_values(array_unique(array_filter($media_ids)));
                 $media_ids = array_slice($media_ids, 0, 10);
                 if (function_exists('set_time_limit')) {
                     @set_time_limit(0);
@@ -781,19 +805,24 @@ class WaterPrize_Pages {
                 $token = self::bot_token();
                 $sent = 0;
                 $failed = 0;
+                $tg_file_ids = [];
                 foreach ($recipients as $r) {
                     $chat_id = (int)$r['telegram_id'];
                     $sent_ids = [];
                     $delivered = false;
                     if (count($files) === 1) {
-                        $mid = self::tg_send_photo($token, $chat_id, $caption, $files[0]);
+                        $res = self::tg_send_photo($token, $chat_id, $caption, $files[0]);
+                        $mid = $res['mid'];
                         if ($mid) {
                             $sent_ids[] = $mid;
                             $delivered = true;
+                            if (!$tg_file_ids) $tg_file_ids = $res['file_ids'];
                         }
                     } elseif (count($files) > 1) {
-                        $sent_ids = self::tg_send_media_group($token, $chat_id, $caption, $files);
+                        $res = self::tg_send_media_group($token, $chat_id, $caption, $files);
+                        $sent_ids = $res['mids'];
                         $delivered = (bool)$sent_ids;
+                        if ($delivered && !$tg_file_ids) $tg_file_ids = $res['file_ids'];
                     } else {
                         foreach ($parts as $part) {
                             $mid = self::tg_send_message($token, $chat_id, $part);
@@ -835,6 +864,10 @@ class WaterPrize_Pages {
                     $status = 'failed';
                     $error = 'Ни одно сообщение не доставлено (' . $total . ' ошибок)';
                     $msg = 'Рассылка не доставлена ни одному получателю';
+                }
+                // Telegram file_id фото — бот выдаст их новым пользователям
+                if ($tg_file_ids) {
+                    $db->update_broadcast_media_tg($broadcast_id, json_encode($tg_file_ids));
                 }
                 $db->update_broadcast_result($broadcast_id, $status, $sent, $total, $error);
                 if ($status === 'failed') {
