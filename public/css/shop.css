@@ -676,6 +676,11 @@
     color: var(--on-accent);
 }
 
+.shop-ptile.active .shop-ptile-avatar .icn svg,
+.shop-chip.active .icn svg {
+    filter: brightness(0) invert(1);
+}
+
 
 /* ─── Hero-карточка (первый купон раздела) ─── */
 
