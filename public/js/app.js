@@ -1499,11 +1499,19 @@ function closePrizeModal() {
 
     function setShopFilter(pid) {
         _shopFilter = pid;
-        var chipsEl = document.getElementById('shop-chips');
-        var scrollLeft = chipsEl ? chipsEl.scrollLeft : 0;
         renderShopList();
-        var chipsEl2 = document.getElementById('shop-chips');
-        if (chipsEl2) chipsEl2.scrollLeft = scrollLeft;
+    }
+
+    function shopTileHtml(pid, title, count, img, ico) {
+        var active = (pid == null ? _shopFilter == null : _shopFilter === pid) ? ' active' : '';
+        var go = pid == null ? 'null' : pid;
+        var avatar = icon(ico || 'store')
+            + (img ? '<img loading="lazy" decoding="async" src="' + esc(img) + '" alt="" onerror="this.remove()">' : '');
+        return '<button type="button" class="shop-ptile' + active + '" onclick="setShopFilter(' + go + ')" aria-pressed="' + (active ? 'true' : 'false') + '">'
+            + '<span class="shop-ptile-avatar">' + avatar + '</span>'
+            + '<span class="shop-ptile-name">' + esc(title) + '</span>'
+            + '<span class="shop-ptile-count">' + count + '</span>'
+            + '</button>';
     }
 
     function renderShopList() {
@@ -1534,17 +1542,15 @@ function closePrizeModal() {
             bannerEl.style.display = 'flex';
         }
 
-        // ─── Чипы фильтров
-        var chips = '<div class="shop-chip' + (_shopFilter == null ? ' active' : '') + '" onclick="setShopFilter(null)">'
-            + 'Всё <span class="shop-chip-count">' + _shopItems.length + '</span></div>';
+        // ─── Плитки партнёров (сетка фильтров)
+        var tiles = shopTileHtml(null, 'Всё', _shopItems.length, '', 'sparkles');
         _shopPartners.forEach(function(cp) {
             var n = 0;
             _shopItems.forEach(function(it) { if (it._partner_id === cp.id) n++; });
-            chips += '<div class="shop-chip' + (_shopFilter === cp.id ? ' active' : '') + '" onclick="setShopFilter(' + cp.id + ')">'
-                + esc(cp.title) + ' <span class="shop-chip-count">' + n + '</span></div>';
+            tiles += shopTileHtml(cp.id, cp.title, n, cp.logo_url || cp.image_url || '');
         });
-        chipsEl.innerHTML = chips;
-        chipsEl.style.display = 'flex';
+        chipsEl.innerHTML = tiles;
+        chipsEl.style.display = 'grid';
 
         // ─── Hero + сетка
         renderShopCards();

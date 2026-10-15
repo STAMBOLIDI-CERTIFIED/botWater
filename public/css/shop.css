@@ -580,6 +580,103 @@
     color: var(--on-accent);
 }
 
+/* ─── Плитки партнёров (сетка вместо горизонтального скролла) ─── */
+
+.shop-partners {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 0 0 16px;
+    animation: slideUp .45s cubic-bezier(.16,1,.3,1) .05s both;
+}
+
+.shop-ptile {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+    padding: 12px 6px 10px;
+    border-radius: 18px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s var(--ease-out);
+    animation: fadeIn .4s cubic-bezier(.16,1,.3,1) both;
+}
+
+.shop-ptile:active { transform: scale(0.95); }
+
+.shop-ptile-avatar {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--glass-border);
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+.shop-ptile-avatar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.shop-ptile-avatar .icn svg { width: 20px; height: 20px; }
+
+.shop-ptile-name {
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 1.25;
+    color: var(--text-secondary);
+    max-width: 100%;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+}
+
+.shop-ptile-count {
+    font-size: 10px;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.07);
+    color: var(--text-dim);
+}
+
+.shop-ptile.active {
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+    border-color: transparent;
+    box-shadow: 0 6px 18px rgba(var(--gold-rgb),0.3);
+}
+
+.shop-ptile.active .shop-ptile-name { color: var(--on-accent); }
+
+.shop-ptile.active .shop-ptile-count {
+    background: color-mix(in srgb, var(--on-accent) 18%, transparent);
+    color: var(--on-accent);
+}
+
+.shop-ptile.active .shop-ptile-avatar {
+    background: rgba(255,255,255,0.22);
+    border-color: rgba(255,255,255,0.35);
+    color: var(--on-accent);
+}
+
+
 /* ─── Hero-карточка (первый купон раздела) ─── */
 
 .shop-hero {
@@ -1088,6 +1185,18 @@
 .sk-chip:first-child {
     width: 76px;
 }
+
+.sk-ptiles {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.sk-ptile {
+    height: 96px;
+    border-radius: 18px;
+}
+
 
 .sk-hero {
     height: 178px;
