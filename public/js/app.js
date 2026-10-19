@@ -1504,12 +1504,12 @@ function closePrizeModal() {
         renderShopList();
     }
 
-    function shopTileHtml(pid, title, count, img, ico) {
+    function shopTileHtml(pid, title, count, img, ico, pc) {
         var active = (pid == null ? _shopFilter == null : _shopFilter === pid) ? ' active' : '';
         var go = pid == null ? 'null' : pid;
         var avatar = icon(ico || 'store')
             + (img ? '<img loading="lazy" decoding="async" src="' + esc(img) + '" alt="" onerror="this.remove()">' : '');
-        return '<button type="button" class="shop-ptile' + active + '" onclick="setShopFilter(' + go + ')" aria-pressed="' + (active ? 'true' : 'false') + '">'
+        return '<button type="button" class="shop-ptile' + active + '" style="--pc:' + esc(pc || '#38BDF8') + '" onclick="setShopFilter(' + go + ')" aria-pressed="' + (active ? 'true' : 'false') + '">'
             + '<span class="shop-ptile-avatar">' + avatar + '</span>'
             + '<span class="shop-ptile-name">' + esc(title) + '</span>'
             + '<span class="shop-ptile-count">' + count + '</span>'
@@ -1545,11 +1545,11 @@ function closePrizeModal() {
         }
 
         // ─── Плитки партнёров (сетка фильтров)
-        var tiles = shopTileHtml(null, 'Всё', _shopItems.length, '', 'grid');
+        var tiles = shopTileHtml(null, 'Всё', _shopItems.length, '', 'grid', '#38BDF8');
         _shopPartners.forEach(function(cp) {
             var n = 0;
             _shopItems.forEach(function(it) { if (it._partner_id === cp.id) n++; });
-            tiles += shopTileHtml(cp.id, cp.title, n, cp.logo_url || cp.image_url || '');
+            tiles += shopTileHtml(cp.id, cp.title, n, cp.logo_url || cp.image_url || '', null, cp.color || '#0EA5E9');
         });
         chipsEl.innerHTML = tiles;
         chipsEl.style.display = 'grid';

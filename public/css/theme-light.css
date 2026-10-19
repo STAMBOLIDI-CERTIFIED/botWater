@@ -257,3 +257,11 @@ html[data-theme="light"] .coupon-card-fav {
     border-color: rgba(var(--gold-rgb),0.28);
     color: var(--gold);
 }
+
+html[data-theme="light"] .shop-chip.active .icn svg {
+    filter: brightness(0) invert(1);
+}
+
+html[data-theme="light"] .shop-ptile.active .shop-ptile-avatar {
+    background: rgba(255,255,255,0.55);
+}

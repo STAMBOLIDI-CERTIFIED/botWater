@@ -591,6 +591,7 @@
 }
 
 .shop-ptile {
+    --pc: #38BDF8;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -598,13 +599,15 @@
     gap: 7px;
     padding: 12px 6px 10px;
     border-radius: 18px;
-    background: var(--glass-bg);
+    background:
+        linear-gradient(165deg, color-mix(in srgb, var(--pc) 16%, transparent), transparent 62%),
+        var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
+    border: 1px solid color-mix(in srgb, var(--pc) 22%, var(--glass-border));
     cursor: pointer;
     text-align: center;
-    transition: all .2s var(--ease-out);
+    transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out), border-color .2s var(--ease-out);
     animation: fadeIn .4s cubic-bezier(.16,1,.3,1) both;
 }
 
@@ -619,8 +622,9 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid var(--glass-border);
+    background: color-mix(in srgb, var(--pc) 18%, rgba(255,255,255,0.05));
+    border: 1px solid color-mix(in srgb, var(--pc) 32%, var(--glass-border));
+    box-shadow: 0 0 16px color-mix(in srgb, var(--pc) 18%, transparent);
     color: var(--text-dim);
     flex-shrink: 0;
 }
@@ -658,28 +662,30 @@
 }
 
 .shop-ptile.active {
-    background: linear-gradient(135deg, var(--gold), var(--gold-light));
-    border-color: transparent;
-    box-shadow: 0 6px 18px rgba(var(--gold-rgb),0.3);
+    background:
+        linear-gradient(165deg, color-mix(in srgb, var(--pc) 34%, transparent), color-mix(in srgb, var(--pc) 12%, transparent)),
+        var(--glass-bg);
+    border-color: color-mix(in srgb, var(--pc) 65%, transparent);
+    box-shadow:
+        0 6px 22px color-mix(in srgb, var(--pc) 26%, transparent),
+        inset 0 0 0 1px color-mix(in srgb, var(--pc) 35%, transparent);
 }
 
-.shop-ptile.active .shop-ptile-name { color: var(--on-accent); }
+.shop-ptile.active .shop-ptile-name { color: var(--text); }
 
 .shop-ptile.active .shop-ptile-count {
-    background: color-mix(in srgb, var(--on-accent) 18%, transparent);
-    color: var(--on-accent);
+    background: color-mix(in srgb, var(--pc) 40%, transparent);
+    color: var(--text);
 }
 
 .shop-ptile.active .shop-ptile-avatar {
-    background: rgba(255,255,255,0.22);
-    border-color: rgba(255,255,255,0.35);
-    color: var(--on-accent);
+    background: rgba(0,0,0,0.28);
+    border-color: color-mix(in srgb, var(--pc) 55%, transparent);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--pc) 30%, transparent);
+    color: var(--text);
 }
 
-.shop-ptile.active .shop-ptile-avatar .icn svg,
-.shop-chip.active .icn svg {
-    filter: brightness(0) invert(1);
-}
+.shop-chip.active .icn svg { filter: brightness(0); }
 
 
 /* ─── Hero-карточка (первый купон раздела) ─── */
