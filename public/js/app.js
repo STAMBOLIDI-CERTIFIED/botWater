@@ -682,6 +682,42 @@ function stopScanner() {
         if (supportPollTimer) { clearInterval(supportPollTimer); supportPollTimer = null; }
     }
 
+    function moveNavIndicator(instant) {
+        var nav = document.querySelector('.bottom-nav');
+        if (!nav) return;
+        var ind = nav.querySelector('.nav-indicator');
+        if (!ind) return;
+        var active = nav.querySelector('.nav-item.active');
+        if (!active) { nav.classList.remove('nav-ready'); return; }
+        var icon = active.querySelector('.nav-icon') || active;
+        var nr = nav.getBoundingClientRect();
+        var ir = icon.getBoundingClientRect();
+        var w = ind.offsetWidth, h = ind.offsetHeight;
+        var x = (ir.left - nr.left) + (ir.width - w) / 2;
+        var y = (ir.top - nr.top) + (ir.height - h) / 2;
+        if (instant) {
+            ind.style.transition = 'none';
+            ind.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+            void ind.offsetWidth;
+            ind.style.transition = '';
+        } else {
+            ind.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+        }
+        nav.classList.add('nav-ready');
+    }
+
+    if (document.readyState !== 'loading') {
+        requestAnimationFrame(function () { moveNavIndicator(true); });
+    } else {
+        document.addEventListener('DOMContentLoaded', function () {
+            requestAnimationFrame(function () { moveNavIndicator(true); });
+        });
+    }
+    window.addEventListener('resize', function () { moveNavIndicator(true); });
+    window.addEventListener('orientationchange', function () {
+        setTimeout(function () { moveNavIndicator(true); }, 250);
+    });
+
     function openPage(page) {
         stopScanner();
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -694,6 +730,7 @@ function stopScanner() {
         document.querySelectorAll('.nav-item').forEach(n => {
             n.classList.toggle('active', n.dataset.page === page);
         });
+        moveNavIndicator(false);
         var nav = document.querySelector('.bottom-nav');
         if (nav) {
             if (page === 'gift' || page === 'post-gift' || page === 'support') {

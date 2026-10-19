@@ -42,8 +42,47 @@
     background: none;
     cursor: pointer;
     position: relative;
+    z-index: 1;
     -webkit-tap-highlight-color: transparent;
     transition: transform .2s cubic-bezier(.16, 1, .3, 1);
+}
+
+/* Стеклянный ползунок активной вкладки (в духе Tahoe) */
+.nav-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 56px;
+    height: 38px;
+    border-radius: 17px;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0;
+    overflow: hidden;
+    background: linear-gradient(160deg, rgba(255,255,255,0.18), rgba(255,255,255,0.05));
+    border: 1px solid rgba(255,255,255,0.16);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.28);
+    backdrop-filter: blur(14px) saturate(1.7);
+    -webkit-backdrop-filter: blur(14px) saturate(1.7);
+    transition: transform .5s cubic-bezier(.34,1.45,.5,1), opacity .3s ease;
+    will-change: transform;
+}
+
+.bottom-nav.nav-ready .nav-indicator { opacity: 1; }
+
+.nav-indicator::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(115deg, transparent 25%, rgba(255,255,255,0.22) 45%, transparent 65%);
+    animation: navGlassSheen 5.5s ease-in-out infinite;
+}
+
+@keyframes navGlassSheen {
+    0%, 100% { transform: translateX(-28%); opacity: .5; }
+    50% { transform: translateX(28%); opacity: .9; }
 }
 
 .nav-item:active {
@@ -59,31 +98,15 @@
     border-radius: 12px;
     transition: all .3s cubic-bezier(.16, 1, .3, 1);
     position: relative;
-}
-
-.nav-item.active .nav-icon {
-    background: rgba(var(--gold-rgb),0.12);
-}
-
-.nav-item.active .nav-icon::after {
-    content: '';
-    position: absolute;
-    bottom: -4px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--gold);
-    animation: scaleIn .3s cubic-bezier(.16, 1, .3, 1);
+    z-index: 1;
 }
 
 .nav-icon .icn {
-    transition: transform .3s cubic-bezier(.16, 1, .3, 1);
+    transition: transform .35s cubic-bezier(.34,1.4,.5,1);
 }
 
 .nav-item.active .nav-icon .icn {
-    transform: scale(1.1);
+    transform: scale(1.12);
 }
 
 .nav-label {
@@ -92,10 +115,13 @@
     color: var(--text-dim);
     transition: color .3s ease;
     letter-spacing: 0.2px;
+    position: relative;
+    z-index: 1;
 }
 
 .nav-item.active .nav-label {
     color: var(--gold);
+    font-weight: 800;
 }
 
 /* ═══════════════════════════════════════════
