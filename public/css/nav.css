@@ -6,7 +6,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    bottom: max(24px, calc(14px + env(safe-area-inset-bottom, 0px)));
     margin: 0 auto;
     width: 280px;
     width: fit-content;
