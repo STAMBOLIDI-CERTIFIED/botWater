@@ -619,7 +619,7 @@ var notifOpen = false;
         var uid = getUID();
         if (!uid) { l.innerHTML = '<div class="notif-empty">Нет уведомлений</div>'; return; }
         var d = await apiFetch('/notifications?user_id=' + uid);
-        if (!d || !d.length) { l.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>'; var b = document.getElementById('bell-badge'); if (b) b.classList.remove('show'); return; }
+        if (!d || !d.length) { l.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>'; markNotifsRead(uid); return; }
         l.innerHTML = d.map(function(n) {
             var ico = n.type === 'scan' ? '' + icon('drop') + '' : n.type === 'points' ? '' + icon('coin') + '' : n.type === 'donation' ? '' + icon('heart') + '' : n.type === 'gift' ? '' + icon('gift') + '' : '' + icon('raffle') + '';
             var cls = n.type === 'scan' ? 'scan' : n.type === 'points' ? 'points' : n.type === 'donation' ? 'donation' : n.type === 'gift' ? 'donation' : 'raffle';
@@ -629,18 +629,20 @@ var notifOpen = false;
                 + '<div class="notif-desc">' + esc(n.body || '') + '</div>'
                 + '<div class="notif-time">' + (n.created_at ? new Date(n.created_at).toLocaleString('ru-RU') : '') + '</div></div></div>';
         }).join('');
-        var badge = document.getElementById('bell-badge');
-        if (badge) { badge.textContent = d.length; badge.classList.add('show'); }
-        var bell = document.getElementById('top-bell');
-        if (bell) { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); }
+        var ball = document.getElementById('top-bell');
+        if (ball) { ball.classList.remove('ring'); void ball.offsetWidth; ball.classList.add('ring'); }
+        markNotifsRead(uid);
+    }
+    function markNotifsRead(uid) {
+        uid = uid || getUID();
+        var b = document.getElementById('bell-badge');
+        if (b) { b.textContent = ''; b.classList.remove('show'); }
+        if (uid) fetch(API_BASE + '/notifications/clear?user_id=' + uid, { headers: _h() }).catch(function(){});
     }
     function clearNotifs() {
         var l = document.getElementById('notif-list');
         l.innerHTML = '<div class="notif-empty">Нет новых уведомлений</div>';
-        var b = document.getElementById('bell-badge');
-        if (b) { b.textContent = ''; b.classList.remove('show'); }
-        var uid = getUID();
-        if (uid) fetch(API_BASE + '/notifications/clear?user_id=' + uid, { headers: _h() }).catch(function(){});
+        markNotifsRead();
     }
 
     // ═══════════════════════════════════════════
