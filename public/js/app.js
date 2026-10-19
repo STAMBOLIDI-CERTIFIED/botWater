@@ -1478,24 +1478,43 @@ function openPrizeModal(p, bal) {
         }
     }
 
+    function hasWebgl() {
+        try {
+            var c = document.createElement('canvas');
+            return !!(window.WebGLRenderingContext && (c.getContext('webgl2') || c.getContext('webgl')));
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function withTimeout(p, ms) {
+        return new Promise(function(resolve, reject) {
+            var t = setTimeout(function() { reject(new Error('timeout')); }, ms);
+            p.then(function(v) { clearTimeout(t); resolve(v); },
+                   function(e) { clearTimeout(t); reject(e); });
+        });
+    }
+
     async function mountPartnerMap(address, mapEl, onReady) {
         try {
             if (_mapglKey == null) {
-                var d = await apiFetch('/settings');
+                var d = await withTimeout(apiFetch('/settings'), 8000);
                 _mapglKey = (d && d.dgis_api_key) || '';
             }
-            if (!_mapglKey) {
+            if (!_mapglKey || !hasWebgl()) {
                 mapEl.innerHTML = mapFallbackHtml(address);
                 return;
             }
-            var g = await apiFetch('/geocode?address=' + encodeURIComponent(address));
+            var g = await withTimeout(apiFetch('/geocode?address=' + encodeURIComponent(address)), 8000);
             if (!g || !g.ok || !g.coords) {
                 mapEl.innerHTML = mapFallbackHtml(address);
                 return;
             }
-            var mapgl = await loadMapgl();
+            var mapgl = await withTimeout(loadMapgl(), 8000);
             await waitForSize(mapEl);
             mapEl.innerHTML = '';
+            var token = (mapEl._mapToken || 0) + 1;
+            mapEl._mapToken = token;
             var coords = g.coords;  // 2GIS: [долгота, широта]
             var map = new mapgl.Map(mapEl, {
                 key: _mapglKey,
@@ -1504,6 +1523,7 @@ function openPrizeModal(p, bal) {
                 zoomControl: false,
                 disableRotationByUserInteraction: true,
                 enableTrackResize: true,
+                lang: 'ru',
             });
             var marker = new mapgl.Marker(map, {
                 coordinates: coords,
@@ -1511,7 +1531,19 @@ function openPrizeModal(p, bal) {
                 size: [32, 42],
                 anchor: [16, 42],
             });
-            if (onReady) onReady({ map: map, marker: marker });
+            var handle = { map: map, marker: marker };
+
+            // Если стиль так и не загрузился — не оставляем пустой блок
+            var ready = false;
+            if (map.on) map.on('styleload', function() { ready = true; });
+            setTimeout(function() {
+                if (!ready && mapEl._mapToken === token) {
+                    destroyMapHandle(handle);
+                    mapEl.innerHTML = mapFallbackHtml(address);
+                }
+            }, 9000);
+
+            if (onReady) onReady(handle);
         } catch (e) {
             mapEl.innerHTML = mapFallbackHtml(address);
         }
