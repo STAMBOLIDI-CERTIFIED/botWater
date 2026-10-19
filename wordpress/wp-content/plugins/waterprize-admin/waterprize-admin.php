@@ -131,6 +131,7 @@ add_action('wp_ajax_wpz_online', function () {
     if (!current_user_can('manage_options')) {
         wp_send_json_error('no permission');
     }
+    check_ajax_referer('wpz_action');
     $db = WaterPrize_DB::instance();
     $count = $db->count_online(15);
     wp_send_json_success(['count' => (int)$count]);

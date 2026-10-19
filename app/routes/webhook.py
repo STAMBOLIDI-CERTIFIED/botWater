@@ -15,6 +15,12 @@ _counter = 0
 @router.post("/webhook")
 async def webhook(request: Request):
     global _counter
+    # Telegram присылает секрет, заданный в setWebhook (см. main._setup_bot_commands).
+    # Без него любой мог бы подделать update (chat_id/from.id берутся из тела).
+    secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token", "")
+    if not bot.verify_webhook_secret(secret):
+        raise HTTPException(403, "Forbidden")
+
     try:
         body = await request.json()
     except Exception:

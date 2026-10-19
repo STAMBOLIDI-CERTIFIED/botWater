@@ -697,7 +697,7 @@ $tab = $tab ?? 'list';
                             $status_labels = ['pending'=>'Ожидает','approved'=>'Одобрен','shipped'=>'Отправлен','completed'=>'Выполнен','cancelled'=>'Отменён'];
                             $st = $o['status'] ?? 'pending';
                             ?>
-                            <span style="color:<?php echo $status_colors[$st] ?? '#999'; ?>;font-weight:600"><?php echo $status_labels[$st] ?? $st; ?></span>
+                            <span style="color:<?php echo $status_colors[$st] ?? '#999'; ?>;font-weight:600"><?php echo esc_html($status_labels[$st] ?? $st); ?></span>
                         </td>
                         <td><small><?php echo esc_html($o['created_at'] ?? '—'); ?></small></td>
                         <td>

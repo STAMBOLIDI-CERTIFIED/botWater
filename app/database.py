@@ -13,6 +13,7 @@ class GiftAlreadyClaimed(Exception):
 
 _FILTER_RE = re.compile(r"^([a-z_0-9]+)=(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^&]+)$")
 _DOT_FILTER_RE = re.compile(r"^([a-z_0-9]+)\.(eq|neq|gt|gte|lt|lte|ilike|is|not\.is)\.([^,(]+)$")
+_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 # ─── DDL: рассылки + учёт сообщений бота ─────────────────
 # Схема дублируется в migrations/017_broadcasts.sql и в WP-плагине
@@ -242,10 +243,16 @@ class Database:
             key = key.strip()
             value = value.strip()
             if key == "select":
-                select = value
+                if value == "*":
+                    select = "*"
+                else:
+                    parts = [p.strip() for p in value.split(",") if p.strip()]
+                    if parts and all(_IDENT_RE.match(p) for p in parts):
+                        select = ", ".join(parts)
             elif key == "order":
                 col, _, direction = value.partition(".")
-                order_by = f"{col} {'DESC' if direction.lower() == 'desc' else 'ASC'}"
+                if _IDENT_RE.match(col):
+                    order_by = f"{col} {'DESC' if direction.lower() == 'desc' else 'ASC'}"
             elif key == "limit":
                 try:
                     limit = int(value)
@@ -334,6 +341,8 @@ class Database:
         return out
 
     async def _fetch(self, table: str, params: str = "", method: str = "GET", json_data=None) -> list[dict]:
+        if not _IDENT_RE.match(table or ""):
+            raise ValueError(f"invalid table name: {table!r}")
         async with self.pool.acquire() as conn:
             if method in ("GET",):
                 col_types = await self._get_columns(conn, table)
@@ -353,6 +362,8 @@ class Database:
             if method == "POST":
                 data = self._conv_write(json_data or {})
                 cols = list(data.keys())
+                if cols and not all(_IDENT_RE.match(c) for c in cols):
+                    raise ValueError("invalid column name")
                 if not cols:
                     rows = await conn.fetch(f'INSERT INTO "{table}" DEFAULT VALUES RETURNING *')
                 else:
@@ -367,6 +378,8 @@ class Database:
             if method == "PATCH":
                 data = self._conv_write(json_data or {})
                 cols = list(data.keys())
+                if cols and not all(_IDENT_RE.match(c) for c in cols):
+                    raise ValueError("invalid column name")
                 if not cols:
                     return []
                 _, where, values, _, _, _ = self._parse_params(params, await self._get_columns(conn, table))
@@ -973,17 +986,50 @@ class Database:
     # ─── Points ─────────────────────────────────────────
 
     async def add_balance(self, telegram_id: int, amount: int, typ: str = "admin", description: str = ""):
-        user = await self.get_user(telegram_id)
+        """Атомарно меняет баланс и пишет в журнал в одной транзакции."""
+        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
         if not user:
-            return
-        new_balance = (user.get("balance") or 0) + amount
-        await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"balance": new_balance})
-        await self._fetch("points_log", method="POST", json_data={
-            "user_id": user["id"],
-            "amount": amount,
-            "type": typ,
-            "description": description,
-        })
+            return None
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    "UPDATE users SET balance = COALESCE(balance, 0) + $1 "
+                    "WHERE id = $2 RETURNING balance",
+                    int(amount), user["id"],
+                )
+                if row is None:
+                    return None
+                await conn.execute(
+                    "INSERT INTO points_log (user_id, amount, type, description) "
+                    "VALUES ($1, $2, $3, $4)",
+                    user["id"], int(amount), typ, description,
+                )
+        return row["balance"]
+
+    async def spend_balance(self, telegram_id: int, amount: int, typ: str = "exchange",
+                            description: str = "") -> int | None:
+        """Атомарно списывает баллы. None — если баланса не хватает."""
+        amount = int(amount)
+        if amount <= 0:
+            return await self.add_balance(telegram_id, amount, typ, description)
+        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
+        if not user:
+            return None
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    "UPDATE users SET balance = balance - $1 "
+                    "WHERE id = $2 AND COALESCE(balance, 0) >= $1 RETURNING balance",
+                    amount, user["id"],
+                )
+                if row is None:
+                    return None
+                await conn.execute(
+                    "INSERT INTO points_log (user_id, amount, type, description) "
+                    "VALUES ($1, $2, $3, $4)",
+                    user["id"], -amount, typ, description,
+                )
+        return row["balance"]
 
     async def get_points_log(self, telegram_id: int) -> list[dict]:
         user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
@@ -1776,27 +1822,29 @@ class Database:
         except Exception:
             return False
 
-    async def mark_gift_opened(self, telegram_id: int, points: int):
-        user = await self.get_user(telegram_id)
+    async def mark_gift_opened(self, telegram_id: int, points: int) -> bool:
+        """Атомарно выдаёт подарок. False — если уже был получен."""
+        points = int(points)
+        user = await self._fetch_one("users", f"telegram_id=eq.{telegram_id}&select=id")
         if not user:
-            return
-        new_balance = (user.get("balance") or 0) + points
-        try:
-            await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {
-                "gift_opened": True,
-                "gift_points": points,
-                "balance": new_balance,
-            })
-        except Exception:
-            await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {
-                "balance": new_balance,
-            })
-        await self._fetch("points_log", method="POST", json_data={
-            "user_id": user["id"],
-            "amount": points,
-            "type": "gift",
-            "description": f"Моментальный подарок: {points} баллов",
-        })
+            return False
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    "UPDATE users SET gift_opened = TRUE, gift_points = $1, "
+                    "balance = COALESCE(balance, 0) + $1 "
+                    "WHERE id = $2 AND COALESCE(gift_opened, FALSE) = FALSE "
+                    "RETURNING balance",
+                    points, user["id"],
+                )
+                if row is None:
+                    return False
+                await conn.execute(
+                    "INSERT INTO points_log (user_id, amount, type, description) "
+                    "VALUES ($1, $2, 'gift', $3)",
+                    user["id"], points, f"Моментальный подарок: {points} баллов",
+                )
+        return True
 
     async def get_nearest_prize(self, telegram_id: int) -> dict | None:
         user = await self.get_user(telegram_id)

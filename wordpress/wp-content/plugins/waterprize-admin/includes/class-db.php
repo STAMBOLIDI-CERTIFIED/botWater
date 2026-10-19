@@ -22,11 +22,42 @@ class WaterPrize_DB {
         $port = get_option('wpz_db_port', '15980');
         $dbname = get_option('wpz_db_name', 'bothost_db_8d8917dc2bab');
         $user = get_option('wpz_db_user', 'bothost_db_8d8917dc2bab');
-        $pass = get_option('wpz_db_pass', 'Bi75g85iDTRx8KjIsX2PUnzr6QahElWAy_vdrxCgoVM');
+        // Пароль не хранится в исходниках: задайте wpz_db_pass в настройках
+        // или константу WPZ_DB_PASS в wp-config.php.
+        $pass = (string)get_option('wpz_db_pass', '');
+        if ($pass === '' && defined('WPZ_DB_PASS')) {
+            $pass = (string)WPZ_DB_PASS;
+        }
+        if ($pass === '') {
+            $env_pass = getenv('WPZ_DB_PASS');
+            if ($env_pass !== false) {
+                $pass = (string)$env_pass;
+            }
+        }
+        // Фолбэк для уже развёрнутых установок: пароль из prod.env/.env
+        // (файлы вне git), чтобы не держать его в исходниках.
+        if ($pass === '') {
+            $root = defined('ABSPATH') ? ABSPATH : dirname(__FILE__, 5) . '/';
+            foreach ([$root . '../prod.env', $root . '../.env'] as $env_file) {
+                if (!is_readable($env_file)) continue;
+                foreach (file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+                    $line = trim($line);
+                    if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
+                    [$env_key, $env_val] = explode('=', $line, 2);
+                    if (trim($env_key) === 'DB_PASS') {
+                        $pass = trim($env_val, " \t\"'");
+                        break 2;
+                    }
+                }
+            }
+        }
 
         // gssencmode=disable: на macOS php-fpm (fork) падает SIGSEGV в Kerberos/CFPreferences,
         // когда libpq пытается использовать GSSAPI-аутентификацию
-        $dsn = "pgsql:host={$host};port={$port};dbname={$dbname};sslmode=disable;gssencmode=disable;connect_timeout=10";
+        // sslmode по умолчанию require; при необходимости задайте WPZ_DB_SSLMODE
+        // (например, 'prefer', если сервер БД не поддерживает TLS).
+        $sslmode = defined('WPZ_DB_SSLMODE') ? (string)WPZ_DB_SSLMODE : 'require';
+        $dsn = "pgsql:host={$host};port={$port};dbname={$dbname};sslmode={$sslmode};gssencmode=disable;connect_timeout=10";
         try {
             $this->conn = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,

@@ -4,7 +4,6 @@ $db_host = get_option('wpz_db_host', 'node1.pghost.ru');
 $db_port = get_option('wpz_db_port', '15980');
 $db_name = get_option('wpz_db_name', 'bothost_db_8d8917dc2bab');
 $db_user = get_option('wpz_db_user', 'bothost_db_8d8917dc2bab');
-$db_pass = get_option('wpz_db_pass', 'Bi75g85iDTRx8KjIsX2PUnzr6QahElWAy_vdrxCgoVM');
 $splash_logo = $db->get_setting('splash_logo_url') ?: '';
 $tile_slugs = [
     'shop' => 'Магазин купонов',
@@ -197,7 +196,10 @@ $app_version = $db->get_setting('app_version') ?: '';
                 </tr>
                 <tr>
                     <th><label for="db_pass">Пароль</label></th>
-                    <td><input type="password" id="db_pass" name="db_pass" value="<?php echo esc_attr($db_pass); ?>" class="regular-text"></td>
+                    <td>
+                        <input type="password" id="db_pass" name="db_pass" value="" class="regular-text" autocomplete="new-password" placeholder="Оставьте пустым, чтобы не менять">
+                        <p class="description">Пароль не выводится на страницу. Задайте новый, только если меняете его.</p>
+                    </td>
                 </tr>
             </table>
             <p class="submit">

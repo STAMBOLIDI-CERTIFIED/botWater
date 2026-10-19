@@ -7,7 +7,7 @@ from urllib.parse import parse_qsl
 import hashlib
 import hmac
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..deps import db, get_settings
@@ -38,6 +38,15 @@ def _validate_init_data(init_data: str, bot_token: str) -> dict | None:
     computed = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
     if not hmac.compare_digest(computed, hash_val):
         return None
+    # initData не должен быть слишком старым (защита от реплея).
+    auth_date = parsed.get("auth_date")
+    if auth_date:
+        try:
+            age = time.time() - int(auth_date)
+        except (TypeError, ValueError):
+            return None
+        if age < -300 or age > 86400:
+            return None
     user_json = parsed.get("user", "")
     if user_json:
         try:
@@ -47,10 +56,57 @@ def _validate_init_data(init_data: str, bot_token: str) -> dict | None:
     return {}
 
 
+def _auth_uid(request: Request) -> int | None:
+    """Telegram id из проверенного initData (или None в dev-режиме)."""
+    user = getattr(request.state, "tg_user", None) or {}
+    try:
+        uid = user.get("id")
+        return int(uid) if uid else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _self(request: Request, user_id: int = 0) -> int:
+    """Разрешает доступ только к своему аккаунту.
+
+    Если initData проверен — сверяем id и игнорируем чужой user_id.
+    Без initData сюда можно попасть только при ALLOW_INSECURE_API=1
+    (локальная разработка), тогда доверяем переданному user_id.
+    """
+    auth = _auth_uid(request)
+    if auth is not None:
+        if user_id and int(user_id) != auth:
+            raise HTTPException(403, "forbidden")
+        return auth
+    if getattr(request.state, "dev_auth", False) and user_id:
+        return int(user_id)
+    raise HTTPException(401, "unauthorized")
+
+
+async def _self_or_admin(request: Request, telegram_id: int) -> int:
+    auth = _auth_uid(request)
+    if auth is not None and int(telegram_id) == auth:
+        return auth
+    if auth is None and getattr(request.state, "dev_auth", False) and telegram_id:
+        return int(telegram_id)
+    return await _require_admin(request)
+
+
+async def _require_admin(request: Request) -> int:
+    uid = _auth_uid(request)
+    if uid is None:
+        raise HTTPException(401, "unauthorized")
+    try:
+        if await db.is_admin(uid):
+            return uid
+    except Exception:
+        pass
+    raise HTTPException(403, "forbidden")
+
+
 @router.get("/user")
-async def api_user(user_id: int = 0):
-    if not user_id:
-        return JSONResponse(None)
+async def api_user(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     stats = await db.get_user_stats(user_id)
     user = await db.get_user(user_id)
     if not user:
@@ -112,7 +168,7 @@ async def api_user(user_id: int = 0):
 @router.post("/user/save")
 async def api_user_save(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     name = body.get("name", "")
     if not user_id:
         return JSONResponse({"ok": False}, status_code=400)
@@ -172,21 +228,20 @@ async def api_raffles(user_id: int = 0):
 
 
 @router.get("/history")
-async def api_history(user_id: int = 0):
-    if not user_id:
-        return []
+async def api_history(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     return await db.get_scans(user_id)
 
 
 @router.get("/points_log")
-async def api_points_log(user_id: int = 0):
-    if not user_id:
-        return []
+async def api_points_log(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     return await db.get_points_log(user_id)
 
 
 @router.get("/tree")
-async def api_tree(user_id: int = 0):
+async def api_tree(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     if not user_id:
         return {"xp": 0, "level": 1, "next_level_xp": 100, "progress": 0,
                 "partners": [], "gift": {"available": False, "reason": "no_user"},
@@ -251,7 +306,7 @@ async def _tree_xp_rules() -> list[dict]:
 @router.post("/tree/gift/claim")
 async def api_tree_gift_claim(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     if not user_id:
         return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
     user = await db.get_user(user_id)
@@ -265,23 +320,21 @@ async def api_tree_gift_claim(request: Request):
 
 
 @router.get("/notifications")
-async def api_notifications(user_id: int = 0):
-    if not user_id:
-        return []
+async def api_notifications(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     return await db.get_notifications(user_id)
 
 
 @router.get("/notifications/clear")
-async def api_notifications_clear(user_id: int = 0):
-    if user_id:
-        await db.clear_notifications(user_id)
+async def api_notifications_clear(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
+    await db.clear_notifications(user_id)
     return {"ok": True}
 
 
 @router.get("/gift")
-async def api_gift_status(user_id: int = 0):
-    if not user_id:
-        return JSONResponse({"error": "missing user_id"}, status_code=400)
+async def api_gift_status(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     try:
         opened = await db.has_gift_been_opened(user_id)
     except Exception:
@@ -300,9 +353,7 @@ async def api_gift_open(request: Request):
     logger = logging.getLogger(__name__)
 
     body = await request.json()
-    user_id = body.get("user_id", 0)
-    if not user_id:
-        return JSONResponse({"error": "missing user_id"}, status_code=400)
+    user_id = _self(request, body.get("user_id", 0))
 
     try:
         opened = await db.has_gift_been_opened(user_id)
@@ -318,10 +369,12 @@ async def api_gift_open(request: Request):
     points = random.choices(gift_values, weights=gift_weights, k=1)[0]
 
     try:
-        await db.mark_gift_opened(user_id, points)
+        awarded = await db.mark_gift_opened(user_id, points)
     except Exception as e:
         logger.error(f"mark_gift_opened failed: {e}")
         return JSONResponse({"error": "failed to save gift"}, status_code=500)
+    if not awarded:
+        return JSONResponse({"error": "gift already opened"}, status_code=409)
 
     try:
         await db.create_notification(user_id, "points", "Подарок", f"Вы получили {points} баллов", "menu")
@@ -344,9 +397,8 @@ async def api_gift_open(request: Request):
 
 
 @router.get("/nearest_prize")
-async def api_nearest_prize(user_id: int = 0):
-    if not user_id:
-        return JSONResponse({"error": "missing user_id"}, status_code=400)
+async def api_nearest_prize(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     nearest = await db.get_nearest_prize(user_id)
     return nearest or {}
 
@@ -354,7 +406,7 @@ async def api_nearest_prize(user_id: int = 0):
 @router.post("/scan")
 async def api_scan(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     bottle_id = body.get("bottle_id", "")
     if not user_id or not bottle_id:
         return JSONResponse({"ok": False, "error": "missing user_id or bottle_id"}, status_code=400)
@@ -444,7 +496,8 @@ async def api_geocode(address: str = ""):
 
 
 @router.get("/daily-bonus/status")
-async def api_daily_bonus_status(user_id: int = 0):
+async def api_daily_bonus_status(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     user = await db.get_user(user_id) if user_id else None
     if not user:
         return {"enabled": False}
@@ -452,9 +505,8 @@ async def api_daily_bonus_status(user_id: int = 0):
 
 
 @router.get("/daily-bonus/claim")
-async def api_daily_bonus_claim(user_id: int = 0):
-    if not user_id:
-        return JSONResponse({"ok": False, "error": "missing user_id"}, status_code=400)
+async def api_daily_bonus_claim(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     return await db.claim_daily_bonus(user_id)
 
 
@@ -514,7 +566,7 @@ async def api_partner_qr(category_id: int):
 @router.post("/partner/scan")
 async def api_partner_scan(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     qr_code = body.get("qr_code", "")
     if not user_id or not qr_code:
         return JSONResponse({"ok": False, "error": "missing user_id or qr_code"}, status_code=400)
@@ -535,7 +587,7 @@ async def api_partner_scan(request: Request):
 @router.post("/coupon/redeem")
 async def api_coupon_redeem(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     order_id = body.get("order_id", 0)
     partner_id = body.get("partner_id", 0)
 
@@ -551,7 +603,7 @@ async def api_coupon_redeem(request: Request):
 @router.post("/exchange")
 async def api_exchange(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     prize_id = body.get("prize_id", 0)
     if not user_id or not prize_id:
         return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
@@ -561,25 +613,38 @@ async def api_exchange(request: Request):
     prize = await db.get_prize(prize_id)
     if not prize:
         return JSONResponse({"ok": False, "error": "prize_not_found"}, status_code=404)
-    if (user.get("balance") or 0) < prize["price_points"]:
-        return JSONResponse({"ok": False, "error": "not_enough_points", "need": prize["price_points"] - (user.get("balance") or 0)}, status_code=400)
+    price = int(prize["price_points"] or 0)
+    # Атомарное списание: при параллельных запросах баланс не уйдёт в минус.
+    balance = await db.spend_balance(
+        user_id, price, "exchange", f"Обмен на приз «{prize['name']}»"
+    )
+    if balance is None:
+        fresh = await db.get_user(user_id) or {}
+        return JSONResponse({
+            "ok": False, "error": "not_enough_points",
+            "need": max(0, price - (fresh.get("balance") or 0)),
+        }, status_code=400)
     try:
-        await db.add_balance(user_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
         order_id = await db.create_order(user["id"], prize_id)
-        await db.record_journey(user["id"], "coupon_buy", partner_id=prize.get("category_id"), related_id=order_id, points_used=prize["price_points"])
+        await db.record_journey(user["id"], "coupon_buy", partner_id=prize.get("category_id"), related_id=order_id, points_used=price)
         # Опыт начисляется только за ИСПОЛЬЗОВАННЫЙ купон (см. grant_coupon_xp)
         await db.create_notification(user_id, "points", "Обмен баллов", f"Приз: {prize['name']}", "history")
-        resp = {"ok": True, "order_id": order_id, "prize_name": prize["name"],
-                "balance": (user.get("balance") or 0) - prize["price_points"]}
-        return resp
+        return {"ok": True, "order_id": order_id, "prize_name": prize["name"],
+                "balance": balance}
     except Exception as e:
         import logging
         logging.getLogger(__name__).exception(f"exchange error: {e}")
+        # Заказ не создан — возвращаем списанные баллы.
+        try:
+            await db.add_balance(user_id, price, "exchange_refund", f"Возврат за приз «{prize['name']}»")
+        except Exception:
+            pass
         return JSONResponse({"ok": False, "error": "internal_error"}, status_code=500)
 
 
 @router.get("/user/{user_id}/available-coupons")
-async def api_available_coupons(user_id: int):
+async def api_available_coupons(request: Request, user_id: int):
+    user_id = _self(request, user_id)
     user = await db.get_user(user_id)
     if not user:
         return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
@@ -588,7 +653,8 @@ async def api_available_coupons(user_id: int):
 
 
 @router.get("/user/{user_id}/journey")
-async def api_user_journey(user_id: int):
+async def api_user_journey(request: Request, user_id: int):
+    user_id = _self(request, user_id)
     user = await db.get_user(user_id)
     if not user:
         return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
@@ -599,7 +665,8 @@ async def api_user_journey(user_id: int):
 # ─── User Coupons ────────────────────────────────────
 
 @router.get("/user/{user_id}/coupons")
-async def api_user_coupons(user_id: int):
+async def api_user_coupons(request: Request, user_id: int):
+    user_id = _self(request, user_id)
     user = await db.get_user(user_id)
     if not user:
         return JSONResponse({"ok": False, "error": "user not found"}, status_code=404)
@@ -610,7 +677,7 @@ async def api_user_coupons(user_id: int):
 @router.post("/coupon/favorite")
 async def api_coupon_favorite(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     coupon_id = body.get("coupon_id", 0)
     favorite = bool(body.get("favorite", True))
 
@@ -629,7 +696,8 @@ async def api_coupon_favorite(request: Request):
 # ─── Partner Dashboard ────────────────────────────────
 
 @router.get("/partner-account/{telegram_id}")
-async def api_partner_account(telegram_id: int):
+async def api_partner_account(request: Request, telegram_id: int):
+    await _self_or_admin(request, telegram_id)
     account = await db.get_partner_account_by_telegram_id(telegram_id)
     if not account:
         return JSONResponse({"ok": False, "error": "partner not found"}, status_code=404)
@@ -637,7 +705,8 @@ async def api_partner_account(telegram_id: int):
 
 
 @router.get("/partner-account/{telegram_id}/stats")
-async def api_partner_stats(telegram_id: int):
+async def api_partner_stats(request: Request, telegram_id: int):
+    await _self_or_admin(request, telegram_id)
     account = await db.get_partner_account_by_telegram_id(telegram_id)
     if not account:
         return JSONResponse({"ok": False, "error": "partner not found"}, status_code=404)
@@ -646,10 +715,11 @@ async def api_partner_stats(telegram_id: int):
 
 
 @router.get("/partner-account/{partner_id}/used-coupons")
-async def api_partner_used_coupons(partner_id: int):
+async def api_partner_used_coupons(request: Request, partner_id: int):
     account = await db.get_partner_account(partner_id)
     if not account:
         return JSONResponse({"ok": False, "error": "partner not found"}, status_code=404)
+    await _self_or_admin(request, int(account.get("telegram_id") or 0))
     category_id = account.get("category_id")
     coupons = await db.get_partner_used_coupons(category_id)
     stats = await db.get_partner_coupon_stats(category_id)
@@ -662,7 +732,7 @@ async def api_partner_used_coupons(partner_id: int):
 async def api_coupon_activate(request: Request):
     body = await request.json()
     qr_code = body.get("qr_code", "")
-    partner_telegram_id = body.get("partner_telegram_id", 0)
+    partner_telegram_id = _self(request, body.get("partner_telegram_id", 0))
 
     if not qr_code or not partner_telegram_id:
         return JSONResponse({"ok": False, "error": "missing parameters"}, status_code=400)
@@ -680,9 +750,8 @@ async def api_coupon_activate(request: Request):
 # ─── Support Chat ─────────────────────────────────────
 
 @router.get("/support/chat")
-async def api_support_chat(user_id: int = 0):
-    if not user_id:
-        return JSONResponse({"error": "missing user_id"}, status_code=400)
+async def api_support_chat(request: Request, user_id: int = 0):
+    user_id = _self(request, user_id)
     chat = await db.get_or_create_support_chat(user_id)
     if not chat:
         return JSONResponse({"error": "user not found"}, status_code=404)
@@ -693,7 +762,7 @@ async def api_support_chat(user_id: int = 0):
 @router.post("/support/send")
 async def api_support_send(request: Request):
     body = await request.json()
-    user_id = body.get("user_id", 0)
+    user_id = _self(request, body.get("user_id", 0))
     message = body.get("message", "").strip()
     if not user_id or not message:
         return JSONResponse({"ok": False, "error": "missing user_id or message"}, status_code=400)
@@ -731,13 +800,15 @@ async def api_support_send(request: Request):
 
 
 @router.get("/support/admin/chats")
-async def api_support_admin_chats():
+async def api_support_admin_chats(request: Request):
+    await _require_admin(request)
     chats = await db.get_all_support_chats()
     return chats
 
 
 @router.post("/support/admin/reply")
 async def api_support_admin_reply(request: Request):
+    await _require_admin(request)
     body = await request.json()
     chat_id = body.get("chat_id", 0)
     message = body.get("message", "").strip()
@@ -761,6 +832,7 @@ async def api_support_admin_reply(request: Request):
 
 @router.post("/support/admin/close")
 async def api_support_admin_close(request: Request):
+    await _require_admin(request)
     body = await request.json()
     chat_id = body.get("chat_id", 0)
     if not chat_id:

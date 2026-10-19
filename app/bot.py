@@ -1,6 +1,9 @@
 import json
 import logging
 import asyncio
+import hashlib
+import hmac
+import os
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -11,6 +14,28 @@ _API_BASE = "https://api.telegram.org/bot"
 
 # Сколько времени сообщения бота живут в чате, пока админ не настроил иначе.
 DEFAULT_CLEANUP_SECONDS = 600
+
+
+def webhook_secret() -> str:
+    """Секрет для setWebhook/проверки заголовка Telegram.
+
+    WEBHOOK_SECRET из окружения, иначе стабильный производный от BOT_TOKEN —
+    так защита работает без дополнительной настройки и не ломается при рестарте.
+    """
+    explicit = (os.environ.get("WEBHOOK_SECRET") or "").strip()
+    if explicit:
+        return explicit
+    token = _token()
+    if not token:
+        return ""
+    return hashlib.sha256(("waterprize-webhook:" + token).encode()).hexdigest()[:48]
+
+
+def verify_webhook_secret(provided: str) -> bool:
+    expected = webhook_secret()
+    if not expected:
+        return False
+    return hmac.compare_digest(provided or "", expected)
 
 
 def _token() -> str:
@@ -855,13 +880,20 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str, cbd: dic
             await answer_callback(cid, "✖️ Приз не найден", show_alert=True)
             return
         user_row = await db.get_user(chat_id)
-        if not user_row or user_row["balance"] < prize["price_points"]:
-            await answer_callback(cid, "✖️ Недостаточно баллов для обмена", show_alert=True)
+        if not user_row:
+            await answer_callback(cid, "✖️ Пользователь не найден", show_alert=True)
             return
         await answer_callback(cid, "⏳ Обработка...")
+        deducted = False
         try:
             logger.info(f"exchange: deducting {prize['price_points']} points for user {chat_id}")
-            await db.add_balance(chat_id, -prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»")
+            spent = await db.spend_balance(
+                chat_id, prize["price_points"], "exchange", f"Обмен на приз «{prize['name']}»"
+            )
+            if spent is None:
+                await answer_callback(cid, "✖️ Недостаточно баллов для обмена", show_alert=True)
+                return
+            deducted = True
             logger.info(f"exchange: creating order for user_id={user_row['id']}, prize_id={prize_id}")
             order_id = await db.create_order(user_row["id"], prize_id)
             logger.info(f"exchange: order created id={order_id}")
@@ -893,6 +925,12 @@ async def _handle_callback_inner(db, cid: str, chat_id: int, data: str, cbd: dic
             logger.info(f"exchange: completed successfully")
         except Exception as e:
             logger.error(f"exchange_prize error: {e}", exc_info=True)
+            if deducted:
+                try:
+                    await db.add_balance(chat_id, prize["price_points"], "exchange_refund",
+                                         f"Возврат за приз «{prize['name']}»")
+                except Exception:
+                    logger.exception("exchange refund failed")
             await send_message(chat_id, "⚠️ Ошибка при обмене. Попробуйте позже.")
         return
 
@@ -986,10 +1024,12 @@ async def _handle_webapp_data_inner(db, data: str, chat_id: int):
             await send_message(chat_id, "✖️ Сумма должна быть больше 0.")
             return
         user_row = await db.get_user(chat_id)
-        if not user_row or user_row["balance"] < amount:
+        if not user_row:
             await send_message(chat_id, "✖️ Недостаточно баллов для пожертвования.")
             return
-        await db.add_balance(chat_id, -amount, "donation", f"Пожертвование {amount} баллов")
+        if await db.spend_balance(chat_id, amount, "donation", f"Пожертвование {amount} баллов") is None:
+            await send_message(chat_id, "✖️ Недостаточно баллов для пожертвования.")
+            return
         await db.create_notification(chat_id, "donation", "Пожертвование", f"Вы пожертвовали {amount} баллов", "shop")
         msg = await db.get_bot_setting("msg_donation_success",
             f"💚 <b>Спасибо за пожертвование!</b>\n\nВы пожертвовали <b>{amount} баллов</b>.\nВаши баллы пойдут на добрые дела и поддержку проектов.")

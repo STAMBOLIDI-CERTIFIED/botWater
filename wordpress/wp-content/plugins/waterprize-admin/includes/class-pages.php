@@ -21,13 +21,21 @@ class WaterPrize_Pages {
             return $url;
         }
         $rel = ltrim($m[1], '/');
+        if ($rel === '' || strpos($rel, "\0") !== false) return $url;
+        // Не даём выйти за пределы uploads (../, абсолютные пути, лишние сегменты).
+        foreach (explode('/', str_replace('\\', '/', $rel)) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') return $url;
+        }
+        $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif', 'pdf'], true)) {
+            return $url;
+        }
         $src = (defined('ABSPATH') ? ABSPATH : '') . 'wp-content/uploads/' . $rel;
         if (!is_readable($src)) return $url;
         $base = dirname(__FILE__, 6) . '/public/uploads/';
         if (!is_dir($base)) return $url;
         $rel_dir = str_replace('\\', '/', dirname($rel));
         if ($rel_dir === '.') $rel_dir = '';
-        $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
         $name = 'wpz_' . substr(md5($rel . '|' . filesize($src) . '|' . filemtime($src)), 0, 14) . ($ext ? '.' . $ext : '');
         $dst_rel = ($rel_dir ? $rel_dir . '/' : '') . $name;
         $dst = $base . $dst_rel;
@@ -58,6 +66,18 @@ class WaterPrize_Pages {
             'avif' => 'image/avif', 'pdf' => 'application/pdf',
         ];
         return $map[$ext] ?? 'application/octet-stream';
+    }
+
+    /**
+     * Нейтрализует CSV-формулы (=, +, -, @), чтобы имена/описания
+     * из Telegram не выполнялись при открытии экспорта в Excel.
+     */
+    private static function csv_safe($value) {
+        if (!is_string($value) || $value === '') return $value;
+        if (in_array($value[0], ['=', '+', '-', '@', "\t", "\r"], true)) {
+            return "'" . $value;
+        }
+        return $value;
     }
 
     /**
@@ -510,7 +530,9 @@ class WaterPrize_Pages {
                 update_option('wpz_db_port', sanitize_text_field($_POST['db_port'] ?? ''));
                 update_option('wpz_db_name', sanitize_text_field($_POST['db_name'] ?? ''));
                 update_option('wpz_db_user', sanitize_text_field($_POST['db_user'] ?? ''));
-                update_option('wpz_db_pass', sanitize_text_field($_POST['db_pass'] ?? ''));
+                if (isset($_POST['db_pass']) && $_POST['db_pass'] !== '') {
+                    update_option('wpz_db_pass', sanitize_text_field(wp_unslash($_POST['db_pass'])));
+                }
                 $db->reconnect();
                 $ok = $db->is_connected();
                 $msg = $ok ? 'Подключение установлено!' : 'Ошибка подключения. Проверьте настройки.';
@@ -994,26 +1016,26 @@ class WaterPrize_Pages {
             case 'users':
                 fputcsv($out, ['ID', 'Telegram ID', 'Имя', 'Username', 'Телефон', 'Баланс', 'XP', 'Уровень', 'Забанен', 'Причина бана', 'Дата'], ';');
                 foreach ($db->get_users('', 10000) as $r) {
-                    fputcsv($out, [$r['id'], $r['telegram_id'], $r['name'], $r['username'], $r['phone'], $r['balance'], $r['tree_xp'], $r['tree_level'], $r['is_banned'] ? 'Да' : 'Нет', $r['ban_reason'] ?? '', $r['created_at']], ';');
+                    fputcsv($out, array_map([self::class, 'csv_safe'], [$r['id'], $r['telegram_id'], $r['name'], $r['username'], $r['phone'], $r['balance'], $r['tree_xp'], $r['tree_level'], $r['is_banned'] ? 'Да' : 'Нет', $r['ban_reason'] ?? '', $r['created_at']]), ';');
                 }
                 break;
             case 'points':
                 fputcsv($out, ['ID', 'Пользователь', 'Telegram ID', 'Сумма', 'Тип', 'Описание', 'Дата'], ';');
                 $rows = $db->query("SELECT p.*, u.name, u.telegram_id FROM points_log p LEFT JOIN users u ON p.user_id = u.id ORDER BY p.id DESC");
                 foreach ($rows as $r) {
-                    fputcsv($out, [$r['id'], $r['name'], $r['telegram_id'], $r['amount'], $r['type'], $r['description'], $r['created_at']], ';');
+                    fputcsv($out, array_map([self::class, 'csv_safe'], [$r['id'], $r['name'], $r['telegram_id'], $r['amount'], $r['type'], $r['description'], $r['created_at']]), ';');
                 }
                 break;
             case 'codes':
                 fputcsv($out, ['ID', 'Код', 'Партия', 'Статус', 'Победитель ID', 'Дата'], ';');
                 foreach ($db->get_codes(10000) as $r) {
-                    fputcsv($out, [$r['id'], $r['code'], $r['batch'], $r['status'], $r['winner_id'], $r['created_at']], ';');
+                    fputcsv($out, array_map([self::class, 'csv_safe'], [$r['id'], $r['code'], $r['batch'], $r['status'], $r['winner_id'], $r['created_at']]), ';');
                 }
                 break;
             case 'bottles':
                 fputcsv($out, ['ID', 'Бутылка ID', 'Партия', 'Год', 'Назначена', 'Дата'], ';');
                 foreach ($db->get_bottles('', 'id', 'DESC', 10000) as $r) {
-                    fputcsv($out, [$r['id'], $r['bottle_id'], $r['batch'], $r['year'], $r['assigned_to'], $r['created_at']], ';');
+                    fputcsv($out, array_map([self::class, 'csv_safe'], [$r['id'], $r['bottle_id'], $r['batch'], $r['year'], $r['assigned_to'], $r['created_at']]), ';');
                 }
                 break;
         }
@@ -1374,7 +1396,7 @@ class WaterPrize_Pages {
                     'Активировал (партнёр)', 'Telegram партнёра', 'Источник пользователя',
                 ], ';');
                 foreach ($db->get_monthly_coupon_usage($from_ts, $to_ts) as $r) {
-                    fputcsv($out, [
+                    fputcsv($out, array_map([self::class, 'csv_safe'], [
                         $r['id'],
                         $r['used_at'],
                         $r['qr_code'],
@@ -1387,7 +1409,7 @@ class WaterPrize_Pages {
                         $r['activator_name'],
                         $r['activator_tg'],
                         $r['source_title'],
-                    ], ';');
+                    ]), ';');
                 }
                 break;
 
@@ -1398,7 +1420,7 @@ class WaterPrize_Pages {
                     'Оплачено за месяц', 'Начислено всего', 'Оплачено всего', 'Долг ISTOK',
                 ], ';');
                 foreach ($db->get_monthly_settlements($month_start, $from_ts, $to_ts) as $r) {
-                    fputcsv($out, [
+                    fputcsv($out, array_map([self::class, 'csv_safe'], [
                         $r['name'],
                         $r['telegram_id'],
                         $r['category_title'],
@@ -1409,7 +1431,7 @@ class WaterPrize_Pages {
                         $r['accrued_total'],
                         $r['paid_total'],
                         $r['debt'],
-                    ], ';');
+                    ]), ';');
                 }
                 break;
         }

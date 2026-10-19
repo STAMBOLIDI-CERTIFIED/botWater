@@ -68,4 +68,8 @@ def get_settings():
         "PORT": int(os.environ.get("PORT", 8080)),
         "SUPABASE_URL": os.environ.get("SUPABASE_URL", ""),
         "SUPABASE_KEY": os.environ.get("SUPABASE_KEY", ""),
+        # Только для локальной разработки в браузере без Telegram.
+        # В проде должно быть выключено: иначе API открыт без initData.
+        "ALLOW_INSECURE_API": os.environ.get("ALLOW_INSECURE_API", "").strip().lower()
+        in ("1", "true", "yes", "on"),
     }
