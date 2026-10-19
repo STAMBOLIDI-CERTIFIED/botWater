@@ -689,9 +689,8 @@ function stopScanner() {
         if (!ind) return;
         var active = nav.querySelector('.nav-item.active');
         if (!active) { nav.classList.remove('nav-ready'); return; }
-        var icon = active.querySelector('.nav-icon') || active;
         var nr = nav.getBoundingClientRect();
-        var ir = icon.getBoundingClientRect();
+        var ir = active.getBoundingClientRect();
         var w = ind.offsetWidth, h = ind.offsetHeight;
         var x = (ir.left - nr.left) + (ir.width - w) / 2;
         var y = (ir.top - nr.top) + (ir.height - h) / 2;

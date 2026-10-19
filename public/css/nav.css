@@ -6,7 +6,7 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: max(24px, calc(14px + env(safe-area-inset-bottom, 0px)));
+    bottom: max(18px, calc(10px + env(safe-area-inset-bottom, 0px)));
     margin: 0 auto;
     width: 280px;
     width: fit-content;
@@ -65,9 +65,9 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 58px;
-    height: 36px;
-    border-radius: 18px;
+    width: 64px;
+    height: 46px;
+    border-radius: 23px;
     z-index: 0;
     pointer-events: none;
     opacity: 0;
