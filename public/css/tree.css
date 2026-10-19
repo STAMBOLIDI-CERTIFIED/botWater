@@ -31,16 +31,30 @@
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
-/* ─── Тряска дерева по тапу ─── */
-.tree-hero-scene.shaking { animation: treeShake .7s ease-in-out; }
-@keyframes treeShake {
-    0%, 100% { transform: rotate(0) translateX(0); }
-    10% { transform: rotate(-3deg) translateX(-6px); }
-    25% { transform: rotate(3deg) translateX(6px); }
-    40% { transform: rotate(-3deg) translateX(-5px); }
-    55% { transform: rotate(2deg) translateX(4px); }
-    70% { transform: rotate(-2deg) translateX(-3px); }
-    85% { transform: rotate(1deg) translateX(2px); }
+/* ─── Вспышка вокруг дерева по тапу ─── */
+.tree-hero-scene::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 30px;
+    border: 1px solid rgba(var(--gold-rgb),0.45);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.tree-hero-scene.burst::after { animation: sceneBurst .8s var(--ease-out); }
+
+.tree-hero-scene.burst .tree-hero-glow { animation: heroGlowBurst .8s ease-out; }
+
+@keyframes sceneBurst {
+    0% { opacity: .7; transform: scale(.98); }
+    100% { opacity: 0; transform: scale(1.14); }
+}
+
+@keyframes heroGlowBurst {
+    0% { opacity: .5; transform: translate(-50%, -50%) scale(1); }
+    40% { opacity: 1; transform: translate(-50%, -50%) scale(1.25); }
+    100% { opacity: .55; transform: translate(-50%, -50%) scale(1); }
 }
 .tree-hero-glow {
     position: absolute; left: 50%; top: 54%;
@@ -49,6 +63,22 @@
     background: radial-gradient(circle, rgba(var(--gold-rgb),0.14), rgba(var(--gold-rgb),0.04) 45%, transparent 70%);
     pointer-events: none;
     animation: heroGlowPulse 4s ease-in-out infinite;
+}
+
+.tree-hero-glow::before {
+    content: '';
+    position: absolute;
+    inset: 14%;
+    border-radius: 50%;
+    border: 1px dashed rgba(var(--gold-rgb),0.2);
+    box-shadow: 0 0 30px rgba(var(--gold-rgb),0.1), inset 0 0 26px rgba(var(--gold-rgb),0.08);
+    animation: haloSpin 26s linear infinite;
+}
+
+@keyframes haloSpin {
+    from { transform: rotate(0deg) scale(.96); }
+    50% { transform: rotate(180deg) scale(1.04); }
+    to { transform: rotate(360deg) scale(.96); }
 }
 
 .tree-hero-glow::after {
@@ -77,32 +107,34 @@
     width: auto; height: auto;
     object-fit: contain;
     border-radius: 14px;
-    animation: treeFloat 6.5s ease-in-out infinite;
-    transform-origin: 50% 100%;
     transition: opacity .2s ease;
 }
 
 .tree-hero-img.img-switching { opacity: 0; }
 
-@keyframes treeFloat {
-    0%, 100% { transform: translateY(0) rotate(-.4deg); }
-    50% { transform: translateY(-5px) rotate(.4deg); }
-}
 .tree-hero-particles { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .tree-hero-particles i {
     position: absolute; width: 6px; height: 6px; border-radius: 50%;
     background: var(--gold);
     box-shadow: 0 0 8px rgba(var(--gold-rgb),0.7);
-    animation: twinkle 2.4s ease-in-out infinite;
+    animation: sparkFloat 5s ease-in-out infinite;
 }
-.tree-hero-particles i:nth-child(1) { top: 14%; left: 22%; animation-delay: 0s; }
-.tree-hero-particles i:nth-child(2) { top: 30%; right: 20%; animation-delay: .5s; width: 4px; height: 4px; }
-.tree-hero-particles i:nth-child(3) { top: 62%; left: 16%; animation-delay: 1s; width: 5px; height: 5px; }
-.tree-hero-particles i:nth-child(4) { top: 70%; right: 18%; animation-delay: 1.5s; }
-.tree-hero-particles i:nth-child(5) { top: 8%; left: 54%; animation-delay: .8s; width: 4px; height: 4px; }
-.tree-hero-particles i:nth-child(6) { top: 46%; left: 8%; animation-delay: 1.8s; width: 5px; height: 5px; }
-.tree-hero-particles i:nth-child(7) { top: 84%; left: 38%; animation-delay: 2.1s; width: 4px; height: 4px; }
-.tree-hero-particles i:nth-child(8) { top: 20%; right: 40%; animation-delay: 2.4s; width: 5px; height: 5px; }
+
+@keyframes sparkFloat {
+    0% { opacity: 0; transform: translateY(14px) scale(.5); }
+    15% { opacity: 1; }
+    70% { opacity: .9; }
+    100% { opacity: 0; transform: translateY(-26px) scale(1.15); }
+}
+
+.tree-hero-particles i:nth-child(1) { top: 14%; left: 22%; animation-delay: -.4s; }
+.tree-hero-particles i:nth-child(2) { top: 30%; right: 20%; animation-delay: -1.2s; width: 4px; height: 4px; animation-duration: 5.6s; }
+.tree-hero-particles i:nth-child(3) { top: 62%; left: 16%; animation-delay: -2.1s; width: 5px; height: 5px; }
+.tree-hero-particles i:nth-child(4) { top: 70%; right: 18%; animation-delay: -.8s; animation-duration: 4.6s; }
+.tree-hero-particles i:nth-child(5) { top: 8%; left: 54%; animation-delay: -1.7s; width: 4px; height: 4px; animation-duration: 5.8s; }
+.tree-hero-particles i:nth-child(6) { top: 46%; left: 8%; animation-delay: -2.6s; width: 5px; height: 5px; animation-duration: 6.2s; }
+.tree-hero-particles i:nth-child(7) { top: 84%; left: 38%; animation-delay: -.2s; width: 4px; height: 4px; animation-duration: 4.9s; }
+.tree-hero-particles i:nth-child(8) { top: 20%; right: 40%; animation-delay: -1.4s; width: 5px; height: 5px; animation-duration: 5.3s; }
 
 .tree-hero-meta { position: relative; z-index: 3; }
 .tree-level-badge {

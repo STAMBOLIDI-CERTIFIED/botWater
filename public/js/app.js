@@ -2632,15 +2632,15 @@ async function loadTree() {
             var heroBadge = c.querySelector('.tree-level-badge');
             var heroName = c.querySelector('.tree-hero-name');
             var heroSub = c.querySelector('.tree-hero-sub');
-            // Тряска дерева по тапу; если подарок готов — после тряски ведём к карточке
+            // Вспышка вокруг дерева по тапу; если подарок готов — после неё ведём к карточке
             var scene = c.querySelector('.tree-hero-scene');
             if (scene) {
                 scene.addEventListener('click', function () {
-                    scene.classList.remove('shaking');
+                    scene.classList.remove('burst');
                     void scene.offsetWidth;
-                    scene.classList.add('shaking');
+                    scene.classList.add('burst');
                     try { tg.HapticFeedback.impactOccurred('medium'); } catch (e) {}
-                    setTimeout(function () { scene.classList.remove('shaking'); }, 750);
+                    setTimeout(function () { scene.classList.remove('burst'); }, 850);
                     if (gift && gift.available && gift.category_id) {
                         var gc = c.querySelector('.tree-gift-card.available');
                         if (gc) setTimeout(function () {
