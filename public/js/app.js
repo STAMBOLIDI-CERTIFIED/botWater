@@ -532,6 +532,47 @@ function countUp(el, target, duration) {
         } catch (e) {}
     }
 
+    // Правовые документы: ссылки из настроек WP-админки (по умолчанию — terms.html)
+    var _legalLoaded = false;
+    async function loadLegalLinks() {
+        if (_legalLoaded) return;
+        _legalLoaded = true;
+        try {
+            var d = await apiFetch('/settings');
+            if (!d) { _legalLoaded = false; return; }
+            var tl = document.getElementById('terms-link');
+            var pl = document.getElementById('privacy-link');
+            if (tl && d.terms_url) tl.setAttribute('href', d.terms_url);
+            if (pl && d.privacy_url) pl.setAttribute('href', d.privacy_url);
+        } catch (e) { _legalLoaded = false; }
+    }
+
+    function openLegalDoc(e) {
+        var href = e.currentTarget.getAttribute('href') || '';
+        if (!href) return;
+        var url;
+        try { url = new URL(href, window.location.href).href; } catch (err) { return; }
+        e.preventDefault();
+        var isDoc = /\.(docx?|pdf|txt|rtf|odt)(\?|#|$)/i.test(url);
+        var sameOrigin = url.indexOf(window.location.origin + '/') === 0;
+        if (isDoc || !sameOrigin) {
+            // Файл/внешний документ — отдаём браузеру Telegram (download в webview не работает)
+            try {
+                if (tg.openLink) { tg.openLink(url); return; }
+            } catch (err) {}
+            window.open(url, '_blank', 'noopener');
+            return;
+        }
+        window.location.href = url;
+    }
+
+    (function bindLegalLinks() {
+        var tl = document.getElementById('terms-link');
+        var pl = document.getElementById('privacy-link');
+        if (tl) tl.addEventListener('click', openLegalDoc);
+        if (pl) pl.addEventListener('click', openLegalDoc);
+    })();
+
     async function loadProfileExtras() {
         var uid = getUID();
         if (!uid) return;
@@ -602,7 +643,8 @@ function countUp(el, target, duration) {
             await Promise.all([
                 loadUserData(),
                 loadMenuTree(),
-                loadHomeTiles()
+                loadHomeTiles(),
+                loadLegalLinks()
             ]);
         } catch(e) {}
         hideMenuSkeleton();
@@ -748,7 +790,7 @@ function stopScanner() {
             var sb = document.getElementById('scan-btn');
             if (sb) { sb.textContent = 'Включить камеру'; sb.disabled = false; }
         }
-        if (page === 'profile') { applyTheme(getTheme()); loadUserData(); loadProfileExtras(); }
+        if (page === 'profile') { applyTheme(getTheme()); loadUserData(); loadProfileExtras(); loadLegalLinks(); }
         if (page === 'history') switchHistoryTab('scans');
         if (page === 'shop') loadShop();
         if (page === 'raffles') loadRaffles();
@@ -1335,37 +1377,58 @@ function openPrizeModal(p, bal) {
         document.body.style.overflow = 'hidden';
     }
 
-// ─── Яндекс.Карты: карта расположения партнёра ───
-    var _ymapsPromise = null;
-    var _ymapsKey = null;   // null = ещё не тянули из /settings, '' = ключа нет
-    var _prizeMap = null;
+// ─── 2GIS MapGL: карта расположения партнёра ───
+    var _mapglPromise = null;
+    var _mapglKey = null;   // null = ещё не тянули из /settings, '' = ключа нет
+    var _prizeMap = null;   // { map, marker }
+    var _pdMap = null;      // карта на странице партнёра
 
-    function loadYandexMaps(key) {
-        if (window.ymaps3) return window.ymaps3.ready || Promise.resolve();
-        if (_ymapsPromise) return _ymapsPromise;
-        _ymapsPromise = new Promise(function(resolve, reject) {
+    // Кастомный маркер-булавка (тёмный с белой обводкой — виден на светлой карте 2ГИС)
+    var _MAPGL_PIN = 'data:image/svg+xml,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="42" viewBox="0 0 32 42">' +
+        '<path d="M16 1.5C8.3 1.5 2 7.8 2 15.5 2 25.6 16 40.5 16 40.5S30 25.6 30 15.5C30 7.8 23.7 1.5 16 1.5Z" fill="#171A21" stroke="#FFFFFF" stroke-width="2.5"/>' +
+        '<circle cx="16" cy="15.5" r="5.6" fill="#FFFFFF"/></svg>'
+    );
+
+    function loadMapgl() {
+        if (window.mapgl) return Promise.resolve(window.mapgl);
+        if (_mapglPromise) return _mapglPromise;
+        _mapglPromise = new Promise(function(resolve, reject) {
             var s = document.createElement('script');
-            s.src = 'https://api-maps.yandex.ru/v3/?apikey=' + encodeURIComponent(key) + '&lang=ru_RU';
+            s.src = 'https://mapgl.2gis.com/api/js/v1';
             s.onload = function() {
-                if (window.ymaps3 && window.ymaps3.ready) window.ymaps3.ready.then(resolve, reject);
-                else resolve();
+                window.mapgl ? resolve(window.mapgl) : reject(new Error('mapgl unavailable'));
             };
-            s.onerror = reject;
+            s.onerror = function() { reject(new Error('mapgl load failed')); };
             document.head.appendChild(s);
         });
-        return _ymapsPromise;
+        return _mapglPromise;
     }
 
     function mapFallbackHtml(address) {
-        return '<a class="cd-map-fallback" href="https://yandex.ru/maps/?text=' + encodeURIComponent(address)
-            + '" target="_blank" rel="noopener">' + icon('target') + ' Открыть в Яндекс.Картах</a>';
+        return '<a class="cd-map-fallback" href="https://2gis.ru/search/' + encodeURIComponent(address)
+            + '" target="_blank" rel="noopener">' + icon('target') + ' Открыть в 2ГИС</a>';
+    }
+
+    function destroyMapHandle(handle) {
+        if (!handle) return;
+        try { if (handle.marker) handle.marker.destroy(); } catch (e) {}
+        try { if (handle.map) handle.map.destroy(); } catch (e) {}
     }
 
     function destroyPrizeMap() {
-        if (_prizeMap) {
-            try { _prizeMap.destroy(); } catch (e) {}
-            _prizeMap = null;
-        }
+        destroyMapHandle(_prizeMap);
+        _prizeMap = null;
+    }
+
+    // Ждём, пока контейнер получит размеры (карта в модалке появляется после показа)
+    function waitForSize(el, tries) {
+        tries = tries || 0;
+        if (el.clientWidth > 0 && el.clientHeight > 0) return Promise.resolve();
+        if (tries > 40) return Promise.resolve();
+        return new Promise(function(resolve) {
+            requestAnimationFrame(function() { waitForSize(el, tries + 1).then(resolve); });
+        });
     }
 
     function renderPrizeMap(address) {
@@ -1388,11 +1451,11 @@ function openPrizeModal(p, bal) {
 
     async function mountPartnerMap(address, mapEl, onReady) {
         try {
-            if (_ymapsKey == null) {
+            if (_mapglKey == null) {
                 var d = await apiFetch('/settings');
-                _ymapsKey = (d && d.yandex_maps_api_key) || '';
+                _mapglKey = (d && d.dgis_api_key) || '';
             }
-            if (!_ymapsKey) {
+            if (!_mapglKey) {
                 mapEl.innerHTML = mapFallbackHtml(address);
                 return;
             }
@@ -1401,20 +1464,25 @@ function openPrizeModal(p, bal) {
                 mapEl.innerHTML = mapFallbackHtml(address);
                 return;
             }
-            await loadYandexMaps(_ymapsKey);
+            var mapgl = await loadMapgl();
+            await waitForSize(mapEl);
             mapEl.innerHTML = '';
-            var theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-            var coords = g.coords;
-            var map = new ymaps3.YMap(mapEl, {
-                location: { center: coords, zoom: 16 },
-                behaviors: ['drag', 'wheel', 'dblClick', 'mouseTilt', 'mouseRotate']
+            var coords = g.coords;  // 2GIS: [долгота, широта]
+            var map = new mapgl.Map(mapEl, {
+                key: _mapglKey,
+                center: coords,
+                zoom: 16,
+                zoomControl: false,
+                disableRotationByUserInteraction: true,
+                enableTrackResize: true,
             });
-            map.addChild(new ymaps3.YMapDefaultSchemeLayer({ theme: theme }));
-            map.addChild(new ymaps3.YMapDefaultFeaturesLayer({ zIndex: 1800 }));
-            var pin = document.createElement('div');
-            pin.className = 'cd-map-pin';
-            map.addChild(new ymaps3.YMapMarker({ coordinates: coords }, pin));
-            if (onReady) onReady(map);
+            var marker = new mapgl.Marker(map, {
+                coordinates: coords,
+                icon: _MAPGL_PIN,
+                size: [32, 42],
+                anchor: [16, 42],
+            });
+            if (onReady) onReady({ map: map, marker: marker });
         } catch (e) {
             mapEl.innerHTML = mapFallbackHtml(address);
         }

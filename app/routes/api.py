@@ -434,6 +434,8 @@ async def api_settings():
     splash_logo_url = await db.get_setting("splash_logo_url")
     yandex_maps_api_key = await db.get_setting("yandex_maps_api_key")
     app_version = await db.get_setting("app_version")
+    terms_url = await db.get_setting("terms_doc_url")
+    privacy_url = await db.get_setting("privacy_doc_url")
     tiles = {}
     for key, name in (
         ("tile_shop_image", "shop"),
@@ -448,6 +450,8 @@ async def api_settings():
         "splash_logo_url": splash_logo_url or "",
         "yandex_maps_api_key": yandex_maps_api_key or "",
         "app_version": app_version or "",
+        "terms_url": terms_url or "",
+        "privacy_url": privacy_url or "",
         "tiles": tiles,
     }
 

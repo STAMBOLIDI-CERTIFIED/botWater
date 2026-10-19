@@ -158,6 +158,11 @@ UPLOADS_DIR = static_dir / "uploads"
 mimetypes.add_type("image/webp", ".webp")
 mimetypes.add_type("image/avif", ".avif")
 mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("text/plain", ".txt")
+mimetypes.add_type("application/msword", ".doc")
+mimetypes.add_type("application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".docx")
+mimetypes.add_type("application/rtf", ".rtf")
+mimetypes.add_type("application/vnd.oasis.opendocument.text", ".odt")
 
 
 def _guess_mime(path) -> str:
