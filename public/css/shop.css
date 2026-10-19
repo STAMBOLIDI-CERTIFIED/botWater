@@ -440,7 +440,7 @@
     cursor: pointer;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
-    animation: slideUp .45s cubic-bezier(.16,1,.3,1) both;
+    animation: shopCardIn .42s cubic-bezier(.16,1,.3,1) backwards;
     transition: border-color .2s var(--ease-out), transform .2s var(--ease-out);
 }
 
@@ -687,6 +687,23 @@
 
 .shop-chip.active .icn svg { filter: brightness(0); }
 
+/* ─── Переключение категорий: плавный уход/появление контента ─── */
+
+@keyframes shopHeroIn {
+    from { opacity: 0; transform: translateY(14px) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes shopCardIn {
+    from { opacity: 0; transform: translateY(16px) scale(.96); }
+    to { opacity: 1; transform: none; }
+}
+
+.shop-switch-out {
+    opacity: 0;
+    transform: translateY(8px) scale(.99);
+}
+
 
 /* ─── Hero-карточка (первый купон раздела) ─── */
 
@@ -705,8 +722,8 @@
     cursor: pointer;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
-    animation: slideUp .45s cubic-bezier(.16,1,.3,1) .1s both;
-    transition: border-color .2s var(--ease-out), transform .2s var(--ease-out);
+    animation: shopHeroIn .48s cubic-bezier(.16,1,.3,1) .08s backwards;
+    transition: border-color .2s var(--ease-out), transform .13s ease, opacity .13s ease;
 }
 
 .shop-hero::after {
@@ -875,6 +892,7 @@
     display: none; /* JS включает grid */
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+    transition: opacity .13s ease, transform .13s ease;
 }
 
 .shop-card {

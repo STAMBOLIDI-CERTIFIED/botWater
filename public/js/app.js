@@ -1499,9 +1499,37 @@ function closePrizeModal() {
         renderShopList();
     }
 
+    var _shopSwitchTimer = null;
+
     function setShopFilter(pid) {
+        if (_shopFilter === pid) return;
         _shopFilter = pid;
-        renderShopList();
+        updateShopTilesActive();
+        animateShopSwitch();
+    }
+
+    function updateShopTilesActive() {
+        var el = document.getElementById('shop-chips');
+        if (!el) return;
+        var tiles = el.querySelectorAll('.shop-ptile');
+        for (var i = 0; i < tiles.length; i++) {
+            var raw = tiles[i].getAttribute('data-pid');
+            var isActive = raw === '' ? _shopFilter == null : String(_shopFilter) === raw;
+            tiles[i].classList.toggle('active', isActive);
+            tiles[i].setAttribute('aria-pressed', isActive ? 'true' : 'false');
+        }
+    }
+
+    function animateShopSwitch() {
+        var heroEl = document.getElementById('shop-hero');
+        var gridEl = document.getElementById('shop-grid');
+        var out = [heroEl, gridEl];
+        out.forEach(function(el) { if (el) el.classList.add('shop-switch-out'); });
+        if (_shopSwitchTimer) clearTimeout(_shopSwitchTimer);
+        _shopSwitchTimer = setTimeout(function() {
+            renderShopCards();
+            out.forEach(function(el) { if (el) el.classList.remove('shop-switch-out'); });
+        }, 130);
     }
 
     function shopTileHtml(pid, title, count, img, ico, pc) {
@@ -1509,7 +1537,7 @@ function closePrizeModal() {
         var go = pid == null ? 'null' : pid;
         var avatar = icon(ico || 'store')
             + (img ? '<img loading="lazy" decoding="async" src="' + esc(img) + '" alt="" onerror="this.remove()">' : '');
-        return '<button type="button" class="shop-ptile' + active + '" style="--pc:' + esc(pc || '#38BDF8') + '" onclick="setShopFilter(' + go + ')" aria-pressed="' + (active ? 'true' : 'false') + '">'
+        return '<button type="button" class="shop-ptile' + active + '" data-pid="' + (pid == null ? '' : pid) + '" style="--pc:' + esc(pc || '#38BDF8') + '" onclick="setShopFilter(' + go + ')" aria-pressed="' + (active ? 'true' : 'false') + '">'
             + '<span class="shop-ptile-avatar">' + avatar + '</span>'
             + '<span class="shop-ptile-name">' + esc(title) + '</span>'
             + '<span class="shop-ptile-count">' + count + '</span>'
