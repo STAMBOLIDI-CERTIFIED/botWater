@@ -1370,7 +1370,7 @@ function closePrizeModal() {
     }
 
     function hideShopBlocks() {
-        ['shop-banner', 'shop-chips', 'shop-hero', 'shop-grid', 'shop-partner-detail', 'shop-empty'].forEach(function(id) {
+        ['shop-chips', 'shop-hero', 'shop-grid', 'shop-partner-detail', 'shop-empty'].forEach(function(id) {
             var el = document.getElementById(id);
             if (el) el.style.display = 'none';
         });
@@ -1413,13 +1413,12 @@ function closePrizeModal() {
             return;
         }
 
-        var bannerEl = document.getElementById('shop-banner');
         var chipsEl = document.getElementById('shop-chips');
         var heroEl = document.getElementById('shop-hero');
         var gridEl = document.getElementById('shop-grid');
         var detailEl = document.getElementById('shop-partner-detail');
         var emptyEl = document.getElementById('shop-empty');
-        if (!bannerEl || !chipsEl || !heroEl || !gridEl) return;
+        if (!chipsEl || !heroEl || !gridEl) return;
 
         // повторный вход — мгновенно из кэша, свежие данные качаем в фоне
         if (!silent && _shopItems.length) {
@@ -1547,7 +1546,6 @@ function closePrizeModal() {
     }
 
     function renderShopList() {
-        var bannerEl = document.getElementById('shop-banner');
         var chipsEl = document.getElementById('shop-chips');
         var heroEl = document.getElementById('shop-hero');
         var gridEl = document.getElementById('shop-grid');
@@ -1557,22 +1555,6 @@ function closePrizeModal() {
         if (detailEl && detailEl.style.display === 'block') return;
         if (detailEl) detailEl.style.display = 'none';
         if (emptyEl) emptyEl.style.display = 'none';
-
-        // ─── Баннер «Партнёр дня» (детерминирован по дате)
-        if (_shopPartners.length) {
-            var promo = _shopPartners[Math.floor(Date.now() / 86400000) % _shopPartners.length];
-            var promoImg = promo.logo_url || promo.image_url || '';
-            bannerEl.innerHTML = shopMedia(promoImg, 'shop-promo-media')
-                + '<div class="shop-promo-body">'
-                + '<div class="shop-promo-label">Партнёр дня</div>'
-                + '<div class="shop-promo-title">' + esc(promo.title) + '</div>'
-                + (promo.subtitle ? '<div class="shop-promo-sub">' + esc(promo.subtitle) + '</div>' : '')
-                + '</div>'
-                + '<span class="shop-promo-arrow">↗</span>';
-            bannerEl.setAttribute('data-partner', promo.id);
-            bannerEl.onclick = function() { openPartnerCategory(promo.id); };
-            bannerEl.style.display = 'flex';
-        }
 
         // ─── Плитки партнёров (сетка фильтров)
         var tiles = shopTileHtml(null, 'Всё', _shopItems.length, '', 'grid', '#38BDF8');
@@ -1623,19 +1605,27 @@ function closePrizeModal() {
             + '<button class="shop-hero-arrow" data-prize=\'' + shopPrizeJson(p0) + '\' onclick="event.stopPropagation();shopOpenPrize(this.dataset.prize)" aria-label="Открыть">↗</button>'
             + '</div></div>';
         heroEl.setAttribute('data-prize', JSON.stringify(p0));
+        heroEl.style.setProperty('--pc', p0._partner_color || '#0EA5E9');
         heroEl.onclick = function() { shopOpenPrize(this.getAttribute('data-prize')); };
         heroEl.style.display = 'flex';
 
         // сетка — остальные купоны
         gridEl.innerHTML = list.slice(1).map(function(p, i) {
             var cardImg = p.image_url || p._partner_img || '';
-            return '<div class="shop-card" style="animation-delay:' + (i * 0.04) + 's" data-prize=\'' + shopPrizeJson(p) + '\' onclick="shopOpenPrize(this.dataset.prize)">'
+            var ok = _shopBal >= p.price_points;
+            var miss = Math.max(0, p.price_points - _shopBal);
+            return '<div class="shop-card" style="--pc:' + esc(p._partner_color || '#0EA5E9') + ';animation-delay:' + (i * 0.04) + 's" data-prize=\'' + shopPrizeJson(p) + '\' onclick="shopOpenPrize(this.dataset.prize)">'
                 + shopMedia(cardImg, 'shop-card-media')
                 + '<span class="shop-card-tag">' + esc(p._partner_name) + '</span>'
+                + (ok
+                    ? '<span class="shop-card-state ok">✓</span>'
+                    : '<span class="shop-card-state warn">+' + miss + '</span>')
                 + '<div class="shop-card-body">'
                 + '<div class="shop-card-title">' + esc(p.name) + '</div>'
+                + '<div class="shop-card-foot">'
                 + '<div class="shop-card-price">' + icon('coin') + '<b>' + p.price_points + '</b> <span>баллов</span></div>'
-                + '</div></div>';
+                + '<span class="shop-card-arrow">↗</span>'
+                + '</div></div></div>';
         }).join('');
         gridEl.style.display = 'grid';
     }
@@ -1710,13 +1700,12 @@ function closePrizeModal() {
     }
 
     async function renderPartnerDetail(catId) {
-        var bannerEl = document.getElementById('shop-banner');
         var chipsEl = document.getElementById('shop-chips');
         var heroEl = document.getElementById('shop-hero');
         var gridEl = document.getElementById('shop-grid');
         var detailEl = document.getElementById('shop-partner-detail');
         var emptyEl = document.getElementById('shop-empty');
-        [bannerEl, chipsEl, heroEl, gridEl, emptyEl].forEach(function(el) { if (el) el.style.display = 'none'; });
+        [chipsEl, heroEl, gridEl, emptyEl].forEach(function(el) { if (el) el.style.display = 'none'; });
         if (!detailEl) return;
         detailEl.style.display = 'block';
         detailEl.innerHTML = loadingHtml('Загружаем партнёра…');

@@ -423,108 +423,6 @@
     letter-spacing: -0.2px;
 }
 
-/* ─── Баннер «Партнёр дня» ─── */
-
-.shop-promo {
-    position: relative;
-    display: none; /* JS включает как flex */
-    align-items: center;
-    gap: 14px;
-    padding: 12px;
-    margin-bottom: 16px;
-    background: var(--glass-bg);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
-    border-radius: 20px;
-    cursor: pointer;
-    overflow: hidden;
-    box-shadow: var(--shadow-sm);
-    animation: shopCardIn .42s cubic-bezier(.16,1,.3,1) backwards;
-    transition: border-color .2s var(--ease-out), transform .2s var(--ease-out);
-}
-
-.shop-promo::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent 55%);
-    pointer-events: none;
-}
-
-.shop-promo:active { transform: scale(0.98); }
-.shop-promo:hover { border-color: rgba(var(--gold-rgb),0.3); }
-
-.shop-promo-media {
-    position: relative;
-    z-index: 1;
-    width: 58px;
-    height: 58px;
-    flex-shrink: 0;
-    border-radius: 16px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, rgba(var(--gold-rgb),0.16), rgba(var(--gold-rgb),0.05));
-    color: var(--text-dim);
-}
-
-.shop-promo-media img {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.shop-promo-media .icn svg { width: 26px; height: 26px; opacity: .5; }
-
-.shop-promo-body { flex: 1; min-width: 0; position: relative; z-index: 1; }
-
-.shop-promo-label {
-    font-size: 9.5px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .8px;
-    color: var(--gold);
-    margin-bottom: 2px;
-}
-
-.shop-promo-title {
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--text-main);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.shop-promo-sub {
-    font-size: 11.5px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.shop-promo-arrow {
-    position: relative;
-    z-index: 1;
-    flex-shrink: 0;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, var(--gold), var(--gold-light));
-    color: var(--on-accent);
-    font-size: 16px;
-    font-weight: 800;
-    box-shadow: 0 4px 14px rgba(var(--gold-rgb),0.3);
-}
-
 /* ─── Чипы-фильтры ─── */
 
 .shop-chips {
@@ -708,6 +606,7 @@
 /* ─── Hero-карточка (первый купон раздела) ─── */
 
 .shop-hero {
+    --pc: #0EA5E9;
     position: relative;
     display: none; /* JS включает как flex */
     align-items: stretch;
@@ -717,13 +616,13 @@
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
+    border: 1px solid color-mix(in srgb, var(--pc) 18%, var(--glass-border));
     border-radius: 22px;
     cursor: pointer;
     overflow: hidden;
     box-shadow: var(--shadow-sm);
     animation: shopHeroIn .48s cubic-bezier(.16,1,.3,1) .08s backwards;
-    transition: border-color .2s var(--ease-out), transform .13s ease, opacity .13s ease;
+    transition: border-color .2s var(--ease-out), transform .13s ease, opacity .13s ease, box-shadow .2s var(--ease-out);
 }
 
 .shop-hero::after {
@@ -735,7 +634,10 @@
 }
 
 .shop-hero:active { transform: scale(0.985); }
-.shop-hero:hover { border-color: rgba(var(--gold-rgb),0.3); }
+.shop-hero:hover {
+    border-color: color-mix(in srgb, var(--pc) 45%, transparent);
+    box-shadow: 0 10px 26px rgba(0,0,0,0.22);
+}
 
 .shop-hero-media {
     position: relative;
@@ -747,8 +649,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(var(--gold-rgb),0.12), rgba(var(--gold-rgb),0.04));
+    background: linear-gradient(140deg, color-mix(in srgb, var(--pc) 26%, transparent), color-mix(in srgb, var(--pc) 6%, transparent));
     color: var(--text-dim);
+}
+
+.shop-hero-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(to top, rgba(8,10,14,0.45), transparent 50%);
+    pointer-events: none;
 }
 
 .shop-hero-media img {
@@ -757,8 +668,14 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    z-index: 0;
+    transition: transform .5s cubic-bezier(.16,1,.3,1), opacity .5s var(--ease-out);
 }
 
+.shop-hero:active .shop-hero-media img { transform: scale(1.04); }
+.shop-hero:hover .shop-hero-media img { transform: scale(1.05); }
+
+.shop-hero-media .icn { position: relative; z-index: 0; }
 .shop-hero-media .icn svg { width: 34px; height: 34px; opacity: .4; }
 
 .shop-hero-body {
@@ -896,21 +813,35 @@
 }
 
 .shop-card {
+    --pc: #0EA5E9;
     position: relative;
     background: var(--glass-bg);
     backdrop-filter: var(--glass-blur);
     -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--glass-border);
+    border: 1px solid color-mix(in srgb, var(--pc) 16%, var(--glass-border));
     border-radius: 18px;
     overflow: hidden;
     cursor: pointer;
     box-shadow: var(--shadow-sm);
-    animation: slideUp .4s cubic-bezier(.16,1,.3,1) both;
-    transition: border-color .2s var(--ease-out), transform .2s var(--ease-out);
+    animation: shopCardIn .42s cubic-bezier(.16,1,.3,1) backwards;
+    transition: border-color .2s var(--ease-out), transform .2s var(--ease-out), box-shadow .2s var(--ease-out);
+}
+
+.shop-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: linear-gradient(150deg, rgba(255,255,255,0.05), transparent 42%);
+    pointer-events: none;
 }
 
 .shop-card:active { transform: scale(0.97); }
-.shop-card:hover { border-color: rgba(var(--gold-rgb),0.3); }
+.shop-card:hover {
+    border-color: color-mix(in srgb, var(--pc) 45%, transparent);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.22);
+}
 
 .shop-card-media {
     position: relative;
@@ -919,8 +850,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(var(--gold-rgb),0.10), rgba(var(--gold-rgb),0.03));
+    overflow: hidden;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--pc) 24%, transparent), color-mix(in srgb, var(--pc) 6%, transparent));
     color: var(--text-dim);
+}
+
+.shop-card-media::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: linear-gradient(to top, rgba(8,10,14,0.5), transparent 48%);
+    pointer-events: none;
 }
 
 .shop-card-media img {
@@ -929,22 +870,29 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+    z-index: 0;
+    transition: transform .45s cubic-bezier(.16,1,.3,1), opacity .5s var(--ease-out);
 }
 
-.shop-card-media .icn svg { width: 30px; height: 30px; opacity: .4; }
+.shop-card:active .shop-card-media img { transform: scale(1.05); }
+.shop-card:hover .shop-card-media img { transform: scale(1.06); }
+
+.shop-card-media .icn { position: relative; z-index: 0; }
+.shop-card-media .icn svg { width: 32px; height: 32px; opacity: .45; }
 
 .shop-card-tag {
     position: absolute;
-    top: 8px;
-    left: 8px;
-    z-index: 1;
-    max-width: calc(100% - 16px);
-    padding: 4px 8px;
-    border-radius: 7px;
-    background: rgba(11,13,17,0.72);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    color: #EDEAE4;
+    top: 9px;
+    left: 9px;
+    z-index: 3;
+    max-width: calc(100% - 46px);
+    padding: 4px 9px;
+    border-radius: 8px;
+    background: rgba(9,11,15,0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: #F3F0EA;
     font-size: 9px;
     font-weight: 800;
     text-transform: uppercase;
@@ -954,14 +902,47 @@
     text-overflow: ellipsis;
 }
 
-.shop-card-body { padding: 11px 12px 13px; }
+.shop-card-state {
+    position: absolute;
+    top: 9px;
+    right: 9px;
+    z-index: 3;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    color: #F3F0EA;
+    background: rgba(9,11,15,0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.12);
+}
+
+.shop-card-state.ok {
+    color: #6EE7A8;
+    background: rgba(16,44,30,0.66);
+    border-color: rgba(110,231,168,0.4);
+}
+
+.shop-card-state.warn {
+    color: #FBBF24;
+    background: rgba(45,36,12,0.6);
+    border-color: rgba(251,191,36,0.35);
+}
+
+.shop-card-body { padding: 11px 12px 12px; position: relative; z-index: 3; }
 
 .shop-card-title {
     font-size: 13px;
     font-weight: 700;
-    color: var(--text-main);
+    color: var(--text);
     line-height: 1.3;
-    margin-bottom: 7px;
+    margin-bottom: 8px;
     min-height: 34px;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -969,11 +950,19 @@
     overflow: hidden;
 }
 
+.shop-card-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
 .shop-card-price {
     display: flex;
     align-items: baseline;
     gap: 4px;
     color: var(--gold);
+    min-width: 0;
 }
 
 .shop-card-price .icn { align-self: center; }
@@ -988,6 +977,27 @@
     font-size: 11px;
     font-weight: 600;
     color: var(--text-dim);
+}
+
+.shop-card-arrow {
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--text);
+    background: color-mix(in srgb, var(--pc) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--pc) 38%, transparent);
+    transition: transform .2s var(--ease-out), background .2s ease;
+}
+
+.shop-card:active .shop-card-arrow {
+    transform: scale(0.9);
+    background: color-mix(in srgb, var(--pc) 34%, transparent);
 }
 
 /* ─── Coupons Section (Partner Detail) ─── */
@@ -1194,27 +1204,6 @@
     animation: fadeIn .3s var(--ease-out);
 }
 
-.sk-banner {
-    height: 66px;
-    border-radius: 18px;
-}
-
-.sk-chips {
-    display: flex;
-    gap: 8px;
-}
-
-.sk-chip {
-    height: 34px;
-    width: 104px;
-    border-radius: 17px;
-    flex-shrink: 0;
-}
-
-.sk-chip:first-child {
-    width: 76px;
-}
-
 .sk-ptiles {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1245,14 +1234,12 @@
 
 /* ─── Плавное появление картинок ─── */
 
-.shop-promo-media img,
 .shop-hero-media img,
 .shop-card-media img {
     opacity: 0;
     transition: opacity 0.5s var(--ease-out);
 }
 
-.shop-promo-media img.img-loaded,
 .shop-hero-media img.img-loaded,
 .shop-card-media img.img-loaded {
     opacity: 1;
