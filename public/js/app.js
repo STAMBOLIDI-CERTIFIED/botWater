@@ -956,7 +956,13 @@ async function loadMyCoupons() {
         }
         updateCouponFavBtn();
 
-        document.getElementById('coupon-modal').classList.add('active');
+        var cm = document.getElementById('coupon-modal');
+        if (_couponModalTimer) { clearTimeout(_couponModalTimer); _couponModalTimer = null; }
+        _couponModalClosing = false;
+        if (cm) {
+            cm.classList.remove('closing');
+            cm.classList.add('active');
+        }
     }
 
     function updateCouponFavBtn() {
@@ -1006,8 +1012,18 @@ async function loadMyCoupons() {
         });
     }
 
+    var _couponModalClosing = false;
+    var _couponModalTimer = null;
     function closeCouponModal() {
-        document.getElementById('coupon-modal').classList.remove('active');
+        var cm = document.getElementById('coupon-modal');
+        if (!cm || !cm.classList.contains('active') || _couponModalClosing) return;
+        _couponModalClosing = true;
+        cm.classList.add('closing');
+        _couponModalTimer = setTimeout(function() {
+            cm.classList.remove('active', 'closing');
+            _couponModalClosing = false;
+            _couponModalTimer = null;
+        }, 250);
     }
 
     // ═══════════════════════════════════════════
@@ -1248,7 +1264,13 @@ function openPrizeModal(p, bal) {
             actionEl.innerHTML = '<button class="cd-buy cd-buy-wide" disabled>Не хватает ' + missing + ' баллов</button>';
         }
 
-        document.getElementById('prize-modal').classList.add('active');
+        var modalEl = document.getElementById('prize-modal');
+        if (_prizeModalTimer) { clearTimeout(_prizeModalTimer); _prizeModalTimer = null; }
+        _prizeModalClosing = false;
+        if (modalEl) {
+            modalEl.classList.remove('closing');
+            modalEl.classList.add('active');
+        }
         document.body.style.overflow = 'hidden';
     }
 
@@ -1337,11 +1359,20 @@ function openPrizeModal(p, bal) {
         }
     }
 
+var _prizeModalClosing = false;
+var _prizeModalTimer = null;
 function closePrizeModal() {
         var modal = document.getElementById('prize-modal');
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
+        if (!modal || !modal.classList.contains('active') || _prizeModalClosing) return;
+        _prizeModalClosing = true;
         destroyPrizeMap();
+        modal.classList.add('closing');
+        _prizeModalTimer = setTimeout(function() {
+            modal.classList.remove('active', 'closing');
+            document.body.style.overflow = '';
+            _prizeModalClosing = false;
+            _prizeModalTimer = null;
+        }, 250);
     }
 
     // ═══════════════════════════════════════════
@@ -1533,12 +1564,12 @@ function closePrizeModal() {
         }, 130);
     }
 
-    function shopTileHtml(pid, title, count, img, ico, pc) {
+    function shopTileHtml(pid, title, count, img, ico, pc, idx) {
         var active = (pid == null ? _shopFilter == null : _shopFilter === pid) ? ' active' : '';
         var go = pid == null ? 'null' : pid;
         var avatar = icon(ico || 'store')
             + (img ? '<img loading="lazy" decoding="async" src="' + esc(img) + '" alt="" onerror="this.remove()">' : '');
-        return '<button type="button" class="shop-ptile' + active + '" data-pid="' + (pid == null ? '' : pid) + '" style="--pc:' + esc(pc || '#38BDF8') + '" onclick="setShopFilter(' + go + ')" aria-pressed="' + (active ? 'true' : 'false') + '">'
+        return '<button type="button" class="shop-ptile' + active + '" data-pid="' + (pid == null ? '' : pid) + '" style="--pc:' + esc(pc || '#38BDF8') + ';animation-delay:' + ((idx || 0) * 0.035) + 's" onclick="setShopFilter(' + go + ')" aria-pressed="' + (active ? 'true' : 'false') + '">'
             + '<span class="shop-ptile-avatar">' + avatar + '</span>'
             + '<span class="shop-ptile-name">' + esc(title) + '</span>'
             + '<span class="shop-ptile-count">' + count + '</span>'
@@ -1557,11 +1588,11 @@ function closePrizeModal() {
         if (emptyEl) emptyEl.style.display = 'none';
 
         // ─── Плитки партнёров (сетка фильтров)
-        var tiles = shopTileHtml(null, 'Всё', _shopItems.length, '', 'grid', '#38BDF8');
-        _shopPartners.forEach(function(cp) {
+        var tiles = shopTileHtml(null, 'Всё', _shopItems.length, '', 'grid', '#38BDF8', 0);
+        _shopPartners.forEach(function(cp, idx) {
             var n = 0;
             _shopItems.forEach(function(it) { if (it._partner_id === cp.id) n++; });
-            tiles += shopTileHtml(cp.id, cp.title, n, cp.logo_url || cp.image_url || '', null, cp.color || '#0EA5E9');
+            tiles += shopTileHtml(cp.id, cp.title, n, cp.logo_url || cp.image_url || '', null, cp.color || '#0EA5E9', idx + 1);
         });
         chipsEl.innerHTML = tiles;
         chipsEl.style.display = 'grid';
