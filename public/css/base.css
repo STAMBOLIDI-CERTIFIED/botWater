@@ -6,7 +6,7 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
     padding-top: var(--banner-h, 0px);
-    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
