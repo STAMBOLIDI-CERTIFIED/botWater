@@ -158,17 +158,12 @@ html[data-theme="light"] .cd-sheet .prize-modal-close:hover {
 }
 
 html[data-theme="light"] .cd-media {
-    background: #E9E6DF;
+    background: linear-gradient(150deg, color-mix(in srgb, var(--pc, #0EA5E9) 20%, #FFFFFF), color-mix(in srgb, var(--pc, #0EA5E9) 6%, #FFFFFF));
     border-color: rgba(17,19,24,0.05);
 }
 
-html[data-theme="light"] .cd-media-img img {
-    filter: drop-shadow(0 14px 22px rgba(17,19,24,0.16));
-}
-
 html[data-theme="light"] .cd-title,
-html[data-theme="light"] .cd-price,
-html[data-theme="light"] .cd-model {
+html[data-theme="light"] .cd-price {
     color: #111318;
 }
 

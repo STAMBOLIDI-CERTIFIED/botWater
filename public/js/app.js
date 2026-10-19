@@ -892,7 +892,7 @@ async function loadMyCoupons() {
 
         var imgEl = document.getElementById('coupon-modal-img');
         if (coupon.prize_image) {
-            imgEl.innerHTML = '<img src="' + esc(coupon.prize_image) + '" alt="">';
+            imgEl.innerHTML = '<img src="' + esc(coupon.prize_image) + '" alt="" onload="this.classList.add(\'img-loaded\')" onerror="this.remove()">';
         } else {
             imgEl.innerHTML = '<div class="cd-media-fallback">' + icon('gift') + '</div>';
         }
@@ -1215,10 +1215,13 @@ function openPrizeModal(p, bal) {
         var modelEl = document.getElementById('prize-modal-model');
         if (modelEl) modelEl.textContent = 'Купон';
 
+        var sheetEl = document.querySelector('#prize-modal .cd-sheet');
+        if (sheetEl) sheetEl.style.setProperty('--pc', p._partner_color || '#0EA5E9');
+
         var imgWrap = document.getElementById('prize-modal-img');
         var modalImg = p.image_url || p._partner_img || '';
         if (modalImg) {
-            imgWrap.innerHTML = '<img src="' + esc(modalImg) + '" alt="' + esc(p.name || '') + '">';
+            imgWrap.innerHTML = '<img src="' + esc(modalImg) + '" alt="' + esc(p.name || '') + '" onload="this.classList.add(\'img-loaded\')" onerror="this.remove()">';
         } else {
             imgWrap.innerHTML = '<div class="cd-media-fallback">' + icon('store') + '</div>';
         }
