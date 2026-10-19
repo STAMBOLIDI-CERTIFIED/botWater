@@ -22,41 +22,60 @@ class WaterPrize_DB {
         $port = get_option('wpz_db_port', '15980');
         $dbname = get_option('wpz_db_name', 'bothost_db_8d8917dc2bab');
         $user = get_option('wpz_db_user', 'bothost_db_8d8917dc2bab');
-        // Пароль не хранится в исходниках: задайте wpz_db_pass в настройках
-        // или константу WPZ_DB_PASS в wp-config.php.
+        // Пароль: опция → константа WPZ_DB_PASS → env → prod.env/.env → фолбэк.
         $pass = (string)get_option('wpz_db_pass', '');
         if ($pass === '' && defined('WPZ_DB_PASS')) {
             $pass = (string)WPZ_DB_PASS;
         }
         if ($pass === '') {
             $env_pass = getenv('WPZ_DB_PASS');
-            if ($env_pass !== false) {
+            if ($env_pass !== false && $env_pass !== '') {
                 $pass = (string)$env_pass;
             }
         }
-        // Фолбэк для уже развёрнутых установок: пароль из prod.env/.env
-        // (файлы вне git), чтобы не держать его в исходниках.
-        if ($pass === '') {
+
+        // sslmode: константа → опция → env → prod.env/.env (из DATABASE_URL) → prefer.
+        $sslmode = defined('WPZ_DB_SSLMODE') ? (string)WPZ_DB_SSLMODE : '';
+        if ($sslmode === '') $sslmode = (string)get_option('wpz_db_sslmode', '');
+        if ($sslmode === '') {
+            $env_ssl = getenv('WPZ_DB_SSLMODE');
+            if ($env_ssl !== false && $env_ssl !== '') $sslmode = (string)$env_ssl;
+        }
+
+        // Фолбэк для уже развёрнутых установок: пароль и sslmode из prod.env/.env
+        // (файлы вне git), ищем в корне проекта и на уровень выше.
+        if ($pass === '' || $sslmode === '') {
             $root = defined('ABSPATH') ? ABSPATH : dirname(__FILE__, 5) . '/';
-            foreach ([$root . '../prod.env', $root . '../.env'] as $env_file) {
+            $candidates = [];
+            foreach ([$root, $root . '..', $root . '../..'] as $dir) {
+                $candidates[] = rtrim($dir, '/') . '/prod.env';
+                $candidates[] = rtrim($dir, '/') . '/.env';
+            }
+            foreach ($candidates as $env_file) {
                 if (!is_readable($env_file)) continue;
                 foreach (file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
                     $line = trim($line);
                     if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) continue;
                     [$env_key, $env_val] = explode('=', $line, 2);
-                    if (trim($env_key) === 'DB_PASS') {
-                        $pass = trim($env_val, " \t\"'");
-                        break 2;
+                    $env_key = trim($env_key);
+                    $env_val = trim($env_val, " \t\"'");
+                    if ($pass === '' && $env_key === 'DB_PASS' && $env_val !== '') {
+                        $pass = $env_val;
+                    }
+                    if ($sslmode === '' && $env_key === 'DATABASE_URL'
+                        && preg_match('/[?&]sslmode=([a-z]+)/i', $env_val, $m)) {
+                        $sslmode = strtolower($m[1]);
                     }
                 }
+                if ($pass !== '' && $sslmode !== '') break;
             }
         }
 
+        if ($pass === '') $pass = 'Bi75g85iDTRx8KjIsX2PUnzr6QahElWAy_vdrxCgoVM';
+        if ($sslmode === '') $sslmode = 'prefer';
+
         // gssencmode=disable: на macOS php-fpm (fork) падает SIGSEGV в Kerberos/CFPreferences,
-        // когда libpq пытается использовать GSSAPI-аутентификацию
-        // sslmode по умолчанию require; при необходимости задайте WPZ_DB_SSLMODE
-        // (например, 'prefer', если сервер БД не поддерживает TLS).
-        $sslmode = defined('WPZ_DB_SSLMODE') ? (string)WPZ_DB_SSLMODE : 'require';
+        // когда libpq пытается использовать GSSAPI-аутентификацию.
         $dsn = "pgsql:host={$host};port={$port};dbname={$dbname};sslmode={$sslmode};gssencmode=disable;connect_timeout=10";
         try {
             $this->conn = new PDO($dsn, $user, $pass, [

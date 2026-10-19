@@ -27,7 +27,7 @@ class WaterPrize_Pages {
             if ($segment === '' || $segment === '.' || $segment === '..') return $url;
         }
         $ext = strtolower(pathinfo($rel, PATHINFO_EXTENSION));
-        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif', 'pdf'], true)) {
+        if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif', 'pdf', 'doc', 'docx', 'txt', 'rtf', 'odt'], true)) {
             return $url;
         }
         $src = (defined('ABSPATH') ? ABSPATH : '') . 'wp-content/uploads/' . $rel;
@@ -64,6 +64,10 @@ class WaterPrize_Pages {
             'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png',
             'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
             'avif' => 'image/avif', 'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'txt' => 'text/plain', 'rtf' => 'application/rtf',
+            'odt' => 'application/vnd.oasis.opendocument.text',
         ];
         return $map[$ext] ?? 'application/octet-stream';
     }
@@ -554,14 +558,22 @@ class WaterPrize_Pages {
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('Обложки плиток главной обновлены')));
                 exit;
 
-            case 'save_yandex_maps_key':
-                $db->set_setting('yandex_maps_api_key', sanitize_text_field($_POST['yandex_maps_api_key'] ?? ''));
-                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('API-ключ Яндекс.Карт сохранён')));
+            case 'save_dgis_maps_key':
+                $db->set_setting('dgis_api_key', sanitize_text_field($_POST['dgis_api_key'] ?? ''));
+                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('API-ключ 2ГИС сохранён')));
                 exit;
 
             case 'save_app_version':
                 $db->set_setting('app_version', sanitize_text_field($_POST['app_version'] ?? ''));
                 wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('Версия приложения обновлена')));
+                exit;
+
+            case 'save_legal_docs':
+                $terms = esc_url_raw(self::normalize_media_url($_POST['terms_doc_url'] ?? ''));
+                $privacy = esc_url_raw(self::normalize_media_url($_POST['privacy_doc_url'] ?? ''));
+                $db->set_setting('terms_doc_url', $terms);
+                $db->set_setting('privacy_doc_url', $privacy);
+                wp_redirect(admin_url('admin.php?page=wpz-settings&msg=' . urlencode('Правовые документы обновлены')));
                 exit;
 
             case 'save_daily_bonus':
@@ -583,7 +595,14 @@ class WaterPrize_Pages {
                     // Возврат (cancel) отзывает опыт по заказу, подтверждение — возвращает
                     $db->sync_order_xp($order_id);
                 }
-                wp_redirect(admin_url('admin.php?page=wpz-orders&msg=' . urlencode("Заказ #{$order_id} обновлён")));
+                // Остаёмся на исходной странице (заказы или таб «Заказы» у партнёров)
+                $redirect = wp_get_referer();
+                if ($redirect) {
+                    $redirect = add_query_arg('msg', "Заказ #{$order_id} обновлён", $redirect);
+                } else {
+                    $redirect = admin_url('admin.php?page=wpz-orders&msg=' . urlencode("Заказ #{$order_id} обновлён"));
+                }
+                wp_redirect($redirect);
                 exit;
 
             // ─── Prizes CRUD ───────────────────────
@@ -1107,29 +1126,6 @@ class WaterPrize_Pages {
         include __DIR__ . '/../templates/raffles.php';
     }
 
-    // ─── Prizes ───────────────────────────────────────
-    public static function prizes() {
-        $db = self::db();
-        $prizes = $db->get_prizes();
-        $categories = $db->get_categories();
-        $edit_prize = null;
-        if (!empty($_GET['edit'])) {
-            $edit_prize = $db->get_prize((int)$_GET['edit']);
-        }
-        include __DIR__ . '/../templates/prizes.php';
-    }
-
-    // ─── Categories (Partners) ────────────────────────
-    public static function categories() {
-        $db = self::db();
-        $categories = $db->get_categories();
-        $edit_category = null;
-        if (!empty($_GET['edit'])) {
-            $edit_category = $db->get_category((int)$_GET['edit']);
-        }
-        include __DIR__ . '/../templates/categories.php';
-    }
-
     // ─── Analytics ────────────────────────────────────
     public static function analytics() {
         $db = self::db();
@@ -1281,24 +1277,6 @@ class WaterPrize_Pages {
         }
 
         include __DIR__ . '/../templates/partners.php';
-    }
-
-    // ─── Partner Stats ──────────────────────────────────
-    public static function partner_stats() {
-        $db = self::db();
-        $period = sanitize_text_field($_GET['period'] ?? 'day');
-        $from = sanitize_text_field($_GET['from'] ?? '');
-        $to = sanitize_text_field($_GET['to'] ?? '');
-        $category_id = (int)($_GET['partner_id'] ?? 0);
-
-        $summary = $db->get_partner_stats_summary();
-        $chart_data = $db->get_partner_scans_chart($period, $from, $to, $category_id);
-        $detail = [];
-        if ($category_id > 0) {
-            $detail = $db->get_partner_scans_detail($category_id);
-        }
-        $top_users = $db->get_top_partners_users(20);
-        include __DIR__ . '/../templates/partners_stats.php';
     }
 
     // ─── Partner Cabinet (KPI) ─────────────────────────

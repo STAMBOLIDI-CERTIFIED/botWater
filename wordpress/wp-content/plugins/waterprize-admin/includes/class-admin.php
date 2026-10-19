@@ -55,6 +55,10 @@ class WaterPrize_Admin {
         if (strpos($hook, 'waterprize') === false) return;
         wp_enqueue_style('wpz-admin', plugins_url('/assets/admin.css', dirname(__FILE__)), [], '1.0.1');
         wp_enqueue_script('wpz-admin', plugins_url('/assets/admin.js', dirname(__FILE__)), ['jquery'], '1.0.0', true);
+        wp_localize_script('wpz-admin', 'wpzAdmin', [
+            'ajaxurl' => admin_url('admin-ajax.php'),
+            'nonce'   => wp_create_nonce('wpz_action'),
+        ]);
 
         // Chart.js on dashboard and analytics
         if (strpos($hook, 'waterprize_page_waterprize') !== false || $hook === 'toplevel_page_waterprize') {

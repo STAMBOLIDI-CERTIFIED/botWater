@@ -19,8 +19,10 @@ $daily_bonus_points = $db->get_setting('daily_bonus_points');
 if ($daily_bonus_points === null || $daily_bonus_points === false || $daily_bonus_points === '') {
     $daily_bonus_points = '50';
 }
-$yandex_maps_api_key = $db->get_setting('yandex_maps_api_key') ?: '';
+$dgis_api_key = $db->get_setting('dgis_api_key') ?: '';
 $app_version = $db->get_setting('app_version') ?: '';
+$terms_doc_url = $db->get_setting('terms_doc_url') ?: '';
+$privacy_doc_url = $db->get_setting('privacy_doc_url') ?: '';
 ?>
 <div class="wrap">
     <?php WaterPrize_Pages::flash_message(); ?>
@@ -135,21 +137,23 @@ $app_version = $db->get_setting('app_version') ?: '';
         </form>
     </div>
 
-    <!-- ═══ Yandex Maps API key ═══ -->
+    <!-- ═══ 2GIS Maps API key ═══ -->
     <div class="wpz-card">
-        <h2>🗺️ Яндекс.Карты — API-ключ</h2>
+        <h2>🗺️ 2ГИС — API-ключ</h2>
         <p style="color:#646970;font-size:13px;margin:0 0 16px;">Ключ используется для карты расположения партнёра в карточке купона.
-            Получить: <a href="https://developer.tech.yandex.ru/services/" target="_blank" rel="noopener">developer.tech.yandex.ru</a> → «Ключ API» → тип «Карты».
-            Ключ работает по привязке к домену — добавьте домен мини-приложения в список разрешённых.</p>
+            Получить: <a href="https://dev.2gis.ru/" target="_blank" rel="noopener">dev.2gis.ru</a> —
+            зарегистрируйтесь в Менеджере платформы и создайте ключ доступа к сервисам
+            «Map Tiles API» (карта) и «Places API / Geocoder» (геокодинг адреса).
+            Подробнее: <a href="https://docs.2gis.com/ru/mapgl/start/first-steps" target="_blank" rel="noopener">docs.2gis.com</a>.</p>
         <form method="post">
             <?php wp_nonce_field('wpz_action'); ?>
             <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;">API-ключ</label>
-            <input type="text" name="yandex_maps_api_key" class="regular-text" style="width:100%;max-width:480px;"
-                   value="<?php echo esc_attr($yandex_maps_api_key); ?>"
+            <input type="text" name="dgis_api_key" class="regular-text" style="width:100%;max-width:480px;"
+                   value="<?php echo esc_attr($dgis_api_key); ?>"
                    placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
             <p class="description">Ключ хранится в базе бота и отдаётся приложению через /api/settings. Пусто — карта партнёра не отображается.</p>
             <div style="margin-top:12px;">
-                <button type="submit" name="action" value="save_yandex_maps_key" class="button button-primary">💾 Сохранить ключ</button>
+                <button type="submit" name="action" value="save_dgis_maps_key" class="button button-primary">💾 Сохранить ключ</button>
             </div>
         </form>
     </div>
@@ -169,6 +173,35 @@ $app_version = $db->get_setting('app_version') ?: '';
             <div style="margin-top:12px;">
                 <button type="submit" name="action" value="save_app_version" class="button button-primary">💾 Сохранить версию</button>
             </div>
+        </form>
+    </div>
+
+    <!-- ═══ Legal documents ═══ -->
+    <div class="wpz-card">
+        <h2>📄 Правовые документы</h2>
+        <p style="color:#646970;font-size:13px;margin:0 0 16px;">Файлы открываются по кнопкам «Соглашение» и «Политика» в профиле мини-приложения.
+            Поддерживаются PDF, DOC, DOCX, TXT, RTF, ODT. Если файл не задан — открывается встроенная страница <code>terms.html</code>.</p>
+        <form method="post">
+            <?php wp_nonce_field('wpz_action'); ?>
+            <?php foreach ([
+                'terms_doc_url'   => ['Пользовательское соглашение', $terms_doc_url],
+                'privacy_doc_url' => ['Согласие на обработку персональных данных', $privacy_doc_url],
+            ] as $doc_key => $doc): ?>
+                <div style="border:1px solid #dcdcde;border-radius:10px;padding:12px;margin-bottom:12px;">
+                    <label style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;"><?php echo esc_html($doc[0]); ?></label>
+                    <div style="display:flex;gap:6px;">
+                        <input type="text" id="<?php echo esc_attr($doc_key); ?>" name="<?php echo esc_attr($doc_key); ?>"
+                               value="<?php echo esc_attr($doc[1]); ?>" class="regular-text" style="flex:1;">
+                        <button type="button" class="button wpz-doc-upload" data-target="<?php echo esc_attr($doc_key); ?>">📁 Загрузить</button>
+                        <button type="button" class="button wpz-btn-danger wpz-doc-remove" data-target="<?php echo esc_attr($doc_key); ?>">🗑️</button>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+            <p class="description">Вставьте URL или загрузите файл через медиабиблиотеку WordPress.
+                Файл копируется в мини-приложение, поэтому открывается даже с телефона.</p>
+            <p class="submit" style="margin-top:12px;">
+                <button type="submit" name="action" value="save_legal_docs" class="button button-primary">💾 Сохранить документы</button>
+            </p>
         </form>
     </div>
 
@@ -273,6 +306,34 @@ document.addEventListener('DOMContentLoaded', function() {
             input.value = '';
             tilePreview.innerHTML = '<span style="color:#999;font-size:28px;">📷</span>';
             tilePreview.style.borderStyle = 'dashed';
+        });
+    });
+
+    var docFrames = {};
+    document.querySelectorAll('.wpz-doc-upload').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var target = btn.getAttribute('data-target');
+            var input = document.getElementById(target);
+            if (docFrames[target]) { docFrames[target].open(); return; }
+            docFrames[target] = wp.media({
+                title: 'Выберите документ',
+                button: { text: 'Использовать' },
+                multiple: false
+            });
+            docFrames[target].on('select', function() {
+                var attachment = docFrames[target].state().get('selection').first().toJSON();
+                input.value = attachment.url;
+            });
+            docFrames[target].open();
+        });
+    });
+
+    document.querySelectorAll('.wpz-doc-remove').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var input = document.getElementById(btn.getAttribute('data-target'));
+            if (input) input.value = '';
         });
     });
 });

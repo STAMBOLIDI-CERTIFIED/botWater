@@ -703,24 +703,28 @@ $tab = $tab ?? 'list';
                         <td>
                             <?php if ($st === 'pending'): ?>
                                 <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
-                                    <input type="hidden" name="action" value="approve_order">
+                                    <input type="hidden" name="action" value="update_order_status">
+                                    <input type="hidden" name="new_status" value="approved">
                                     <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
                                     <button type="submit" class="button button-small" style="color:#00a32a">✅ Одобрить</button>
                                 </form>
                                 <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
-                                    <input type="hidden" name="action" value="cancel_order">
+                                    <input type="hidden" name="action" value="update_order_status">
+                                    <input type="hidden" name="new_status" value="cancelled">
                                     <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
-                                    <button type="submit" class="button button-small" onclick="return confirm('Отменить заказ?')" style="color:#d63638">❌ Отменить</button>
+                                    <button type="submit" class="button button-small" onclick="return confirm('Отменить заказ? Начисленный по нему опыт будет списан.')" style="color:#d63638">❌ Отменить</button>
                                 </form>
                             <?php elseif ($st === 'approved'): ?>
                                 <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
-                                    <input type="hidden" name="action" value="ship_order">
+                                    <input type="hidden" name="action" value="update_order_status">
+                                    <input type="hidden" name="new_status" value="shipped">
                                     <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
                                     <button type="submit" class="button button-small">🚚 Отправлен</button>
                                 </form>
                             <?php elseif ($st === 'shipped'): ?>
                                 <form method="post" style="display:inline"><?php wp_nonce_field('wpz_action'); ?>
-                                    <input type="hidden" name="action" value="complete_order">
+                                    <input type="hidden" name="action" value="update_order_status">
+                                    <input type="hidden" name="new_status" value="completed">
                                     <input type="hidden" name="order_id" value="<?php echo esc_attr($o['id']); ?>">
                                     <button type="submit" class="button button-small" style="color:#00a32a">✅ Выполнен</button>
                                 </form>

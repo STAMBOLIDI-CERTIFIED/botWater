@@ -108,7 +108,8 @@ jQuery(document).ready(function($) {
     var onlineTimer = null;
 
     function refreshOnline() {
-        $.get(ajaxurl, { action: 'wpz_online' }, function(r) {
+        var wpzAjaxNonce = (window.wpzAdmin && wpzAdmin.nonce) ? wpzAdmin.nonce : '';
+        $.get(ajaxurl, { action: 'wpz_online', _ajax_nonce: wpzAjaxNonce }, function(r) {
             var count = 0;
             if (r && r.success && r.data && r.data.count !== undefined) {
                 count = parseInt(r.data.count);

@@ -1,8 +1,6 @@
 <?php if (!defined('ABSPATH')) exit;
 ?>
-<div class="wrap">
-    <h1>🏢 Бизнес-партнёры</h1>
-    <p style="color:#646970;">Управление аккаунтами партнёров. Привяжите Telegram ID руководителя к категории партнёра.</p>
+<p style="color:#646970; margin-top:0;">Управление аккаунтами партнёров. Привяжите Telegram ID руководителя к категории партнёра.</p>
 
     <?php if (!empty($edit_account)): ?>
     <!-- Edit Form -->
@@ -151,4 +149,3 @@
         <?php endif; ?>
     </div>
     <?php endif; ?>
-</div>
