@@ -2675,10 +2675,14 @@ async function loadTree() {
 
     // Лента стадий роста дерева (пройдено / текущая / заблокировано)
     function treeStagesHtml(lv, stages) {
-        var cards = (stages || TL).map(function (t, i) {
+        var list = stages || TL;
+        var done = Math.min(lv, list.length);
+        var cards = list.map(function (t, i) {
             var state = t.level < lv ? 'done' : (t.level === lv ? 'current' : 'locked');
             var status = state === 'done' ? icon('check') : (state === 'current' ? icon('star') : icon('lock'));
+            var nowChip = state === 'current' ? '<span class="stage-now">сейчас</span>' : '';
             return '<div class="stage-card ' + state + '" data-level="' + t.level + '" style="--i:' + i + '">'
+                + nowChip
                 + '<div class="stage-thumb"><img src="' + t.img + '" alt="' + esc(t.name) + '" loading="lazy" /><span class="stage-status">' + status + '</span></div>'
                 + '<div class="stage-lvl">' + t.level + '</div>'
                 + '<div class="stage-name">' + esc(t.name) + '</div>'
@@ -2686,7 +2690,7 @@ async function loadTree() {
                 + '</div>';
         }).join('');
         return '<div class="tree-stages">'
-            + '<div class="tree-stages-head">' + icon('chart') + ' Стадии роста</div>'
+            + '<div class="tree-stages-head">' + icon('chart') + ' Стадии роста <span class="tree-stages-count">' + done + ' / ' + list.length + '</span></div>'
             + '<div class="tree-stages-strip">' + cards + '</div>'
             + '</div>';
     }
