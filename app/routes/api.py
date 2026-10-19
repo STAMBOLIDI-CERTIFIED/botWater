@@ -1,8 +1,11 @@
 """API routes for the frontend app."""
+import html
 import io
 import json
 import random
+import re
 import time
+import zipfile
 from urllib.parse import parse_qsl
 import hashlib
 import hmac
@@ -10,7 +13,7 @@ import hmac
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from ..deps import db, get_settings
+from ..deps import db, get_settings, BASE_DIR
 from .. import bot as tg_bot
 
 router = APIRouter(prefix="/api")
@@ -432,7 +435,7 @@ async def api_scan(request: Request):
 @router.get("/settings")
 async def api_settings():
     splash_logo_url = await db.get_setting("splash_logo_url")
-    yandex_maps_api_key = await db.get_setting("yandex_maps_api_key")
+    dgis_api_key = await db.get_setting("dgis_api_key")
     app_version = await db.get_setting("app_version")
     terms_url = await db.get_setting("terms_doc_url")
     privacy_url = await db.get_setting("privacy_doc_url")
@@ -448,7 +451,7 @@ async def api_settings():
             tiles[name] = val
     return {
         "splash_logo_url": splash_logo_url or "",
-        "yandex_maps_api_key": yandex_maps_api_key or "",
+        "dgis_api_key": dgis_api_key or "",
         "app_version": app_version or "",
         "terms_url": terms_url or "",
         "privacy_url": privacy_url or "",
@@ -456,7 +459,129 @@ async def api_settings():
     }
 
 
-# Геокодинг текстового адреса партнёра (Яндекс.Геокодер) — для карты в карточке купона.
+# ─── Правовые документы: чтение прямо в мини-приложении ───
+
+_LEGAL_TITLES = {
+    "terms": "Пользовательское соглашение",
+    "privacy": "Согласие на обработку персональных данных",
+}
+_LEGAL_SETTING = {
+    "terms": "terms_doc_url",
+    "privacy": "privacy_doc_url",
+}
+
+
+def _default_legal_html(kind: str) -> str:
+    """Встроенная terms.html: соглашение или блок политики конфиденциальности."""
+    try:
+        raw = (BASE_DIR / "public" / "terms.html").read_text(encoding="utf-8")
+    except Exception:
+        return ""
+    m = re.search(r'<div class="container">(.*)</div>', raw, re.S | re.I)
+    body = m.group(1) if m else raw
+    body = re.sub(r'<a class="back".*?</a>', "", body, flags=re.S | re.I)
+    # Заголовок h1 дублирует заголовок страницы-просмотрщика
+    body = re.sub(r"<h1[^>]*>.*?</h1>", "", body, flags=re.S | re.I, count=1)
+    idx = body.find("<hr>")
+    if idx != -1:
+        body = body[:idx] if kind == "terms" else body[idx + len("<hr>"):]
+    return body.strip()
+
+
+def _docx_text(data: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            xml = z.read("word/document.xml").decode("utf-8", "replace")
+    except Exception:
+        return ""
+    xml = re.sub(r"<w:tab[^>]*/>", "\t", xml)
+    xml = re.sub(r"<w:br[^>]*/>", "\n", xml)
+    xml = re.sub(r"</w:p>", "\n\n", xml)
+    xml = re.sub(r"<[^>]+>", "", xml)
+    return html.unescape(xml).strip()
+
+
+def _odt_text(data: bytes) -> str:
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            xml = z.read("content.xml").decode("utf-8", "replace")
+    except Exception:
+        return ""
+    xml = re.sub(r"<text:line-break[^>]*/>", "\n", xml)
+    xml = re.sub(r"</text:p>", "\n\n", xml)
+    xml = re.sub(r"<[^>]+>", "", xml)
+    return html.unescape(xml).strip()
+
+
+def _text_to_html(text: str) -> str:
+    out = []
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        line = line.strip()
+        if line:
+            out.append("<p>" + html.escape(line) + "</p>")
+    return "".join(out)
+
+
+async def _legal_bytes(url: str) -> bytes | None:
+    """Байты локального файла из /uploads (диск или media_files в БД)."""
+    if not url.startswith("/uploads/"):
+        return None
+    rel = url.split("?", 1)[0].split("#", 1)[0][len("/uploads/"):]
+    if not rel or any(seg in ("", ".", "..") for seg in rel.split("/")):
+        return None
+    try:
+        path = (BASE_DIR / "public" / "uploads" / rel).resolve()
+        root = (BASE_DIR / "public" / "uploads").resolve()
+        if root in path.parents and path.is_file():
+            return path.read_bytes()
+    except Exception:
+        pass
+    row = await db.get_media_file_by_path(rel)
+    return row["bytes"] if row else None
+
+
+@router.get("/legal/{kind}")
+async def api_legal(kind: str):
+    if kind not in _LEGAL_TITLES:
+        raise HTTPException(status_code=404, detail="not found")
+    title = _LEGAL_TITLES[kind]
+    url = (await db.get_setting(_LEGAL_SETTING[kind]) or "").strip()
+    if not url:
+        return {"ok": True, "type": "html", "title": title, "content": _default_legal_html(kind)}
+
+    path = url.split("?", 1)[0].split("#", 1)[0]
+    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    if ext in ("html", "htm"):
+        data = await _legal_bytes(url)
+        if data:
+            return {"ok": True, "type": "html", "title": title, "content": data.decode("utf-8", "replace")}
+        return {"ok": True, "type": "link", "title": title, "url": url}
+    if ext == "pdf":
+        return {"ok": True, "type": "pdf", "title": title, "url": url}
+
+    data = await _legal_bytes(url)
+    if data is None:
+        return {"ok": True, "type": "link", "title": title, "url": url}
+    if ext == "docx":
+        text = _docx_text(data)
+    elif ext == "odt":
+        text = _odt_text(data)
+    elif ext in ("txt", "text", "md"):
+        text = data.decode("utf-8", "replace")
+        if "\ufffd" in text:
+            try:
+                text = data.decode("cp1251")
+            except Exception:
+                pass
+    else:
+        return {"ok": True, "type": "link", "title": title, "url": url}
+    content = _text_to_html(text)
+    if not content:
+        return {"ok": True, "type": "link", "title": title, "url": url}
+    return {"ok": True, "type": "html", "title": title, "content": content}
+
+
+# Геокодинг текстового адреса партнёра (2GIS Geocoder) — для карты в карточке купона.
 # Результат кэшируем: адреса статичны, а у бесплатного ключа лимит запросов.
 _GEOCODE_TTL = 7 * 86400.0
 _geocode_cache: dict[str, tuple[float, list | None]] = {}
@@ -467,7 +592,7 @@ async def api_geocode(address: str = ""):
     address = (address or "").strip()
     if not address:
         return {"ok": False, "coords": None}
-    key = await db.get_setting("yandex_maps_api_key")
+    key = await db.get_setting("dgis_api_key")
     if not key:
         return {"ok": False, "coords": None, "reason": "no_key"}
     now = time.time()
@@ -479,20 +604,18 @@ async def api_geocode(address: str = ""):
         import httpx
         async with httpx.AsyncClient(timeout=8) as client:
             r = await client.get(
-                "https://geocode-maps.yandex.ru/v1/",
+                "https://catalog.api.2gis.com/3.0/items/geocode",
                 params={
-                    "apikey": key,
-                    "geocode": address,
-                    "format": "json",
-                    "lang": "ru_RU",
-                    "results": 1,
+                    "key": key,
+                    "q": address,
+                    "fields": "items.point",
+                    "locale": "ru_RU",
                 },
             )
-        pos = r.json()["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"][
-            "metaDataProperty"
-        ]["GeocoderMetaData"]["Point"]["pos"]  # "lon lat"
-        lon, lat = map(float, pos.split())
-        coords = [lon, lat]  # формат Яндекс.Карт [долгота, широта]
+        items = (r.json().get("result") or {}).get("items") or []
+        point = items[0].get("point") if items else None
+        if point:
+            coords = [float(point["lon"]), float(point["lat"])]  # формат MapGL [долгота, широта]
     except Exception:
         coords = None
     _geocode_cache[address.lower()] = (now, coords)

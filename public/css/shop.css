@@ -1637,17 +1637,6 @@
     height: 16px;
 }
 
-/* Маркер на карте Яндекса */
-.cd-map-pin {
-    width: 20px;
-    height: 20px;
-    border-radius: 50% 50% 50% 0;
-    transform: rotate(-45deg);
-    background: linear-gradient(135deg, var(--gold-light), var(--gold));
-    border: 2.5px solid #fff;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-}
-
 .partner-place-card {
     margin: 14px 12px 0;
 }

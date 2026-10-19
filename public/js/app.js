@@ -547,23 +547,52 @@ function countUp(el, target, duration) {
         } catch (e) { _legalLoaded = false; }
     }
 
+    function openExternalUrl(url) {
+        if (!url) return;
+        try {
+            if (tg.openLink) { tg.openLink(url); return; }
+        } catch (err) {}
+        window.open(url, '_blank', 'noopener');
+    }
+
     function openLegalDoc(e) {
-        var href = e.currentTarget.getAttribute('href') || '';
-        if (!href) return;
-        var url;
-        try { url = new URL(href, window.location.href).href; } catch (err) { return; }
-        e.preventDefault();
-        var isDoc = /\.(docx?|pdf|txt|rtf|odt)(\?|#|$)/i.test(url);
-        var sameOrigin = url.indexOf(window.location.origin + '/') === 0;
-        if (isDoc || !sameOrigin) {
-            // Файл/внешний документ — отдаём браузеру Telegram (download в webview не работает)
-            try {
-                if (tg.openLink) { tg.openLink(url); return; }
-            } catch (err) {}
-            window.open(url, '_blank', 'noopener');
-            return;
+        if (e) e.preventDefault();
+        var kind = e && e.currentTarget ? e.currentTarget.getAttribute('data-legal') : '';
+        openLegalViewer(kind === 'privacy' ? 'privacy' : 'terms');
+    }
+
+    var _legalReq = 0;
+    async function openLegalViewer(kind) {
+        var title = kind === 'privacy' ? 'Согласие на обработку персональных данных' : 'Пользовательское соглашение';
+        openPage('legal');
+        var titleEl = document.getElementById('legal-title');
+        var bodyEl = document.getElementById('legal-body');
+        if (titleEl) titleEl.textContent = title;
+        if (!bodyEl) return;
+        bodyEl.innerHTML = '<div class="legal-loading"><div class="sk sk-row"></div><div class="sk sk-row"></div><div class="sk sk-row"></div></div>';
+        var req = ++_legalReq;
+        try {
+            var resp = await fetch(API_BASE + '/legal/' + encodeURIComponent(kind), { headers: { 'X-Telegram-Init-Data': tg.initData || '' } });
+            var d = await resp.json();
+            if (req !== _legalReq) return;
+            if (!resp.ok || !d || !d.ok) throw new Error('legal');
+            if (d.title && titleEl) titleEl.textContent = d.title;
+            if (d.type === 'pdf') {
+                bodyEl.innerHTML = '<iframe class="legal-pdf" src="' + esc(d.url) + '" title="' + esc(title) + '"></iframe>'
+                    + '<button class="legal-open" type="button" data-legal-open="' + esc(d.url) + '">Открыть PDF</button>';
+            } else if (d.type === 'link') {
+                bodyEl.innerHTML = '<div class="legal-fallback"><p>Этот формат документа нельзя показать внутри приложения.</p>'
+                    + '<button class="legal-open" type="button" data-legal-open="' + esc(d.url) + '">Открыть документ</button></div>';
+            } else {
+                bodyEl.innerHTML = d.content || '<p>Документ пуст.</p>';
+            }
+            var openBtn = bodyEl.querySelector('[data-legal-open]');
+            if (openBtn) openBtn.addEventListener('click', function() { openExternalUrl(openBtn.getAttribute('data-legal-open')); });
+        } catch (e) {
+            if (req !== _legalReq) return;
+            bodyEl.innerHTML = '<div class="legal-fallback"><p>Не удалось загрузить документ.</p>'
+                + '<button class="legal-open" type="button" onclick="window.location.href=\'./terms.html\'">Открыть страницу</button></div>';
         }
-        window.location.href = url;
     }
 
     (function bindLegalLinks() {
@@ -774,7 +803,7 @@ function stopScanner() {
         moveNavIndicator(false);
         var nav = document.querySelector('.bottom-nav');
         if (nav) {
-            if (page === 'gift' || page === 'post-gift' || page === 'support') {
+            if (page === 'gift' || page === 'post-gift' || page === 'support' || page === 'legal') {
                 nav.classList.add('nav-hidden');
             } else {
                 nav.classList.remove('nav-hidden');

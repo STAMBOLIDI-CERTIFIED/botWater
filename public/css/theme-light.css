@@ -194,10 +194,6 @@ html[data-theme="light"] .cd-map {
     border-color: rgba(17,19,24,0.05);
 }
 
-html[data-theme="light"] .cd-map-pin {
-    border-color: #FFFFFF;
-}
-
 html[data-theme="light"] .cd-pill:not(.cd-pill-ok):not(.cd-pill-warn) {
     background: #111318;
     border-color: transparent;

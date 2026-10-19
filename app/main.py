@@ -41,6 +41,7 @@ app.add_middleware(NoCacheMiddleware)
 
 _PUBLIC_API_PREFIXES = (
     "/api/settings",
+    "/api/legal",
     "/api/shop/categories",
     "/api/prizes",
     "/api/raffles",

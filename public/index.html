@@ -14,7 +14,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
     <script>try{if(localStorage.getItem('wpz_theme')==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}</script>
-    <link rel="stylesheet" href="/css/app.css?v=202610121">
+    <link rel="stylesheet" href="/css/app.css?v=202610192">
 </head>
 <body>
 
@@ -195,10 +195,20 @@
     <div class="terms-box">
         <p>Правовая информация</p>
         <div class="terms-links">
-            <a id="terms-link" href="./terms.html" rel="noopener">icon('document') Соглашение</a>
-            <a id="privacy-link" href="./terms.html#privacy" rel="noopener">icon('lock') Политика</a>
+            <a id="terms-link" href="./terms.html" data-legal="terms" rel="noopener">icon('document') Соглашение</a>
+            <a id="privacy-link" href="./terms.html#privacy" data-legal="privacy" rel="noopener">icon('lock') Политика</a>
         </div>
     </div>
+</div>
+
+<!-- ПРАВОВОЙ ДОКУМЕНТ -->
+<div id="page-legal" class="page legal-page">
+    <button class="back-btn" onclick="openPage('profile')"><span class="bb-icon">icon('back')</span> Назад</button>
+    <div class="legal-head">
+        <div class="legal-eyebrow">Правовая информация</div>
+        <h1 class="legal-title" id="legal-title">…</h1>
+    </div>
+    <div class="legal-body" id="legal-body"></div>
 </div>
 
 <!-- ИСТОРИЯ -->
