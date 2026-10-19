@@ -65,9 +65,9 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: 64px;
-    height: 46px;
-    border-radius: 23px;
+    width: 74px;
+    height: 48px;
+    border-radius: 16px;
     z-index: 0;
     pointer-events: none;
     opacity: 0;
@@ -123,7 +123,7 @@
 }
 
 .nav-label {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 600;
     line-height: 1.1;
     color: var(--text-dim);
