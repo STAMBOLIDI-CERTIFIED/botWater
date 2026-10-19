@@ -2,6 +2,7 @@
 import html
 import io
 import json
+import mimetypes
 import random
 import re
 import time
@@ -24,6 +25,10 @@ _CATALOG_TTL = 60.0
 _CATALOG_CACHE_CONTROL = "public, max-age=60"
 _categories_cache: dict = {"ts": 0.0, "val": None}
 _category_cache: dict[int, tuple[float, dict]] = {}
+
+# Аватары проксируем через бэкенд, чтобы не отдавать клиенту токен бота.
+_AVATAR_TTL = 3600.0
+_avatar_cache: dict[int, tuple[float, bytes, str]] = {}
 
 
 def _validate_init_data(init_data: str, bot_token: str) -> dict | None:
@@ -107,6 +112,48 @@ async def _require_admin(request: Request) -> int:
     raise HTTPException(403, "forbidden")
 
 
+@router.get("/avatar/{user_id}")
+async def api_avatar(user_id: int):
+    if user_id <= 0:
+        raise HTTPException(status_code=404)
+    now = time.time()
+    hit = _avatar_cache.get(user_id)
+    if hit and now - hit[0] < _AVATAR_TTL:
+        return Response(content=hit[1], media_type=hit[2], headers={"Cache-Control": "public, max-age=3600"})
+    import httpx
+    s = get_settings()
+    try:
+        async with httpx.AsyncClient() as client:
+            up = await client.post(
+                f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getUserProfilePhotos",
+                json={"user_id": user_id, "limit": 1}, timeout=10,
+            )
+            up_data = up.json()
+            photos = (up_data.get("result") or {}).get("photos") or [] if up_data.get("ok") else []
+            if not photos:
+                raise HTTPException(status_code=404)
+            fr = await client.post(
+                f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getFile",
+                json={"file_id": photos[0][-1]["file_id"]}, timeout=10,
+            )
+            fd = fr.json()
+            fp = (fd.get("result") or {}).get("file_path") if fd.get("ok") else None
+            if not fp:
+                raise HTTPException(status_code=404)
+            r = await client.get(
+                f"https://api.telegram.org/file/bot{s['BOT_TOKEN']}/{fp}", timeout=15,
+            )
+            if r.status_code != 200:
+                raise HTTPException(status_code=404)
+            ctype = mimetypes.guess_type(fp)[0] or "image/jpeg"
+            _avatar_cache[user_id] = (now, r.content, ctype)
+            return Response(content=r.content, media_type=ctype, headers={"Cache-Control": "public, max-age=3600"})
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=404)
+
+
 @router.get("/user")
 async def api_user(request: Request, user_id: int = 0):
     user_id = _self(request, user_id)
@@ -116,7 +163,7 @@ async def api_user(request: Request, user_id: int = 0):
         return None
     name = user.get("name") or ""
     username = ""
-    photo_url = ""
+    photo_url = f"/api/avatar/{user_id}"
     try:
         import httpx
         s = get_settings()
@@ -134,25 +181,6 @@ async def api_user(request: Request, user_id: int = 0):
                         name = tg_name
                         await db.update_user_name(user_id, tg_name)
                     username = chat.get("username", "") or ""
-            except Exception:
-                pass
-            try:
-                up = await client.post(
-                    f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getUserProfilePhotos",
-                    json={"user_id": user_id, "limit": 1}, timeout=10
-                )
-                up_data = up.json()
-                if up_data.get("ok"):
-                    photos = up_data.get("result", {}).get("photos", [])
-                    if photos:
-                        biggest = photos[0][-1]
-                        fr = await client.post(
-                            f"https://api.telegram.org/bot{s['BOT_TOKEN']}/getFile",
-                            json={"file_id": biggest["file_id"]}, timeout=10
-                        )
-                        fd = fr.json()
-                        if fd.get("ok") and fd.get("result", {}).get("file_path"):
-                            photo_url = f"https://api.telegram.org/file/bot{s['BOT_TOKEN']}/{fd['result']['file_path']}"
             except Exception:
                 pass
     except Exception:
@@ -434,11 +462,18 @@ async def api_scan(request: Request):
 
 @router.get("/settings")
 async def api_settings():
-    splash_logo_url = await db.get_setting("splash_logo_url")
-    dgis_api_key = await db.get_setting("dgis_api_key")
-    app_version = await db.get_setting("app_version")
-    terms_url = await db.get_setting("terms_doc_url")
-    privacy_url = await db.get_setting("privacy_doc_url")
+    keys = [
+        "splash_logo_url",
+        "dgis_api_key",
+        "app_version",
+        "terms_doc_url",
+        "privacy_doc_url",
+        "tile_shop_image",
+        "tile_coupons_image",
+        "tile_partner_image",
+        "tile_support_image",
+    ]
+    vals = await db.get_settings_map(keys)
     tiles = {}
     for key, name in (
         ("tile_shop_image", "shop"),
@@ -446,15 +481,15 @@ async def api_settings():
         ("tile_partner_image", "partner"),
         ("tile_support_image", "support"),
     ):
-        val = await db.get_setting(key)
+        val = vals.get(key)
         if val:
             tiles[name] = val
     return {
-        "splash_logo_url": splash_logo_url or "",
-        "dgis_api_key": dgis_api_key or "",
-        "app_version": app_version or "",
-        "terms_url": terms_url or "",
-        "privacy_url": privacy_url or "",
+        "splash_logo_url": vals.get("splash_logo_url") or "",
+        "dgis_api_key": vals.get("dgis_api_key") or "",
+        "app_version": vals.get("app_version") or "",
+        "terms_url": vals.get("terms_doc_url") or "",
+        "privacy_url": vals.get("privacy_doc_url") or "",
         "tiles": tiles,
     }
 

@@ -2108,10 +2108,28 @@ class Database:
 
     _settings_cache: dict[str, str | None] = {}
     _settings_cache_ttl: float = 0
+    _settings_map_cache: dict[str, str | None] = {}
+    _settings_map_ttl: float = 0
 
     async def get_setting(self, key: str) -> str | None:
         row = await self._fetch_one("settings", f"key=eq.{key}&select=value")
         return row["value"] if row else None
+
+    async def get_settings_map(self, keys: list[str]) -> dict[str, str | None]:
+        import time
+        now = time.time()
+        if now - self._settings_map_ttl < 5 and all(k in self._settings_map_cache for k in keys):
+            return {k: self._settings_map_cache.get(k) for k in keys}
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(
+                'SELECT key, value FROM "settings" WHERE key = ANY($1::text[])',
+                list(keys),
+            )
+        found = {r["key"]: r["value"] for r in rows}
+        for k in keys:
+            self._settings_map_cache[k] = found.get(k)
+        self._settings_map_ttl = now
+        return {k: found.get(k) for k in keys}
 
     async def set_setting(self, key: str, value: str):
         existing = await self._fetch_one("settings", f"key=eq.{key}&select=key")
@@ -2120,6 +2138,7 @@ class Database:
         else:
             await self._fetch("settings", method="POST", json_data={"key": key, "value": value})
         self._settings_cache.pop(key, None)
+        self._settings_map_cache.pop(key, None)
 
     async def get_bot_setting(self, key: str, default: str = "") -> str:
         import time
