@@ -229,6 +229,51 @@
 .menu-tree:active { transform: scale(0.98); }
 .menu-tree:hover { border-color: rgba(111,207,151,0.3); }
 
+/* Живой фон и микроанимации карточки дерева */
+.menu-tree::before {
+    content: '';
+    position: absolute;
+    top: -70px;
+    right: -30px;
+    width: 170px;
+    height: 170px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(61,158,106,0.2), transparent 68%);
+    pointer-events: none;
+    animation: menuTreeAura 7s ease-in-out infinite alternate;
+}
+
+@keyframes menuTreeAura {
+    from { transform: translate(0, 0) scale(1); opacity: .65; }
+    to { transform: translate(-22px, 14px) scale(1.18); opacity: 1; }
+}
+
+.menu-tree-ico .icn {
+    display: flex;
+    animation: menuTreeSway 4.5s ease-in-out infinite;
+    transform-origin: 50% 90%;
+}
+
+@keyframes menuTreeSway {
+    0%, 100% { transform: rotate(-4deg); }
+    50% { transform: rotate(4deg); }
+}
+
+.menu-tree-lvl.lvl-pop {
+    animation: menuLvlPop .55s var(--ease-spring), menuLvlPulse 3.4s ease-in-out .55s infinite;
+}
+
+@keyframes menuLvlPop {
+    0% { transform: scale(.86); opacity: .4; }
+    60% { transform: scale(1.07); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes menuLvlPulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(61,158,106,0); }
+    50% { box-shadow: 0 0 12px rgba(61,158,106,0.35); }
+}
+
 .menu-tree-head {
     position: relative;
     z-index: 1;
@@ -288,12 +333,48 @@
 }
 
 .menu-tree-fill {
+    position: relative;
+    overflow: hidden;
     height: 100%;
     width: 0%;
     border-radius: var(--radius-full);
     background: linear-gradient(90deg, var(--gold-dark), var(--gold));
     transition: width .8s var(--ease-out);
     box-shadow: 0 0 12px rgba(var(--gold-rgb),0.4);
+}
+
+.menu-tree-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(100deg, transparent 20%, rgba(111,207,151,0.7) 50%, transparent 80%);
+    transform: translateX(-100%);
+    animation: menuFillShine 2.8s ease-in-out infinite;
+}
+
+.menu-tree-fill::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: 1px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    transform: translateY(-50%);
+    background: #8BE3AE;
+    box-shadow: 0 0 10px rgba(111,207,151,0.9);
+    animation: menuFillDot 2.2s ease-in-out infinite;
+    z-index: 1;
+}
+
+@keyframes menuFillShine {
+    0%, 55% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+@keyframes menuFillDot {
+    0%, 100% { opacity: .55; transform: translateY(-50%) scale(.85); }
+    50% { opacity: 1; transform: translateY(-50%) scale(1.15); }
 }
 
 .menu-tree-pct {

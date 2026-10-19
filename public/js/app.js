@@ -433,6 +433,22 @@ function countUp(el, target, duration) {
             await Promise.all(extras);
         } catch(e) {}
     }
+    function animateNumber(el, from, to, dur, fmt) {
+        if (!el) return;
+        var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (reduce || !dur) { el.textContent = fmt(to); return; }
+        var start = null;
+        function step(ts) {
+            if (start === null) start = ts;
+            var p = Math.min(1, (ts - start) / dur);
+            var eased = 1 - Math.pow(1 - p, 3);
+            el.textContent = fmt(Math.round(from + (to - from) * eased));
+            if (p < 1) requestAnimationFrame(step);
+        }
+        el.textContent = fmt(from);
+        requestAnimationFrame(step);
+    }
+
     async function loadMenuTree() {
         var box = document.getElementById('menu-tree');
         if (!box) return;
@@ -443,13 +459,19 @@ function countUp(el, target, duration) {
         var xp = d.xp || 0, lv = d.level || 1, nx = d.next_level_xp || 100;
         var pr = Math.max(0, Math.min(100, d.progress || 0));
         var mx = lv >= 6;
-        document.getElementById('menu-tree-lvl').textContent = mx ? 'Уровень ' + lv + ' ★' : 'Уровень ' + lv;
-        document.getElementById('menu-tree-fill').style.width = pr + '%';
-        document.getElementById('menu-tree-pct').textContent = pr + '%';
+        box.style.display = 'flex';
+        var lvlEl = document.getElementById('menu-tree-lvl');
+        lvlEl.textContent = mx ? 'Уровень ' + lv + ' ★' : 'Уровень ' + lv;
+        lvlEl.classList.remove('lvl-pop');
+        void lvlEl.offsetWidth;
+        lvlEl.classList.add('lvl-pop');
+        var fillEl = document.getElementById('menu-tree-fill');
+        fillEl.style.width = '0%';
+        requestAnimationFrame(function () { fillEl.style.width = pr + '%'; });
+        animateNumber(document.getElementById('menu-tree-pct'), 0, pr, 900, function (v) { return v + '%'; });
         document.getElementById('menu-tree-foot').textContent = mx
             ? xp + ' XP · максимальный уровень'
             : xp + ' / ' + nx + ' XP · ещё ' + Math.max(0, nx - xp) + ' до ' + (lv + 1) + ' уровня';
-        box.style.display = 'flex';
     }
 
     var _homeTilesLoaded = false;
@@ -2559,11 +2581,12 @@ async function loadTree() {
             const serial = nft && nft.serial ? nft.serial : '';
             const rarityTitles = { common: 'Обычное', rare: 'Редкое', epic: 'Эпическое', legendary: 'Легендарное' };
             const rarityTitle = rarityTitles[rarity] || '';
+            const pcount = (mx || rarity === 'legendary') ? 8 : 5;
             c.innerHTML = `<div class="tree-hero">
                 <div class="tree-hero-scene${rarity ? ' rarity-' + rarity : ''}">
                     <div class="tree-hero-glow"></div>
                     <img class="tree-hero-img" src="${cur.img}" alt="${sn}"${hue ? ' style="filter:hue-rotate(' + hue + 'deg)"' : ''} />
-                    <div class="tree-hero-particles">${mx || rarity === 'legendary' ? '<i></i><i></i><i></i><i></i><i></i>' : ''}</div>
+                    <div class="tree-hero-particles">${'<i></i>'.repeat(pcount)}</div>
                 </div>
                 <div class="tree-hero-meta">
                     <span class="tree-level-badge">Уровень ${lv}${mx?' ★':''}</span>
@@ -2578,13 +2601,30 @@ async function loadTree() {
         ${treeRulesHtml(rules)}
         ${treePartnersHtml(partners)}
         ${treeHistoryHtml(history)}`;
+            var ringFill = c.querySelector('.tree-ring-fill');
+            if (ringFill) {
+                var ringTarget = parseFloat(ringFill.getAttribute('stroke-dashoffset')) || 0;
+                var ringCirc = parseFloat(ringFill.getAttribute('stroke-dasharray')) || 0;
+                ringFill.style.strokeDashoffset = ringCirc;
+                requestAnimationFrame(function () {
+                    requestAnimationFrame(function () {
+                        ringFill.style.strokeDashoffset = ringTarget;
+                    });
+                });
+            }
+            if (!mx) {
+                animateNumber(c.querySelector('.tree-ring-val'), 0, Math.round(pr), 950, function (v) { return v + '%'; });
+            }
             var strip = c.querySelector('.tree-stages-strip');
             var curCard = c.querySelector('.stage-card.current');
             if (strip && curCard) {
                 requestAnimationFrame(function () {
                     var d = curCard.getBoundingClientRect().left - strip.getBoundingClientRect().left;
                     var off = d + strip.scrollLeft - (strip.clientWidth - curCard.offsetWidth) / 2;
-                    strip.scrollLeft = Math.max(0, off);
+                    var target = Math.max(0, off);
+                    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                    if (reduce || !strip.scrollTo) strip.scrollLeft = target;
+                    else strip.scrollTo({ left: target, behavior: 'smooth' });
                 });
             }
             // Превью стадий: тап по пройденной/текущей карточке переключает герой
@@ -2615,7 +2655,11 @@ async function loadTree() {
                     var slv = parseInt(card.getAttribute('data-level'), 10);
                     var s = tl[slv - 1];
                     if (!s || !heroImg) return;
-                    heroImg.src = s.img;
+                    heroImg.classList.add('img-switching');
+                    setTimeout(function () {
+                        heroImg.src = s.img;
+                        heroImg.classList.remove('img-switching');
+                    }, 130);
                     heroName.textContent = s.name;
                     heroBadge.textContent = 'Уровень ' + slv + (slv >= 6 ? ' ★' : '');
                     heroSub.innerHTML = 'Стадия ' + slv + ' из ' + tl.length
@@ -2631,10 +2675,10 @@ async function loadTree() {
 
     // Лента стадий роста дерева (пройдено / текущая / заблокировано)
     function treeStagesHtml(lv, stages) {
-        var cards = (stages || TL).map(function (t) {
+        var cards = (stages || TL).map(function (t, i) {
             var state = t.level < lv ? 'done' : (t.level === lv ? 'current' : 'locked');
             var status = state === 'done' ? icon('check') : (state === 'current' ? icon('star') : icon('lock'));
-            return '<div class="stage-card ' + state + '" data-level="' + t.level + '">'
+            return '<div class="stage-card ' + state + '" data-level="' + t.level + '" style="--i:' + i + '">'
                 + '<div class="stage-thumb"><img src="' + t.img + '" alt="' + esc(t.name) + '" loading="lazy" /><span class="stage-status">' + status + '</span></div>'
                 + '<div class="stage-lvl">' + t.level + '</div>'
                 + '<div class="stage-name">' + esc(t.name) + '</div>'
@@ -2676,8 +2720,8 @@ async function loadTree() {
     var XP_RULE_ICONS = { coupon_buy: 'cart', coupon_redeem: 'check', partner_scan: 'scanner' };
     function treeRulesHtml(rules) {
         if (!rules || !rules.length) return '';
-        var items = rules.map(function (r) {
-            return '<div class="rule-item">'
+        var items = rules.map(function (r, i) {
+            return '<div class="rule-item" style="--i:' + i + '">'
                 + '<div class="rule-ico">' + icon(XP_RULE_ICONS[r.key] || 'bolt') + '</div>'
                 + '<div class="rule-body"><div class="rule-title">' + esc(r.title) + '</div>'
                 + '<div class="rule-desc">' + esc(r.desc) + '</div></div>'
@@ -2715,10 +2759,10 @@ async function loadTree() {
             return '<div class="tree-panel">' + head
                 + '<div class="tree-panel-empty">Опыт ещё не начислялся — он растёт, когда ты активируешь купоны у партнёров.</div></div>';
         }
-        var items = history.map(function (h) {
+        var items = history.map(function (h, i) {
             var ico = h.icon || XP_REASON_ICONS[h.reason] || '⚡';
             var title = h.partner || XP_REASON_TITLES[h.reason] || 'Начисление опыта';
-            return '<div class="hist-item">'
+            return '<div class="hist-item" style="--i:' + i + '">'
                 + '<div class="hist-ico">' + ico + '</div>'
                 + '<div class="hist-body"><div class="hist-title">' + esc(title) + '</div>'
                 + '<div class="hist-date">' + esc(xpDateShort(h.created_at)) + '</div></div>'
@@ -2768,7 +2812,7 @@ async function loadTree() {
     // Прогресс опыта отдельно по каждому партнёру
     function treePartnersHtml(partners) {
         if (!partners || !partners.length) return '';
-        var items = partners.map(function(p) {
+        var items = partners.map(function(p, i) {
             var pct = p.threshold > 0 ? Math.min(100, Math.round(p.xp / p.threshold * 100)) : 0;
             var bar = p.threshold > 0
                 ? '<div class="xp-track"><div class="xp-fill" style="width:' + pct + '%"></div></div>'
@@ -2776,7 +2820,7 @@ async function loadTree() {
             var badges = '';
             if (p.is_favorite) badges += '<span class="tpi-badge fav">' + icon('star') + ' Любимый партнёр</span>';
             if (p.gift_claimed) badges += '<span class="tpi-badge got">Подарок получен</span>';
-            return '<div class="tree-partner-item' + (p.is_favorite ? ' fav' : '') + '">'
+            return '<div class="tree-partner-item' + (p.is_favorite ? ' fav' : '') + '" style="--i:' + i + '">'
                 + '<div class="tpi-icon">' + esc(p.icon || '🎁') + '</div>'
                 + '<div class="tpi-body">'
                 + '<div class="tpi-head"><span class="tpi-name">' + esc(p.title || 'Партнёр') + '</span>'
