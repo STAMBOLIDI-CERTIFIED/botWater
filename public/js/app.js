@@ -1970,11 +1970,12 @@ function closePrizeModal() {
     }
 
     function mountPartnerDetailMap(cat) {
+        if (_pdMap) { destroyMapHandle(_pdMap); _pdMap = null; }
         if (!cat.address) return;
         var pdm = document.getElementById('partner-detail-map');
         if (!pdm) return;
         pdm.innerHTML = '<div class="cd-map-loading">' + icon('target') + '</div>';
-        mountPartnerMap(cat.address, pdm);
+        mountPartnerMap(cat.address, pdm, function(handle) { _pdMap = handle; });
     }
 
     async function processPartnerScan(qrCode) {
