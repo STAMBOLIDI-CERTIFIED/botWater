@@ -65,6 +65,12 @@ $status_map = [
 
     <div class="wpz-card">
         <h2>Отправленные рассылки</h2>
+        <p class="description" style="margin:0 0 12px;">
+            «Прочитали» — получили рассылку и заходили в мини-приложение после её отправки.
+            Telegram не передаёт ботам факт открытия сообщения, поэтому это активность в приложении,
+            а не точная отметка «прочитано». Нажмите на число, чтобы увидеть список.
+            Для рассылок, отправленных до включения статистики, стоит «—».
+        </p>
         <table class="wp-list-table widefat fixed striped">
             <thead>
                 <tr>
@@ -74,6 +80,7 @@ $status_map = [
                     <th>Текст</th>
                     <th>Статус</th>
                     <th>Доставлено</th>
+                    <th>Прочитали</th>
                     <th>Дата</th>
                     <th>Автор</th>
                     <th style="width:90px;">Действия</th>
@@ -81,11 +88,12 @@ $status_map = [
             </thead>
             <tbody>
                 <?php if (empty($broadcasts)): ?>
-                    <tr><td colspan="9">Рассылок пока нет</td></tr>
+                    <tr><td colspan="10">Рассылок пока нет</td></tr>
                 <?php else: foreach ($broadcasts as $b):
                     $st = $status_map[$b['status']] ?? [$b['status'], 'wpz-blue'];
                     $media_ids = json_decode((string)($b['media'] ?? '[]'), true);
                     if (!is_array($media_ids)) $media_ids = [];
+                    $read_count = (int)($read_counts[(int)$b['id']] ?? 0);
                 ?>
                     <tr>
                         <td><?php echo esc_html($b['id']); ?></td>
@@ -116,6 +124,19 @@ $status_map = [
                         </td>
                         <td>
                             <?php echo esc_html($b['sent_count']); ?> / <?php echo esc_html($b['recipients']); ?>
+                        </td>
+                        <td>
+                            <?php if (!empty($b['sent_at']) && !empty($b['reads_tracked'])): ?>
+                                <a href="<?php echo esc_url(admin_url('admin.php?page=wpz-broadcasts&readers=' . (int)$b['id'])); ?>"
+                                   title="Показать список пользователей">
+                                    <strong><?php echo esc_html($read_count); ?></strong>
+                                </a>
+                                <span class="description">из <?php echo esc_html($b['sent_count']); ?></span>
+                            <?php elseif (!empty($b['sent_at'])): ?>
+                                <span class="description" title="Статистика прочтения для этой рассылки не велась">—</span>
+                            <?php else: ?>
+                                —
+                            <?php endif; ?>
                         </td>
                         <td><?php echo $b['sent_at'] ? date('Y-m-d H:i', strtotime($b['sent_at'])) : ($b['created_at'] ? date('Y-m-d H:i', strtotime($b['created_at'])) : '—'); ?></td>
                         <td><?php echo esc_html($b['created_by'] ?: '—'); ?></td>

@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import mimetypes
+import time
 from datetime import datetime
 from pathlib import Path
 
@@ -50,6 +51,21 @@ _PUBLIC_API_PREFIXES = (
     "/api/partner/qr",
 )
 
+# Активность в мини-аппе: не чаще одного UPDATE в минуту на пользователя.
+_activity_seen: dict[int, float] = {}
+
+
+def _should_touch_activity(uid: int) -> bool:
+    now = time.time()
+    if now - _activity_seen.get(uid, 0) < 60:
+        return False
+    _activity_seen[uid] = now
+    if len(_activity_seen) > 5000:
+        cutoff = now - 600
+        for k in [k for k, v in _activity_seen.items() if v < cutoff]:
+            _activity_seen.pop(k, None)
+    return True
+
 
 class ApiAuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -74,6 +90,9 @@ class ApiAuthMiddleware(BaseHTTPMiddleware):
             else:
                 request.state.tg_user = user
                 request.state.dev_auth = False
+                uid = user.get("id") if isinstance(user, dict) else None
+                if uid and _should_touch_activity(int(uid)):
+                    asyncio.create_task(db.touch_user_activity(int(uid)))
         return await call_next(request)
 
 

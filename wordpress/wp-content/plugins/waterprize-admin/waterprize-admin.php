@@ -67,6 +67,7 @@ add_action('admin_init', function () {
                 error TEXT NOT NULL DEFAULT '',
                 created_by TEXT NOT NULL DEFAULT '',
                 media TEXT NOT NULL DEFAULT '[]',
+                reads_tracked BOOLEAN NOT NULL DEFAULT FALSE,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 sent_at TIMESTAMPTZ
             )"
@@ -123,6 +124,24 @@ add_action('admin_init', function () {
         );
         if ($ok) {
             update_option('wpz_migration_media_files', true);
+        }
+    }
+    if (!get_option('wpz_migration_user_activity')) {
+        $db = WaterPrize_DB::instance();
+        $ok = $db->execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ");
+        $ok = $ok && $db->execute(
+            "CREATE INDEX IF NOT EXISTS idx_users_last_active_at ON users(last_active_at)"
+        );
+        if ($ok) {
+            update_option('wpz_migration_user_activity', true);
+        }
+    }
+    if (!get_option('wpz_migration_broadcast_reads')) {
+        $db = WaterPrize_DB::instance();
+        if ($db->execute(
+            "ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS reads_tracked BOOLEAN NOT NULL DEFAULT FALSE"
+        )) {
+            update_option('wpz_migration_broadcast_reads', true);
         }
     }
 });

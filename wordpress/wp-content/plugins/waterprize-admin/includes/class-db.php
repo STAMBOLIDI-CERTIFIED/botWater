@@ -855,8 +855,8 @@ class WaterPrize_DB {
 
     public function add_broadcast($title, $body, $author, $media = '[]', $status = 'sending') {
         return $this->insert(
-            'INSERT INTO broadcasts (title, body, status, media, created_by, created_at)
-             VALUES (?, ?, ?, ?, ?, NOW())',
+            'INSERT INTO broadcasts (title, body, status, media, created_by, created_at, reads_tracked)
+             VALUES (?, ?, ?, ?, ?, NOW(), TRUE)',
             [$title, $body, $status, $media, $author]
         );
     }
@@ -907,6 +907,44 @@ class WaterPrize_DB {
     public function get_broadcast_messages($broadcast_id) {
         return $this->query(
             'SELECT chat_id, message_id FROM bot_messages WHERE broadcast_id = ?',
+            [(int)$broadcast_id]
+        );
+    }
+
+    // «Прочитали» = получили рассылку и заходили в мини-апп после её отправки.
+    public function get_broadcast_read_counts() {
+        return $this->query(
+            'SELECT b.id, COUNT(DISTINCT u.telegram_id) AS readers
+             FROM broadcasts b
+             JOIN bot_messages bm ON bm.broadcast_id = b.id
+             JOIN users u ON u.telegram_id = bm.chat_id
+             WHERE b.reads_tracked = TRUE AND b.sent_at IS NOT NULL AND u.last_active_at >= b.sent_at
+             GROUP BY b.id'
+        );
+    }
+
+    public function count_broadcast_readers($broadcast_id) {
+        $row = $this->query_one(
+            'SELECT COUNT(DISTINCT u.telegram_id) AS cnt
+             FROM broadcasts b
+             JOIN bot_messages bm ON bm.broadcast_id = b.id
+             JOIN users u ON u.telegram_id = bm.chat_id
+             WHERE b.id = ? AND b.reads_tracked = TRUE AND b.sent_at IS NOT NULL AND u.last_active_at >= b.sent_at',
+            [(int)$broadcast_id]
+        );
+        return (int)($row['cnt'] ?? 0);
+    }
+
+    public function get_broadcast_readers($broadcast_id, $limit = 100, $offset = 0) {
+        return $this->query(
+            'SELECT u.telegram_id, u.name, u.username, u.last_active_at
+             FROM broadcasts b
+             JOIN bot_messages bm ON bm.broadcast_id = b.id
+             JOIN users u ON u.telegram_id = bm.chat_id
+             WHERE b.id = ? AND b.reads_tracked = TRUE AND b.sent_at IS NOT NULL AND u.last_active_at >= b.sent_at
+             GROUP BY u.telegram_id, u.name, u.username, u.last_active_at
+             ORDER BY u.last_active_at DESC
+             LIMIT ' . (int)$limit . ' OFFSET ' . (int)$offset,
             [(int)$broadcast_id]
         );
     }

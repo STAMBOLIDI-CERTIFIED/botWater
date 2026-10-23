@@ -1433,8 +1433,25 @@ class WaterPrize_Pages {
     // ─── Broadcasts (рассылки) ────────────────────────
     public static function broadcasts() {
         $db = self::db();
+        $readers_id = isset($_GET['readers']) ? (int)$_GET['readers'] : 0;
+        if ($readers_id) {
+            $broadcast = $db->get_broadcast($readers_id);
+            if (!$broadcast) {
+                wp_die('Рассылка не найдена');
+            }
+            $per_page = 100;
+            $paged = max(1, (int)($_GET['paged'] ?? 1));
+            $total_readers = $db->count_broadcast_readers($readers_id);
+            $readers = $db->get_broadcast_readers($readers_id, $per_page, ($paged - 1) * $per_page);
+            include __DIR__ . '/../templates/broadcast-readers.php';
+            return;
+        }
         $broadcasts = $db->get_broadcasts(200);
         $broadcast_recipients = $db->count_broadcast_recipients();
+        $read_counts = [];
+        foreach ($db->get_broadcast_read_counts() as $row) {
+            $read_counts[(int)$row['id']] = (int)$row['readers'];
+        }
         include __DIR__ . '/../templates/broadcasts.php';
     }
 

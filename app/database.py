@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS broadcasts (
     created_by TEXT NOT NULL DEFAULT '',
     media TEXT NOT NULL DEFAULT '[]',
     media_tg TEXT NOT NULL DEFAULT '[]',
+    reads_tracked BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     sent_at TIMESTAMPTZ
 )
@@ -87,6 +88,7 @@ class Database:
         await self.ensure_coupon_favorites()
         await self.ensure_tree_xp_log()
         await self.ensure_tree_seed()
+        await self.ensure_user_activity()
 
     async def close(self):
         if self.pool:
@@ -105,6 +107,10 @@ class Database:
                 await conn.execute(
                     "ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS"
                     " media_tg TEXT NOT NULL DEFAULT '[]'"
+                )
+                await conn.execute(
+                    "ALTER TABLE broadcasts ADD COLUMN IF NOT EXISTS"
+                    " reads_tracked BOOLEAN NOT NULL DEFAULT FALSE"
                 )
                 await conn.execute(_BOT_MESSAGES_DDL)
                 for ddl in _BOT_MESSAGES_INDEXES_DDL:
@@ -130,6 +136,22 @@ class Database:
             logger.info("user_coupons.is_favorite ready")
         except Exception:
             logger.exception("ensure_coupon_favorites failed")
+
+    async def ensure_user_activity(self):
+        """Активность в мини-аппе для статистики прочтения рассылок."""
+        try:
+            async with self.pool.acquire() as conn:
+                await conn.execute(
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMPTZ"
+                )
+                await conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_users_last_active_at"
+                    " ON users(last_active_at)"
+                )
+            self._col_cache.pop("users", None)
+            logger.info("users.last_active_at ready")
+        except Exception:
+            logger.exception("ensure_user_activity failed")
 
     async def ensure_tree_xp_log(self):
         """Журнал начислений опыта (см. migrations/020_tree_xp_log.sql).
@@ -459,6 +481,18 @@ class Database:
 
     async def update_user_name(self, telegram_id: int, name: str):
         await self._fetch("users", f"telegram_id=eq.{telegram_id}", "PATCH", {"name": name})
+
+    async def touch_user_activity(self, telegram_id: int):
+        """Отметить активность в мини-аппе (для статистики рассылок)."""
+        if not self.pool:
+            return
+        try:
+            await self.pool.execute(
+                "UPDATE users SET last_active_at = NOW() WHERE telegram_id = $1",
+                int(telegram_id),
+            )
+        except Exception:
+            logger.exception("touch_user_activity failed: %s", telegram_id)
 
     async def update_user_phone(self, telegram_id: int, phone: str):
         logger.info(f"update_user_phone telegram_id={telegram_id} phone={phone!r}")
